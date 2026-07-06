@@ -4,7 +4,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied
 
 from apps.accounts.constants import Roles
 from apps.accounts.models import Branch, User
@@ -72,10 +72,7 @@ class AssignmentListCreateView(generics.ListCreateAPIView):
             if not user_is_super_admin(request.user) and not user_manages_branch(
                 request.user, branch.id
             ):
-                return Response(
-                    {"detail": "Cannot assign roles for this branch."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                raise PermissionDenied("Cannot assign roles for this branch.")
 
         elif serializer.validated_data["role"] != Roles.SUPER_ADMIN:
             return Response(
@@ -87,10 +84,7 @@ class AssignmentListCreateView(generics.ListCreateAPIView):
             )
 
         elif not user_is_super_admin(request.user):
-            return Response(
-                {"detail": "Only Super Admin can assign Super Admin role."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            raise PermissionDenied("Only Super Admin can assign Super Admin role.")
 
         assignment = assign_role(
             user,
@@ -118,7 +112,7 @@ class AssignmentDetailView(APIView):
         
         if assignment.branch_id and not user_manages_branch(request.user, assignment.branch_id):
             if not user_is_super_admin(request.user):
-                return Response({"detail": "Cannot update this assignment."}, status=status.HTTP_403_FORBIDDEN)
+                raise PermissionDenied("Cannot update this assignment.")
         
         serializer = UpdateAssignmentSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -134,7 +128,7 @@ class AssignmentDetailView(APIView):
         assignment = get_assignment_or_404(pk)
         if assignment.branch_id and not user_manages_branch(request.user, assignment.branch_id):
             if not user_is_super_admin(request.user):
-                return Response({"detail": "Cannot remove this assignment."}, status=status.HTTP_403_FORBIDDEN)
+                raise PermissionDenied("Cannot remove this assignment.")
         
         remove_assignment(assignment, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -150,7 +144,7 @@ class AssignmentMakePrimaryView(APIView):
         assignment = get_assignment_or_404(pk)
         if assignment.branch_id and not user_manages_branch(request.user, assignment.branch_id):
             if not user_is_super_admin(request.user):
-                return Response({"detail": "Cannot modify this assignment."}, status=status.HTTP_403_FORBIDDEN)
+                raise PermissionDenied("Cannot modify this assignment.")
         
         change_primary_assignment(assignment.user, assignment, actor=request.user)
         assignment.refresh_from_db()
@@ -172,7 +166,7 @@ class AssignmentTransferView(APIView):
             for bid in (serializer.validated_data["from_branch_id"], serializer.validated_data["to_branch_id"]):
                 
                 if not user_manages_branch(request.user, bid):
-                    return Response({"detail": "Cannot transfer across this branch."}, status=status.HTTP_403_FORBIDDEN)
+                    raise PermissionDenied("Cannot transfer across this branch.")
         
         try:
             user = User.objects.get(id=serializer.validated_data["user_id"])

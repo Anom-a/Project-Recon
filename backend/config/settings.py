@@ -132,6 +132,13 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_RATES": {
+        "anon_login": "5/min",
+        "anon_forgot_password": "3/min",
+        "anon_reset_password": "5/min",
+        "user_otp_request": "3/min",
+        "user_otp_verify": "5/min",
+    },
 }
 
 SPECTACULAR_SETTINGS = {

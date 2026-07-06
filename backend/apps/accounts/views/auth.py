@@ -17,6 +17,13 @@ from apps.accounts.serializers.auth import (
     ResetPasswordSerializer,
     TokenPairSerializer,
 )
+from apps.accounts.api.throttles import (
+    ForgotPasswordAnonThrottle,
+    LoginAnonThrottle,
+    OTPRequestUserThrottle,
+    OTPVerifyUserThrottle,
+    ResetPasswordAnonThrottle,
+)
 from apps.accounts.serializers.device import TrustedDeviceSerializer
 from apps.accounts.services.device_service import build_device_info
 from apps.accounts.services.authentication_service import (
@@ -42,6 +49,7 @@ class LoginView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [LoginAnonThrottle]
 
     @extend_schema(
         tags=["Auth"],
@@ -110,6 +118,7 @@ class EmailVerificationRequestView(APIView):
     """Send email verification OTP to the authenticated user."""
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [OTPRequestUserThrottle]
 
     @extend_schema(tags=["Auth"], responses={204: None})
     def post(self, request):
@@ -125,6 +134,7 @@ class EmailVerificationVerifyView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [OTPVerifyUserThrottle]
 
     @extend_schema(tags=["Auth"], request=EmailVerificationVerifySerializer, responses={204: None})
     def post(self, request):
@@ -147,6 +157,7 @@ class DeviceVerificationRequestView(APIView):
     """Send device verification OTP for a new device."""
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [OTPRequestUserThrottle]
 
     @extend_schema(tags=["Auth"], request=DeviceVerificationRequestSerializer, responses={204: None})
     def post(self, request):
@@ -167,6 +178,7 @@ class DeviceVerificationVerifyView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [OTPVerifyUserThrottle]
 
     @extend_schema(
         tags=["Auth"],
@@ -191,6 +203,7 @@ class ForgotPasswordView(APIView):
     """Request password reset OTP (does not reveal whether email exists)."""
 
     permission_classes = [AllowAny]
+    throttle_classes = [ForgotPasswordAnonThrottle]
 
     @extend_schema(tags=["Auth"], request=ForgotPasswordSerializer, responses={200: None})
     def post(self, request):
@@ -206,6 +219,7 @@ class ResetPasswordView(APIView):
     """Reset password using OTP."""
 
     permission_classes = [AllowAny]
+    throttle_classes = [ResetPasswordAnonThrottle]
 
     @extend_schema(tags=["Auth"], request=ResetPasswordSerializer, responses={204: None})
     def post(self, request):

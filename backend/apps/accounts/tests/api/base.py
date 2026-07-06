@@ -2,9 +2,19 @@
 
 from django.test import override_settings
 from rest_framework.test import APITestCase
+from rest_framework.throttling import SimpleRateThrottle
 
 from apps.accounts.models import Branch
 from apps.accounts.services import user_service
+
+
+_TEST_THROTTLE_RATES = {
+    "anon_login": "1000/min",
+    "anon_forgot_password": "1000/min",
+    "anon_reset_password": "1000/min",
+    "user_otp_request": "1000/min",
+    "user_otp_verify": "1000/min",
+}
 
 
 @override_settings(AUTH_REQUIRE_DEVICE_VERIFICATION=False)
@@ -25,6 +35,15 @@ class AccountsAPITestCase(APITestCase):
         user_service.activate_user(self.student)
         self.student.is_email_verified = True
         self.student.save()
+        # DRF caches SimpleRateThrottle.THROTTLE_RATES at import time,
+        # so override_settings(REST_FRAMEWORK=...) has no effect on it.
+        # Patch the class attribute directly instead.
+        self._old_throttle_rates = SimpleRateThrottle.THROTTLE_RATES
+        SimpleRateThrottle.THROTTLE_RATES = {**SimpleRateThrottle.THROTTLE_RATES, **_TEST_THROTTLE_RATES}
+
+    def tearDown(self):
+        SimpleRateThrottle.THROTTLE_RATES = self._old_throttle_rates
+        super().tearDown()
 
     def _login(self, email=None, password=None, extra=None):
         """Return login response JSON data envelope."""
