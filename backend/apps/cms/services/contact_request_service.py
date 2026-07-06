@@ -1,0 +1,50 @@
+from django.db import transaction
+from rest_framework.exceptions import NotFound, ValidationError
+
+from apps.cms.models import ContactRequest
+from apps.cms.constants import ContactStatus, ContactPriority
+
+
+def get_contact_request_or_404(pk):
+    try:
+        return ContactRequest.objects.get(id=pk)
+    except ContactRequest.DoesNotExist:
+        raise NotFound("Contact request not found.")
+
+
+def list_contact_requests():
+    return ContactRequest.objects.all()
+
+
+def create_contact_request(data: dict) -> ContactRequest:
+    if not data.get("name", "").strip():
+        raise ValidationError("Name is required.")
+    if not data.get("email", "").strip():
+        raise ValidationError("Email is required.")
+    if not data.get("subject", "").strip():
+        raise ValidationError("Subject is required.")
+    if not data.get("description", "").strip():
+        raise ValidationError("Description is required.")
+    with transaction.atomic():
+        return ContactRequest.objects.create(**data)
+
+
+def update_contact_request(
+    request_obj: ContactRequest, data: dict, actor=None
+) -> ContactRequest:
+    allowed_fields = {"status", "priority", "name", "email", "phone", "subject", "description"}
+    updates = {k: v for k, v in data.items() if k in allowed_fields}
+    if "status" in updates and updates["status"] not in ContactStatus.values:
+        raise ValidationError(f"Invalid status: {updates['status']}")
+    if "priority" in updates and updates["priority"] not in ContactPriority.values:
+        raise ValidationError(f"Invalid priority: {updates['priority']}")
+    with transaction.atomic():
+        for key, value in updates.items():
+            setattr(request_obj, key, value)
+        request_obj.save(update_fields=list(updates.keys()))
+    return request_obj
+
+
+def delete_contact_request(request_obj: ContactRequest, actor=None) -> None:
+    with transaction.atomic():
+        request_obj.delete()

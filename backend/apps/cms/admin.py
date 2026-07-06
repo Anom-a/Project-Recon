@@ -1,0 +1,55 @@
+from django.contrib import admin
+
+from apps.cms.models import (
+    HeroBanner,
+    NewsArticle,
+    Partner,
+    AboutUs,
+    ContactRequest,
+    FAQ,
+)
+
+
+@admin.register(HeroBanner)
+class HeroBannerAdmin(admin.ModelAdmin):
+    list_display = ("title", "is_active", "created_at")
+    search_fields = ("title",)
+    readonly_fields = ("id", "created_at", "updated_at")
+
+
+@admin.register(NewsArticle)
+class NewsArticleAdmin(admin.ModelAdmin):
+    list_display = ("title", "type", "is_active", "published_at", "created_at")
+    search_fields = ("title", "slug")
+    readonly_fields = ("id", "created_at", "updated_at")
+    prepopulated_fields = {"slug": ("title",)}
+
+
+@admin.register(Partner)
+class PartnerAdmin(admin.ModelAdmin):
+    list_display = ("title", "type", "is_active", "created_at")
+    search_fields = ("title",)
+    readonly_fields = ("id", "created_at", "updated_at")
+
+
+@admin.register(AboutUs)
+class AboutUsAdmin(admin.ModelAdmin):
+    list_display = ("title", "is_active", "created_at")
+    search_fields = ("title", "slug")
+    readonly_fields = ("id", "created_at", "updated_at")
+    prepopulated_fields = {"slug": ("title",)}
+
+
+@admin.register(ContactRequest)
+class ContactRequestAdmin(admin.ModelAdmin):
+    list_display = ("ticket_number", "name", "email", "subject", "status", "priority", "created_at")
+    search_fields = ("ticket_number", "name", "email", "subject")
+    list_filter = ("status", "priority")
+    readonly_fields = ("id", "ticket_number", "created_at", "updated_at")
+
+
+@admin.register(FAQ)
+class FAQAdmin(admin.ModelAdmin):
+    list_display = ("question", "is_active", "created_at")
+    search_fields = ("question",)
+    readonly_fields = ("id", "created_at", "updated_at")

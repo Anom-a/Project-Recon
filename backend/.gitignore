@@ -1,0 +1,6 @@
+venv
+dev-tasks
+__pycache__
+db.sqlite3
+.env
+media

@@ -1,0 +1,178 @@
+from django.test import TestCase
+from django.db import IntegrityError
+
+from apps.cms.models import (
+    HeroBanner,
+    NewsArticle,
+    Partner,
+    AboutUs,
+    ContactRequest,
+    FAQ,
+)
+from apps.cms.constants import NewsType, PartnerType, ContactStatus, ContactPriority
+
+
+class HeroBannerModelTest(TestCase):
+    def test_create_hero_banner(self):
+        banner = HeroBanner.objects.create(
+            title="Test Banner",
+            subtitle="Subtitle",
+            description="Description",
+            video_url="https://example.com/video",
+            button_text="Learn More",
+            button_url="https://example.com",
+        )
+        self.assertEqual(str(banner), "Test Banner")
+        self.assertTrue(banner.is_active)
+        self.assertIsNotNone(banner.id)
+        self.assertIsNotNone(banner.created_at)
+        self.assertIsNotNone(banner.updated_at)
+
+    def test_hero_banner_defaults(self):
+        banner = HeroBanner.objects.create(
+            title="Minimal Banner",
+            video_url="https://example.com/video",
+        )
+        self.assertEqual(banner.subtitle, "")
+        self.assertEqual(banner.description, "")
+        self.assertFalse(banner.image)
+        self.assertIsNone(banner.button_text)
+        self.assertIsNone(banner.button_url)
+        self.assertTrue(banner.is_active)
+
+
+class NewsArticleModelTest(TestCase):
+    def test_create_news_article(self):
+        article = NewsArticle.objects.create(
+            title="Test News",
+            slug="test-news",
+            content="Content here",
+            type=NewsType.NEWS,
+        )
+        self.assertEqual(str(article), "Test News")
+        self.assertEqual(article.type, NewsType.NEWS)
+        self.assertTrue(article.is_active)
+
+    def test_news_type_choices(self):
+        article = NewsArticle.objects.create(
+            title="Announcement",
+            slug="announcement",
+            content="Content",
+            type=NewsType.ANNOUNCEMENT,
+        )
+        self.assertEqual(article.type, NewsType.ANNOUNCEMENT)
+
+    def test_unique_slug(self):
+        NewsArticle.objects.create(title="One", slug="same-slug", content="A")
+        with self.assertRaises(IntegrityError):
+            NewsArticle.objects.create(title="Two", slug="same-slug", content="B")
+
+
+class PartnerModelTest(TestCase):
+    def test_create_partner(self):
+        partner = Partner.objects.create(
+            title="Test Partner",
+            type=PartnerType.PARTNER,
+        )
+        self.assertEqual(str(partner), "Test Partner")
+        self.assertEqual(partner.type, PartnerType.PARTNER)
+
+    def test_partner_type_choices(self):
+        sponsor = Partner.objects.create(title="Sponsor", type=PartnerType.SPONSOR)
+        self.assertEqual(sponsor.type, PartnerType.SPONSOR)
+
+
+class AboutUsModelTest(TestCase):
+    def test_create_about_us(self):
+        about = AboutUs.objects.create(
+            title="Our Mission",
+            slug="our-mission",
+            description="Mission description",
+        )
+        self.assertEqual(str(about), "Our Mission")
+
+    def test_unique_slug(self):
+        AboutUs.objects.create(title="One", slug="same", description="A")
+        with self.assertRaises(IntegrityError):
+            AboutUs.objects.create(title="Two", slug="same", description="B")
+
+
+class ContactRequestModelTest(TestCase):
+    def test_create_contact_request(self):
+        cr = ContactRequest.objects.create(
+            name="John Doe",
+            email="john@example.com",
+            subject="Need help",
+            description="Please assist with registration.",
+        )
+        self.assertIsNotNone(cr.id)
+        self.assertIsNotNone(cr.ticket_number)
+        self.assertTrue(cr.ticket_number.startswith("CR-"))
+        self.assertEqual(cr.status, ContactStatus.OPEN)
+        self.assertEqual(cr.priority, ContactPriority.MEDIUM)
+        self.assertIsNone(cr.phone)
+        self.assertFalse(cr.attachment)
+        self.assertEqual(str(cr), f"{cr.ticket_number} - Need help")
+
+    def test_ticket_number_unique(self):
+        cr1 = ContactRequest.objects.create(
+            name="A", email="a@a.com", subject="S1", description="D1"
+        )
+        with self.assertRaises(IntegrityError):
+            ContactRequest.objects.create(
+                ticket_number=cr1.ticket_number, name="B", email="b@b.com",
+                subject="S2", description="D2"
+            )
+
+    def test_all_statuses(self):
+        for status in ContactStatus.values:
+            cr = ContactRequest.objects.create(
+                name="Tester", email="t@t.com", subject="Status test",
+                description="Desc", status=status,
+            )
+            self.assertEqual(cr.status, status)
+
+    def test_all_priorities(self):
+        for priority in ContactPriority.values:
+            cr = ContactRequest.objects.create(
+                name="Tester", email="t@t.com", subject="Priority test",
+                description="Desc", priority=priority,
+            )
+            self.assertEqual(cr.priority, priority)
+
+    def test_phone_optional(self):
+        cr = ContactRequest.objects.create(
+            name="No Phone", email="nophone@t.com", subject="Phone test",
+            description="Desc",
+        )
+        self.assertIsNone(cr.phone)
+
+    def test_phone_provided(self):
+        cr = ContactRequest.objects.create(
+            name="With Phone", email="phon@t.com", subject="Phone test",
+            description="Desc", phone="+251911234567",
+        )
+        self.assertEqual(cr.phone, "+251911234567")
+
+    def test_ordering_newest_first(self):
+        cr1 = ContactRequest.objects.create(
+            name="First", email="f@t.com", subject="Order",
+            description="Desc",
+        )
+        cr2 = ContactRequest.objects.create(
+            name="Second", email="s@t.com", subject="Order",
+            description="Desc",
+        )
+        qs = ContactRequest.objects.all()
+        self.assertEqual(qs[0].id, cr2.id)
+        self.assertEqual(qs[1].id, cr1.id)
+
+
+class FAQModelTest(TestCase):
+    def test_create_faq(self):
+        faq = FAQ.objects.create(
+            question="What is this?",
+            answer="This is a FAQ.",
+        )
+        self.assertEqual(str(faq), "What is this?")
+        self.assertTrue(faq.is_active)

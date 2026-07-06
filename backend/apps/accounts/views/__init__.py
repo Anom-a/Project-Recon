@@ -1,0 +1,75 @@
+"""Accounts API views."""
+
+from apps.accounts.views.auth import (
+    ChangePasswordView,
+    DeviceVerificationRequestView,
+    DeviceVerificationVerifyView,
+    EmailVerificationRequestView,
+    EmailVerificationVerifyView,
+    ForgotPasswordView,
+    LoginView,
+    LogoutView,
+    ResetPasswordView,
+    TokenRefreshView,
+)
+from apps.accounts.views.user import (
+    CreateBranchManagerView,
+    CreateStaffUserView,
+    UserActivateView,
+    UserArchiveView,
+    UserDeactivateView,
+    UserDetailView,
+    UserListView,
+)
+from apps.accounts.views.branch import (
+    BranchActivateView,
+    BranchArchiveView,
+    BranchAssignManagerView,
+    BranchChangeManagerView,
+    BranchDeactivateView,
+    BranchDetailView,
+    BranchListCreateView,
+    BranchWithManagerView,
+)
+from apps.accounts.views.assignment import (
+    AssignmentDetailView,
+    AssignmentListCreateView,
+    AssignmentMakePrimaryView,
+    AssignmentTransferView,
+)
+from apps.accounts.views.device import DeviceDetailView, DeviceListView, DeviceRevokeAllView
+
+__all__ = [
+    "LoginView",
+    "LogoutView",
+    "TokenRefreshView",
+    "EmailVerificationRequestView",
+    "EmailVerificationVerifyView",
+    "DeviceVerificationRequestView",
+    "DeviceVerificationVerifyView",
+    "ForgotPasswordView",
+    "ResetPasswordView",
+    "ChangePasswordView",
+    "UserListView",
+    "UserDetailView",
+    "CreateStaffUserView",
+    "CreateBranchManagerView",
+    "UserActivateView",
+    "UserDeactivateView",
+    "UserArchiveView",
+    "BranchListCreateView",
+    "BranchWithManagerView",
+    "BranchDetailView",
+    "BranchAssignManagerView",
+    "BranchChangeManagerView",
+    "BranchActivateView",
+    "BranchDeactivateView",
+    "BranchArchiveView",
+    "AssignmentListCreateView",
+    "AssignmentDetailView",
+    "AssignmentMakePrimaryView",
+    "AssignmentTransferView",
+    "DeviceListView",
+    "DeviceDetailView",
+    "DeviceRevokeAllView",
+]

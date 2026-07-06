@@ -1,0 +1,180 @@
+import { http } from '../../../../shared/api/http';
+import type { UserProfile } from '../../../../shared/types';
+import type { LoginCredentials, AuthResponse } from '../../model/types';
+
+/**
+ * Decode a JWT payload without a library.
+ */
+function parseJwt(token: string): Record<string, unknown> | null {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window
+        .atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Backend role constants → frontend UserProfile role mapping.
+ *
+ * Backend roles (from UserAssignment.role):
+ *   super_admin, branch_manager, instructor, student
+ *
+ * Frontend UserProfile roles:
+ *   Admin, Manager, Instructor, Student
+ */
+const ROLE_MAP: Record<string, UserProfile['role']> = {
+  super_admin: 'Admin',
+  branch_manager: 'Manager',
+  instructor: 'Instructor',
+  student: 'Student',
+};
+
+/**
+ * Pick the highest-priority role from an array of backend assignment objects.
+ * Each assignment has: { role, is_primary, is_active, branch_id, branch_name }
+ */
+function resolveRole(assignments: Array<{ role: string; is_primary?: boolean; is_active?: boolean }>): UserProfile['role'] {
+  if (!assignments || assignments.length === 0) return 'Student';
+
+  // Priority order: super_admin > branch_manager > instructor > student
+  const priority = ['super_admin', 'branch_manager', 'instructor', 'student'];
+
+  // Check primary assignment first
+  const primary = assignments.find((a) => a.is_primary && a.is_active);
+  if (primary && ROLE_MAP[primary.role]) return ROLE_MAP[primary.role];
+
+  // Fall back to highest priority active assignment
+  for (const p of priority) {
+    const match = assignments.find((a) => a.role === p && a.is_active !== false);
+    if (match) return ROLE_MAP[p];
+  }
+
+  return 'Student';
+}
+
+/**
+ * Authenticate against the backend and build a UserProfile.
+ *
+ * Flow:
+ *  1. POST /accounts/login/  →  { access, refresh }
+ *  2. Store tokens in localStorage
+ *  3. GET /accounts/users/{id}/  → user details + assignments
+ *  4. Map backend user to frontend UserProfile
+ */
+export async function loginApi(credentials: LoginCredentials): Promise<AuthResponse> {
+  // Step 1: Authenticate – get JWT tokens
+  const tokenData = await http.post<{ access: string; refresh: string }>(
+    '/accounts/login/',
+    { email: credentials.email, password: credentials.password }
+  );
+
+  // Step 2: Persist tokens
+  localStorage.setItem('access_token', tokenData.access);
+  localStorage.setItem('refresh_token', tokenData.refresh);
+
+  // Step 3: Decode token for user_id, then fetch user profile
+  const payload = parseJwt(tokenData.access);
+  const userId = payload?.user_id as string | undefined;
+
+  let userProfile: UserProfile = {
+    email: credentials.email,
+    name: credentials.email.split('@')[0],
+    role: 'Student',
+    enrolledPrograms: [],
+    xpPoints: 0,
+    badges: [],
+  };
+
+  if (userId) {
+    try {
+      const userData = await http.get<{
+        id: string;
+        email: string;
+        first_name: string;
+        last_name: string;
+        full_name: string;
+        status: string;
+        is_email_verified: boolean;
+        assignments: Array<{
+          id: string;
+          branch_id: string | null;
+          branch_name: string | null;
+          role: string;
+          is_primary: boolean;
+          is_active: boolean;
+        }>;
+        phone_number?: string;
+        profile_picture?: string;
+      }>(`/accounts/users/${userId}/`);
+
+      const role = resolveRole(userData.assignments);
+
+      userProfile = {
+        email: userData.email,
+        name: userData.full_name || `${userData.first_name} ${userData.last_name}`.trim() || userData.email.split('@')[0],
+        role,
+        enrolledPrograms: [],
+        xpPoints: role === 'Admin' ? 99999 : role === 'Manager' ? 9999 : role === 'Instructor' ? 500 : 150,
+        badges: role === 'Admin' ? ['System Admin', 'Root Access'] : role === 'Manager' ? ['System Admin'] : role === 'Instructor' ? ['Master Instructor'] : ['Starter Badge'],
+      };
+    } catch (err) {
+      // If user detail fetch fails (e.g. permission), use token claims
+      console.warn('Could not fetch user profile, using token claims:', err);
+    }
+  }
+
+  return { user: userProfile, token: tokenData.access };
+}
+
+/**
+ * Social login is not yet supported by the backend.
+ * Keeping as a stub that shows an informational error.
+ */
+export async function socialLoginApi(_provider: 'google' | 'github'): Promise<AuthResponse> {
+  throw new Error('Social login is not yet available. Please use email and password.');
+}
+
+/**
+ * Call the backend logout endpoint to blacklist the refresh token.
+ */
+export async function logoutApi(): Promise<void> {
+  const refresh = localStorage.getItem('refresh_token');
+  if (refresh) {
+    try {
+      await http.post('/accounts/logout/', { refresh });
+    } catch {
+      // Logout should not block the UI even if the server call fails
+      console.warn('Backend logout failed, clearing local tokens anyway.');
+    }
+  }
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+}
+
+/**
+ * Call the backend forgot-password endpoint.
+ * The API intentionally does NOT reveal whether the email exists.
+ */
+export async function forgotPasswordApi(email: string): Promise<void> {
+  await http.post('/accounts/password/forgot/', { email });
+}
+
+/**
+ * Call the backend reset-password endpoint to submit the OTP and new password.
+ */
+export async function resetPasswordApi(email: string, otp: string, password: string): Promise<void> {
+  await http.post('/accounts/password/reset/', {
+    email,
+    otp,
+    new_password: password
+  });
+}
