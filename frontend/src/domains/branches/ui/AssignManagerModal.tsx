@@ -1,3 +1,4 @@
+import React from 'react';
 import { Modal } from '@/src/shared/ui/Modal';
 
 interface UserOption {
