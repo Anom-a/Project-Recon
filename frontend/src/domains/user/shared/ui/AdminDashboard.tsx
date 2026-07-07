@@ -37,7 +37,7 @@ import {
 
 interface Props { currentUser: UserProfile; onLogout: () => void; }
 
-type SectionId = 'overview' | 'users' | 'roles' | 'settings' | 'moderation' | 'audit' | 'notifications' | 'maintenance' | 'partners' | 'vex-roles' | 'schools' | 'branches' | 'registrations' | 'cms';
+type SectionId = 'overview' | 'users' | 'roles' | 'settings' | 'moderation' | 'audit' | 'notifications' | 'maintenance' | 'partners' | 'vex-roles' | 'branches' | 'registrations' | 'cms';
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Dashboard', icon: BarChart3, group: 'main' },
@@ -46,7 +46,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'registrations', label: 'Enrollments', icon: ClipboardList, group: 'main' },
   { id: 'partners', label: 'Strategic Partners', icon: Handshake, group: 'main' },
   { id: 'vex-roles', label: 'VEX Teams', icon: UserCog, group: 'vex' },
-  { id: 'schools', label: 'Institutions', icon: Building, group: 'main' },
   { id: 'branches', label: 'Branches', icon: GitBranch, group: 'main' },
   { id: 'cms', label: 'Content Manager', icon: LayoutDashboard, group: 'main' },
   { id: 'moderation', label: 'Content Moderation', icon: MessageSquare, group: 'system' },
@@ -59,7 +58,7 @@ const NAV_ITEMS: NavItem[] = [
 const pageTitle: Record<SectionId, string> = {
   overview: 'Overview', users: 'User Management', roles: 'Roles & Permissions',
   partners: 'Partners & Sponsors', 'vex-roles': 'VEX Role Management',
-  schools: 'School Management', branches: 'Branch Management', registrations: 'Registration Management',
+  branches: 'Branch Management', registrations: 'Registration Management',
   moderation: 'Content Moderation', audit: 'Audit Logs',
   notifications: 'Notifications', settings: 'System Settings', maintenance: 'Maintenance',
   cms: 'Content Management',
@@ -1599,284 +1598,6 @@ function AdminRegistrations() {
   );
 }
 
-function SchoolManagementSection() {
-  const [branches, setBranches] = useState<BranchResponse[]>([]);
-  const [users, setUsers] = useState<AdminUserResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingBranch, setEditingBranch] = useState<BranchResponse | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '', code: '', email: '', phone_number: '', address: '', city: '', state_region: '', country: 'Ethiopia',
-  });
-  const [assignManager, setAssignManager] = useState<{ branchId: string; userId: string } | null>(null);
-
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [branchArr, userRes] = await Promise.all([
-        branchesApi.list().catch(() => null),
-        fetchUsersApi().catch(() => null),
-      ]);
-      if (branchArr) setBranches(branchArr);
-      if (userRes) setUsers(userRes.results);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load schools');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const handleCreate = async () => {
-    try {
-      await branchesApi.create(formData);
-      setShowAddModal(false);
-      setFormData({ name: '', code: '', email: '', phone_number: '', address: '', city: '', state_region: '', country: 'Ethiopia' });
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create school');
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (!editingBranch) return;
-    setActionLoading(editingBranch.id);
-    try {
-      await branchesApi.update(editingBranch.id, {
-        name: editingBranch.name,
-        code: editingBranch.code,
-        email: editingBranch.email,
-        phone_number: editingBranch.phone_number,
-        address: editingBranch.address,
-        city: editingBranch.city,
-        state_region: editingBranch.state_region,
-        country: editingBranch.country,
-      });
-      setEditingBranch(null);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update school');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleToggleStatus = async (b: BranchResponse) => {
-    setActionLoading(b.id);
-    try {
-      await branchesApi.toggleActive(b.id, b.status === 'Active');
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update status');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleArchive = async (b: BranchResponse) => {
-    setActionLoading(b.id);
-    try {
-      await branchesApi.archive(b.id);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to archive school');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleAssignManager = async () => {
-    if (!assignManager) return;
-    setActionLoading(assignManager.branchId);
-    try {
-      await branchesApi.assignManager(assignManager.branchId, assignManager.userId);
-      setAssignManager(null);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to assign manager');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const filtered = branches.filter(b =>
-    b.name.toLowerCase().includes(search.toLowerCase()) ||
-    b.code.toLowerCase().includes(search.toLowerCase()) ||
-    b.city?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const statusColor = (s: string) => {
-    const map: Record<string, string> = { Active: 'bg-emerald-50 text-emerald-600', Inactive: 'bg-amber-50 text-amber-600', Archived: 'bg-slate-100 text-slate-500' };
-    return map[s] || 'bg-slate-100 text-slate-600';
-  };
-
-  const managerOptions = users.filter(u =>
-    u.assignments?.some(a => a.role === 'branch_manager' && a.is_active !== false)
-  );
-
-  return (
-    <div className="space-y-4">
-      {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>
-        </div>
-      )}
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schools..." className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" />
-        </div>
-        <div className="flex gap-2 items-center">
-          <span className="text-xs text-slate-400">{branches.length} schools</span>
-          <button onClick={load} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Refresh"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
-          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark"><Plus className="w-3.5 h-3.5" /> Add School</button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left">
-            <tr>
-              <th className="px-4 py-3 font-semibold text-slate-600">School</th>
-              <th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Code</th>
-              <th className="px-4 py-3 font-semibold text-slate-600 hidden lg:table-cell">Location</th>
-              <th className="px-4 py-3 font-semibold text-slate-600 hidden xl:table-cell">Contact</th>
-              <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
-              <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />Loading schools...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No schools found</td></tr>
-            ) : filtered.map(b => (
-              <tr key={b.id} className="hover:bg-slate-50/50">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center text-sm shrink-0"><Building className="w-4 h-4 text-brand-blue" /></div>
-                    <div className="min-w-0"><div className="font-medium text-slate-900">{b.name}</div><div className="text-xs text-slate-400">{b.code}</div></div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-slate-600 font-mono text-xs hidden md:table-cell">{b.code}</td>
-                <td className="px-4 py-3 text-slate-500 hidden lg:table-cell">{b.city || '—'}{b.state_region ? `, ${b.state_region}` : ''}</td>
-                <td className="px-4 py-3 text-slate-500 hidden xl:table-cell">
-                  <div className="text-xs">{b.email && <div>{b.email}</div>}{b.phone_number && <div>{b.phone_number}</div>}</div>
-                </td>
-                <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusColor(b.status)}`}>{b.status}</span></td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    <button onClick={() => setEditingBranch(b)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50"><Edit3 className="w-3.5 h-3.5" /></button>
-                    {managerOptions.length > 0 && (
-                      <button onClick={() => setAssignManager({ branchId: b.id, userId: '' })}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5" title="Assign manager">
-                        <UserCog className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {b.status !== 'Archived' && (
-                      <>
-                        <button onClick={() => handleToggleStatus(b)} disabled={actionLoading === b.id}
-                          className={`p-1.5 rounded-lg ${actionLoading === b.id ? 'text-slate-300' : b.status === 'Active' ? 'text-amber-400 hover:text-amber-600 hover:bg-amber-50' : 'text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
-                          {actionLoading === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : b.status === 'Active' ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                        </button>
-                        <button onClick={() => handleArchive(b)} disabled={actionLoading === b.id}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
-                          {actionLoading === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Add School Modal */}
-      {showAddModal && (
-        <Modal title="Add School" onClose={() => setShowAddModal(false)}>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Name</label><input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Addis Ababa Science & Technology University" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Code</label><input value={formData.code} onChange={e => setFormData(p => ({ ...p, code: e.target.value.toUpperCase() }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. AASTU" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. info@aastu.edu.et" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={formData.phone_number} onChange={e => setFormData(p => ({ ...p, phone_number: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. +251 911 000 000" /></div>
-            </div>
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Address</label><input value={formData.address} onChange={e => setFormData(p => ({ ...p, address: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Bole, Africa Avenue" /></div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">City</label><input value={formData.city} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Addis Ababa" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">State</label><input value={formData.state_region} onChange={e => setFormData(p => ({ ...p, state_region: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Addis Ababa" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Country</label><input value={formData.country} onChange={e => setFormData(p => ({ ...p, country: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Ethiopia" /></div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowAddModal(false)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleCreate} disabled={!formData.name || !formData.code} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark disabled:opacity-50">Create</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Edit School Modal */}
-      {editingBranch && (
-        <Modal title="Edit School" onClose={() => setEditingBranch(null)}>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Name</label><input value={editingBranch.name} onChange={e => setEditingBranch(p => p ? { ...p, name: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Code</label><input value={editingBranch.code} onChange={e => setEditingBranch(p => p ? { ...p, code: e.target.value.toUpperCase() } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={editingBranch.email || ''} onChange={e => setEditingBranch(p => p ? { ...p, email: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={editingBranch.phone_number || ''} onChange={e => setEditingBranch(p => p ? { ...p, phone_number: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            </div>
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Address</label><input value={editingBranch.address || ''} onChange={e => setEditingBranch(p => p ? { ...p, address: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">City</label><input value={editingBranch.city || ''} onChange={e => setEditingBranch(p => p ? { ...p, city: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">State</label><input value={editingBranch.state_region || ''} onChange={e => setEditingBranch(p => p ? { ...p, state_region: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Country</label><input value={editingBranch.country} onChange={e => setEditingBranch(p => p ? { ...p, country: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setEditingBranch(null)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleUpdate} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark">Save</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Assign Manager Modal */}
-      {assignManager && (
-        <Modal title="Assign Manager" onClose={() => setAssignManager(null)}>
-          <div className="space-y-3">
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Manager</label>
-              <select value={assignManager.userId} onChange={e => setAssignManager(p => p ? { ...p, userId: e.target.value } : p)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
-                <option value="">Select manager</option>
-                {managerOptions.map(u => (
-                  <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setAssignManager(null)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleAssignManager} disabled={!assignManager.userId} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark disabled:opacity-50">Assign</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
 /* ─── MAIN ─── */
 export default function AdminDashboard({ currentUser, onLogout }: Props) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -1888,7 +1609,6 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       case 'roles': return <RolesPermissions />;
       case 'partners': return <PartnerSponsorshipPanel />;
       case 'vex-roles': return <VexRolesAdmin />;
-      case 'schools': return <SchoolManagementSection />;
       case 'branches': return <BranchSectionShell />;
       case 'moderation': return <ContentModeration />;
       case 'audit': return <AuditLogs />;

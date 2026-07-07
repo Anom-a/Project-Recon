@@ -1,6 +1,8 @@
 import { http } from '../../../../shared/api/http';
 import type { CmsPartnerResponse, NewsArticleResponse } from '../../shared/api/cmsApi';
 
+export type { CmsPartnerResponse, NewsArticleResponse };
+
 export interface HeroBannerResponse {
   id: string;
   title: string;
