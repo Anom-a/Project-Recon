@@ -222,3 +222,57 @@ export async function fetchStudentCertificatesApi(studentId?: string): Promise<S
 export async function issueStudentCertificateApi(payload: IssueCertificatePayload): Promise<StudentCertificate> {
   return http.post<StudentCertificate>(`${BASE}/student-certificates/issue/`, payload);
 }
+
+// ─── Reports (PDF download) ───
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+async function downloadPdf(endpoint: string, filename: string) {
+  const token = localStorage.getItem('access_token');
+  const res = await fetch(`${BASE_URL}${endpoint}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Failed to download report');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function downloadStudentReportPdf(studentId: string) {
+  return downloadPdf(`${BASE}/reports/students/${studentId}/academic/`, `student-report-${studentId}.pdf`);
+}
+
+export function downloadEnrollmentReportPdf(studentId: string) {
+  return downloadPdf(`${BASE}/reports/students/${studentId}/enrollments/`, `enrollment-report-${studentId}.pdf`);
+}
+
+export function downloadAttendanceReportPdf(studentId: string, enrollmentId?: string) {
+  const params = enrollmentId ? `?enrollment_id=${enrollmentId}` : '';
+  return downloadPdf(`${BASE}/reports/students/${studentId}/attendance/${params}`, `attendance-report-${studentId}.pdf`);
+}
+
+export function downloadProgressReportPdf(studentId: string, enrollmentId?: string) {
+  const params = enrollmentId ? `?enrollment_id=${enrollmentId}` : '';
+  return downloadPdf(`${BASE}/reports/students/${studentId}/progress/${params}`, `progress-report-${studentId}.pdf`);
+}
+
+export function downloadCertificateReportPdf(studentId: string) {
+  return downloadPdf(`${BASE}/reports/students/${studentId}/certificates/`, `certificate-report-${studentId}.pdf`);
+}
+
+export function downloadClassReportPdf(classId: string) {
+  return downloadPdf(`${BASE}/reports/classes/${classId}/`, `class-report-${classId}.pdf`);
+}
+
+export function downloadSubProgramReportPdf(subProgramId: string) {
+  return downloadPdf(`${BASE}/reports/sub-programs/${subProgramId}/`, `sub-program-report-${subProgramId}.pdf`);
+}
+
+export function downloadProgramReportPdf(programId: string) {
+  return downloadPdf(`${BASE}/reports/programs/${programId}/`, `program-report-${programId}.pdf`);
+}

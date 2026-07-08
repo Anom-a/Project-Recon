@@ -26,7 +26,7 @@ import SchoolManagement from './SchoolManagement';
 import UserManagementPanel from '@/src/domains/user/shared/ui/UserManagementPanel';
 import AccountSettings from '@/src/shared/ui/AccountSettings';
 import ProfileOverview from '@/src/domains/user/student/dashboard/ui/ProfileOverview';
-import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchClassesApi } from '@/src/domains/learning/academics/api/academicApi';
+import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/src/domains/learning/academics/api/academicApi';
 
 interface Props {
   currentUser: UserProfile;
@@ -506,83 +506,96 @@ function ParticipantsSection() {
 
 function ReportsSection() {
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [students, setStudents] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
 
-  const downloadCSV = (title: string, rows: string[][]) => {
-    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  useEffect(() => {
+    Promise.all([
+      fetchStudentsApi(),
+      fetchClassesApi(),
+      fetchProgramsApi(),
+      fetchEnrollmentsApi(),
+    ]).then(([stu, cls, pro, enr]) => {
+      setStudents(Array.isArray(stu) ? stu : []);
+      setClasses(Array.isArray(cls) ? cls : []);
+      setPrograms(Array.isArray(pro) ? pro : []);
+      setEnrollments(Array.isArray(enr) ? enr : []);
+    }).catch(() => {});
+  }, []);
+
+  const doDownload = async (key: string, fn: () => Promise<void>) => {
+    setDownloading(key);
+    try { await fn(); } catch {}
+    setTimeout(() => setDownloading(null), 1000);
   };
 
-  const reports: { title: string; desc: string; icon: React.ElementType; color: string; bg: string; generate: () => string[][] }[] = [
-    {
-      title: 'Event Participation', desc: 'Attendance rates across all events', icon: BarChart3, color: 'text-blue-500', bg: 'bg-blue-50',
-      generate: () => {
-        const header = ['Event', 'Date', 'Capacity', 'Registered', 'Attendance Rate'];
-        const rows = MOCK_TOURNAMENTS.map(t => [t.name, t.date, t.maxTeams.toString(), Math.floor(t.maxTeams * 0.85).toString(), '85%']);
-        return [header, ...rows];
-      },
-    },
-    {
-      title: 'Tournament Results', desc: 'Scores, rankings, and outcomes', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50',
-      generate: () => {
-        const header = ['Event', 'Round', 'Opponent', 'Score', 'Result'];
-        const rows = MOCK_VEX_MATCHES.map(m => [m.event, m.round, m.opponent, m.score, m.result]);
-        return [header, ...rows];
-      },
-    },
-    {
-      title: 'Revenue Report', desc: 'Ticket sales and registration fees', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50',
-      generate: () => {
-        const d = MOCK_ANALYTICS;
-        const header = ['Student', 'Type', 'Amount', 'Date', 'Status'];
-        const rows = d.recentTransactions.map((tx: { student: string; type: string; amount: number; date: string; status: string }) => [tx.student, tx.type, tx.amount.toLocaleString() + ' ETB', tx.date, tx.status]);
-        return [header, ...rows];
-      },
-    },
-    {
-      title: 'Participant Demographics', desc: 'Age, school, and location', icon: Users, color: 'text-amber-500', bg: 'bg-amber-50',
-      generate: () => {
-        const d = MOCK_ANALYTICS as any;
-        const header = ['Category', 'Type', 'Count'];
-        const progRows = d.programDistribution?.map((p: { name: string; students: number }) => ['Program', p.name, p.students.toString()]) ?? [];
-        return [header, ...progRows, ['Metric', 'Total Students', '460'], ['Metric', 'Active Programs', '24']];
-      },
-    },
+  const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
+  const paid = enrollments.filter(e => e.status === 'COMPLETED');
+
+  const reports = [
+    { key: 'student-report', title: 'Student Academic Report', desc: 'Full academic profile, enrollments, attendance, progress & certificates', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-50', download: () => students[0] && doDownload('student-report', () => downloadStudentReportPdf(students[0].id)) },
+    { key: 'enrollment-report', title: 'Enrollment Report', desc: 'Enrollment history across all branches and programs', icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50', download: () => students[0] && doDownload('enrollment-report', () => downloadEnrollmentReportPdf(students[0].id)) },
+    { key: 'attendance-report', title: 'Attendance Report', desc: 'Attendance summary per student with present/absent counts', icon: BarChart3, color: 'text-emerald-500', bg: 'bg-emerald-50', download: () => students[0] && doDownload('attendance-report', () => downloadAttendanceReportPdf(students[0].id)) },
+    { key: 'progress-report', title: 'Progress Report', desc: 'Learning milestone progress per student', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50', download: () => students[0] && doDownload('progress-report', () => downloadProgressReportPdf(students[0].id)) },
+    { key: 'certificate-report', title: 'Certificate Report', desc: 'All issued certificates with numbers and dates', icon: Trophy, color: 'text-rose-500', bg: 'bg-rose-50', download: () => students[0] && doDownload('certificate-report', () => downloadCertificateReportPdf(students[0].id)) },
+    { key: 'class-report', title: 'Class Report', desc: 'Class details with enrolled students and attendance sessions', icon: Users, color: 'text-cyan-500', bg: 'bg-cyan-50', download: () => classes[0] && doDownload('class-report', () => downloadClassReportPdf(classes[0].id)) },
+    { key: 'subprogram-report', title: 'Sub-Program Report', desc: 'Sub-program info with class list and enrollment counts', icon: Building, color: 'text-indigo-500', bg: 'bg-indigo-50', download: () => programs[0] && doDownload('subprogram-report', () => downloadSubProgramReportPdf(programs[0].id)) },
+    { key: 'program-report', title: 'Program Report', desc: 'Complete program overview with sub-programs and totals', icon: Activity, color: 'text-brand-red', bg: 'bg-brand-red/5', download: () => programs[0] && doDownload('program-report', () => downloadProgramReportPdf(programs[0].id)) },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-      {reports.map((r, i) => {
-        const ReportIcon = r.icon;
-        const isDownloading = downloading === r.title;
-        return (
-          <motion.div key={r.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className="bg-white border border-slate-200 rounded-xl p-3 hover:shadow-sm transition-all"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className={`w-8 h-8 rounded-lg ${r.bg} flex items-center justify-center`}>
-                <ReportIcon className={`w-4 h-4 ${r.color}`} />
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-sm text-slate-900">{r.title}</p>
-                <p className="text-[11px] text-slate-500">{r.desc}</p>
-              </div>
-            </div>
-            <button onClick={() => { setDownloading(r.title); setTimeout(() => { downloadCSV(r.title, r.generate()); setDownloading(null); }, 400); }}
-              disabled={isDownloading}
-              className="w-full text-[11px] font-bold text-brand-red bg-brand-red/10 px-2 py-1.5 rounded-lg hover:bg-brand-red/20 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Students', value: students.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Classes', value: classes.length, icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
+          { label: 'Active Enrollments', value: activeEnrollments.length, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Programs', value: programs.length, icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
+        ].map((s, i) => {
+          const SIcon = s.icon;
+          return (
+            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              className="bg-white border border-slate-200 rounded-xl p-3"
             >
-              <Download className={`w-2.5 h-2.5 ${isDownloading ? 'animate-bounce' : ''}`} />
-              {isDownloading ? 'Generating...' : 'Download CSV'}
-            </button>
-          </motion.div>
-        );
-      })}
+              <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-1.5`}>
+                <SIcon className={`w-4 h-4 ${s.color}`} />
+              </div>
+              <p className="font-bold text-xl text-slate-900">{s.value}</p>
+              <p className="text-[10px] text-slate-500">{s.label}</p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {reports.map((r, i) => {
+          const ReportIcon = r.icon;
+          const isDl = downloading === r.key;
+          return (
+            <motion.div key={r.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+              className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-sm transition-all"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-9 h-9 rounded-lg ${r.bg} flex items-center justify-center`}>
+                  <ReportIcon className={`w-4 h-4 ${r.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-900">{r.title}</p>
+                  <p className="text-[11px] text-slate-500">{r.desc}</p>
+                </div>
+              </div>
+              <button onClick={r.download} disabled={isDl}
+                className="w-full text-[11px] font-bold text-brand-red bg-brand-red/10 px-2 py-1.5 rounded-lg hover:bg-brand-red/20 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+              >
+                <Download className={`w-3 h-3 ${isDl ? 'animate-bounce' : ''}`} />
+                {isDl ? 'Generating PDF...' : 'Download PDF'}
+              </button>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }

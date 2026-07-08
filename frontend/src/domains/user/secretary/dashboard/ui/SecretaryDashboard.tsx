@@ -18,7 +18,11 @@ import {
   fetchStudentCertificatesApi, fetchStudentsApi, searchStudentsApi,
   fetchClassesApi, enrollStudentApi, admitStudentApi,
   fetchCertificateTemplatesApi, issueStudentCertificateApi,
-  createCashPaymentApi
+  createCashPaymentApi,
+  downloadStudentReportPdf, downloadEnrollmentReportPdf,
+  downloadAttendanceReportPdf, downloadProgressReportPdf,
+  downloadCertificateReportPdf, downloadClassReportPdf,
+  downloadSubProgramReportPdf, downloadProgramReportPdf
 } from '@/src/domains/learning/academics/api/academicApi';
 import { branchesApi, type BranchResponse } from '@/src/domains/user/shared/api/adminApi';
 
@@ -931,6 +935,7 @@ function ReportsPanel() {
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [certs, setCerts] = useState<StudentCertificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -947,64 +952,134 @@ function ReportsPanel() {
   }, []);
 
   const totalPaid = payments.filter(p => p.status === 'PAID').reduce((s, p) => s + Number(p.amount), 0);
+  const activeStudents = students.filter(s => s.is_active);
+  const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
+  const pendingEnrollments = enrollments.filter(e => e.status === 'PENDING_PAYMENT');
+  const completedEnrollments = enrollments.filter(e => e.status === 'COMPLETED');
+  const cashPayments = payments.filter(p => p.payment_method === 'CASH');
 
-  const reports = [
+  const doDownload = async (key: string, fn: () => Promise<void>) => {
+    setDownloading(key);
+    try { await fn(); } catch {}
+    setTimeout(() => setDownloading(null), 1000);
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+  }
+
+  const reportCards = [
     {
-      label: 'Student Roster', desc: `${students.length} total students`,
-      icon: Users, value: `${students.length} students`,
-      detail: `${students.filter(s => s.is_active).length} active`,
+      key: 'students', label: 'Student Roster', icon: Users,
+      stats: [
+        { label: 'Total', value: students.length, color: 'text-blue-600' },
+        { label: 'Active', value: activeStudents.length, color: 'text-emerald-600' },
+        { label: 'Inactive', value: students.length - activeStudents.length, color: 'text-slate-500' },
+      ],
+      download: () => students[0] && doDownload('students', () => downloadStudentReportPdf(students[0].id)),
     },
     {
-      label: 'Enrollment Summary', desc: `${enrollments.length} total enrollments`,
-      icon: BookOpen, value: `${enrollments.filter(e => e.status === 'ACTIVE').length} active`,
-      detail: `${enrollments.filter(e => e.status === 'PENDING_PAYMENT').length} pending payment`,
+      key: 'enrollments', label: 'Enrollment Summary', icon: BookOpen,
+      stats: [
+        { label: 'Total', value: enrollments.length, color: 'text-blue-600' },
+        { label: 'Active', value: activeEnrollments.length, color: 'text-emerald-600' },
+        { label: 'Pending', value: pendingEnrollments.length, color: 'text-amber-600' },
+        { label: 'Completed', value: completedEnrollments.length, color: 'text-purple-600' },
+      ],
+      download: () => doDownload('enrollments', () => downloadEnrollmentReportPdf(students[0]?.id)),
     },
     {
-      label: 'Payment Report', desc: `${totalPaid.toLocaleString()} ETB collected`,
-      icon: DollarSign, value: `${payments.length} transactions`,
-      detail: `${payments.filter(p => p.payment_method === 'CASH').length} cash payments`,
+      key: 'payments', label: 'Payment Report', icon: DollarSign,
+      stats: [
+        { label: 'Total Collected', value: `${totalPaid.toLocaleString()} ETB`, color: 'text-emerald-600' },
+        { label: 'Transactions', value: payments.length, color: 'text-blue-600' },
+        { label: 'Cash', value: cashPayments.length, color: 'text-amber-600' },
+        { label: 'Paid', value: payments.filter(p => p.status === 'PAID').length, color: 'text-emerald-600' },
+      ],
+      download: () => doDownload('payments', () => downloadEnrollmentReportPdf(students[0]?.id)),
     },
     {
-      label: 'Certificate Log', desc: `${certs.length} certificates issued`,
-      icon: Award, value: `${certs.length} total`,
-      detail: `Last: ${certs[0]?.issued_at?.slice(0, 10) || 'N/A'}`,
+      key: 'certificates', label: 'Certificate Log', icon: Award,
+      stats: [
+        { label: 'Total Issued', value: certs.length, color: 'text-purple-600' },
+        { label: 'Last Issued', value: certs[0]?.issued_at?.slice(0, 10) || '—', color: 'text-slate-600' },
+      ],
+      download: () => doDownload('certificates', () => downloadCertificateReportPdf(students[0]?.id)),
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <h2 className="font-bold text-lg text-slate-900">Academic Reports</h2>
-      <p className="text-xs text-slate-500">Real-time summaries generated from current data.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-lg text-slate-900">Academic Reports</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Real-time summaries with PDF export</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {reports.map((r, i) => {
+        {reportCards.map((r, i) => {
           const RIcon = r.icon;
+          const isDl = downloading === r.key;
           return (
-            <motion.div key={r.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            <motion.div key={r.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-sm transition-all"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-lg bg-brand-red/5 flex items-center justify-center">
                   <RIcon className="w-5 h-5 text-brand-red" />
                 </div>
+                <button onClick={r.download} disabled={isDl || students.length === 0}
+                  className="flex items-center gap-1 text-[10px] font-bold text-brand-red bg-brand-red/10 px-2.5 py-1.5 rounded-lg hover:bg-brand-red/20 disabled:opacity-50 transition-colors"
+                >
+                  <Download className={`w-3 h-3 ${isDl ? 'animate-bounce' : ''}`} />
+                  {isDl ? 'Downloading...' : 'PDF'}
+                </button>
               </div>
               <h3 className="font-bold text-base text-slate-900">{r.label}</h3>
-              <p className="text-xs text-slate-500 mt-1">{r.desc}</p>
-              <div className="mt-3 flex items-center gap-4 text-xs">
-                <span className="font-semibold text-slate-700">{r.value}</span>
-                <span className="text-slate-400">·</span>
-                <span className="text-slate-500">{r.detail}</span>
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {r.stats.map(s => (
+                  <div key={s.label} className="bg-slate-50 rounded-lg p-2 text-center">
+                    <p className={`text-sm font-bold ${s.color}`}>{s.value}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
               </div>
             </motion.div>
           );
         })}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h3 className="font-bold text-sm text-slate-900">Recent Enrollments</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left px-4 py-2 text-[10px] font-bold text-slate-500 uppercase">Student</th>
+              <th className="text-left px-4 py-2 text-[10px] font-bold text-slate-500 uppercase">Class</th>
+              <th className="text-left px-4 py-2 text-[10px] font-bold text-slate-500 uppercase hidden sm:table-cell">Date</th>
+              <th className="text-center px-4 py-2 text-[10px] font-bold text-slate-500 uppercase">Status</th>
+            </tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {enrollments.length === 0 ? (
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-xs text-slate-400">No enrollments</td></tr>
+              ) : enrollments.slice(0, 10).map(e => (
+                <tr key={e.id} className="hover:bg-slate-50/50">
+                  <td className="px-4 py-2.5 text-sm font-medium text-slate-900">{e.student_name || e.student_email || '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-slate-700">{e.class_name || e.sub_program_name || '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell">{e.enrolled_at?.slice(0, 10) || '—'}</td>
+                  <td className="px-4 py-2.5 text-center">
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${e.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : e.status === 'PENDING_PAYMENT' ? 'bg-amber-100 text-amber-700' : e.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-600'}`}>
+                      {e.status.replace('_', ' ')}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
