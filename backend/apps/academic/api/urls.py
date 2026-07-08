@@ -63,6 +63,7 @@ from apps.academic.views import (
     StudentCertificateListView,
     StudentCertificateRetrieveView,
     StudentDeactivateView,
+    StudentListView,
     StudentRetrieveUpdateView,
     StudentSearchView,
     SubProgramActivateView,
@@ -93,6 +94,7 @@ urlpatterns = [
     # Admission
     path("admissions/", AdmitStudentView.as_view(), name="admit-student"),
     # Student
+    path("students/", StudentListView.as_view(), name="student-list"),
     path("students/search/", StudentSearchView.as_view(), name="student-search"),
     path("students/<uuid:pk>/", StudentRetrieveUpdateView.as_view(), name="student-retrieve-update"),
     path("students/<uuid:pk>/activate/", StudentActivateView.as_view(), name="student-activate"),

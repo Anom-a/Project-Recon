@@ -47,6 +47,29 @@ export type CashPaymentPayload = {
   payment_date?: string;
 };
 
+export type AdmitStudentPayload = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  password: string;
+  phone_number?: string;
+  branch: string;
+  guardian_name?: string;
+  guardian_phone?: string;
+  guardian_email?: string;
+};
+
+export type StaffEnrollmentPayload = {
+  student: string;
+  enrolled_class: string;
+  remarks?: string;
+};
+
+export type IssueCertificatePayload = {
+  student: string;
+  certificate: string;
+};
+
 // ─── Programs ───
 export async function fetchProgramsApi(): Promise<Program[]> {
   try { return unwrapList(await http.get<ListResponse<Program>>(`${BASE}/programs/`)); }
@@ -100,6 +123,10 @@ export async function fetchEnrollmentsApi(studentId?: string): Promise<Enrollmen
   catch { return []; }
 }
 
+export async function enrollStudentApi(payload: StaffEnrollmentPayload): Promise<Enrollment> {
+  return http.post<Enrollment>(`${BASE}/enrollments/`, payload);
+}
+
 export async function onlineEnrollApi(payload: OnlineEnrollmentPayload): Promise<Enrollment> {
   return http.post<Enrollment>(`${BASE}/enrollments/online/`, payload);
 }
@@ -116,6 +143,19 @@ export async function completeEnrollmentApi(id: string): Promise<Enrollment> {
 export async function fetchStudentsApi(): Promise<StudentProfile[]> {
   try { return unwrapList(await http.get<ListResponse<StudentProfile>>(`${BASE}/students/search/?q=`)); }
   catch { return []; }
+}
+
+export async function searchStudentsApi(query: string): Promise<StudentProfile[]> {
+  try { return unwrapList(await http.get<ListResponse<StudentProfile>>(`${BASE}/students/search/?q=${encodeURIComponent(query)}`)); }
+  catch { return []; }
+}
+
+export async function createStudentApi(payload: { email: string; first_name: string; last_name: string; password: string; branch: string }): Promise<any> {
+  return http.post(`${BASE}/admissions/`, payload);
+}
+
+export async function admitStudentApi(payload: AdmitStudentPayload): Promise<StudentProfile> {
+  return http.post<StudentProfile>(`${BASE}/admissions/`, payload);
 }
 
 // ─── Payments ───
@@ -162,7 +202,11 @@ export async function fetchCertificateTemplatesApi(): Promise<Certificate[]> {
   catch { return []; }
 }
 
-export async function fetchStudentCertificatesApi(studentId: string): Promise<StudentCertificate[]> {
-  try { return unwrapList(await http.get<ListResponse<StudentCertificate>>(`${BASE}/student-certificates/?student=${studentId}`)); }
+export async function fetchStudentCertificatesApi(studentId?: string): Promise<StudentCertificate[]> {
+  try { return unwrapList(await http.get<ListResponse<StudentCertificate>>(`${BASE}/student-certificates/` + (studentId ? `?student=${studentId}` : ''))); }
   catch { return []; }
+}
+
+export async function issueStudentCertificateApi(payload: IssueCertificatePayload): Promise<StudentCertificate> {
+  return http.post<StudentCertificate>(`${BASE}/student-certificates/issue/`, payload);
 }

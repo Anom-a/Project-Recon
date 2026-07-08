@@ -53,6 +53,10 @@ def update_student(student, actor=None, **kwargs):
     return student
 
 
+def list_students():
+    return Student.objects.select_related("user", "branch").all()
+
+
 def search_students(query):
     return Student.objects.select_related("user", "branch").filter(
         Q(user__first_name__icontains=query)

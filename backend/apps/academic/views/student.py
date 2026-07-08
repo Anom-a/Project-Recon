@@ -11,6 +11,7 @@ from apps.academic.serializers import (
 from apps.academic.services.student_service import (
     get_student_or_404,
     update_student,
+    list_students,
     search_students,
     activate_student,
     deactivate_student,
@@ -42,6 +43,18 @@ class StudentRetrieveUpdateView(generics.GenericAPIView):
             student, actor=request.user, **serializer.validated_data
         )
         return Response(StudentSerializer(student).data)
+
+
+@extend_schema_view(
+    get=extend_schema(summary="List All Students", tags=["Academic - Students"]),
+)
+class StudentListView(generics.GenericAPIView):
+    permission_classes = [IsAcademicStaff]
+    serializer_class = StudentListSerializer
+
+    def get(self, request):
+        students = list_students()
+        return Response(StudentListSerializer(students, many=True).data)
 
 
 @extend_schema_view(

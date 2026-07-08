@@ -5,9 +5,9 @@ import {
   Calendar, Bell, X, UserPlus, BarChart3, TrendingUp, TrendingDown, Users, Zap, Award,
   Clock, CheckCircle, CheckCircle2, AlertCircle, ChevronRight, Activity, MapPin, Trophy, Building, Sparkles, Download,
   Cpu, Swords, Medal, BookOpen, Hash, Star, Target, Wrench, Camera, Search, RefreshCw, Monitor, Filter, Globe,
-  UserCog, Eye, Shield, Edit3, Trash2, Plus, LogOut, User, Settings
+  UserCog, Eye, Shield, Edit3, Trash2, Plus, LogOut, User, Settings, Loader2
 } from 'lucide-react';
-import { UserProfile, VexRobot, AppNotification } from '@/src/shared/types';
+import { UserProfile, VexRobot, AppNotification, Enrollment, EnrollmentPayment } from '@/src/shared/types';
 import { MOCK_ANALYTICS, MOCK_TOURNAMENTS, MOCK_WORKSHOPS, MOCK_VEX_TEAM, MOCK_VEX_ROBOTS, MOCK_VEX_AWARDS, MOCK_VEX_NOTEBOOK, MOCK_VEX_MATCHES } from '@/src/shared/constants/mock-data';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import { NavItem } from '@/src/shared/ui/Sidebar';
@@ -23,15 +23,17 @@ import AnnouncementsManager from './AnnouncementsManager';
 import WalkInRegistration from './WalkInRegistration';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import SchoolManagement from './SchoolManagement';
+import UserManagementPanel from '@/src/domains/user/shared/ui/UserManagementPanel';
 import AccountSettings from '@/src/shared/ui/AccountSettings';
 import ProfileOverview from '@/src/domains/user/student/dashboard/ui/ProfileOverview';
+import { fetchEnrollmentsApi, fetchPaymentsApi } from '@/src/domains/learning/academics/api/academicApi';
 
 interface Props {
   currentUser: UserProfile;
   onLogout: () => void;
 }
 
-type SectionId = 'overview' | 'analytics' | 'media' | 'cms' | 'sponsors' | 'store' | 'events' | 'tournaments' | 'workshops' | 'participants' | 'announcements' | 'communications' | 'payments' | 'walkin' | 'reports' | 'vex-overview' | 'vex-robots' | 'vex-awards' | 'vex-matches' | 'vex-notebook' | 'vex-roles' | 'schools' | 'registrations' | 'profile' | 'settings';
+type SectionId = 'overview' | 'analytics' | 'media' | 'cms' | 'sponsors' | 'store' | 'events' | 'tournaments' | 'workshops' | 'participants' | 'announcements' | 'communications' | 'payments' | 'walkin' | 'reports' | 'vex-overview' | 'vex-robots' | 'vex-awards' | 'vex-matches' | 'vex-notebook' | 'vex-roles' | 'schools' | 'registrations' | 'users' | 'profile' | 'settings';
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: Activity, group: 'main' },
@@ -43,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'cms', label: 'CMS & Branding', icon: FileText, group: 'main' },
   { id: 'sponsors', label: 'Sponsors & Partners', icon: Handshake, group: 'main' },
   { id: 'schools', label: 'Schools', icon: Building, group: 'main' },
+  { id: 'users', label: 'User Management', icon: Users, group: 'main' },
   { id: 'registrations', label: 'Registrations', icon: UserPlus, group: 'main' },
   { id: 'walkin', label: 'Walk-In Registration', icon: Edit3, group: 'main' },
   { id: 'announcements', label: 'Announcements', icon: Bell, group: 'main' },
@@ -71,6 +74,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'media': return <MediaContent />;
       case 'cms': return <CmsDashboard />;
       case 'sponsors': return <SponsorManagement />;
+      case 'users': return <UserManagementPanel title="Staff Management" />;
       case 'schools': return <SchoolManagement />;
       case 'registrations': return <RegistrationSection />;
       case 'store': return <OnlineStoreHub />;
@@ -1051,33 +1055,47 @@ function VexRolesSection() {
   }
 
 function RegistrationSection() {
-  const [registrations] = useState([
-    { id: 'r1', student: 'Biruk A.', age: 14, grade: '8', school: 'Bole Prep', program: 'VEX IQ Summer Camp', amount: 3500, date: 'Jun 18, 2026', source: 'online' as const, status: 'confirmed' as const },
-    { id: 'r2', student: 'Meron D.', age: 12, grade: '7', school: 'Lideta Catholic', program: 'Enjoy AI Workshop', amount: 2500, date: 'Jun 17, 2026', source: 'online' as const, status: 'confirmed' as const },
-    { id: 'r3', student: 'Yonas T.', age: 10, grade: '5', school: 'Bole Prep', program: 'STEM Foundations', amount: 1800, date: 'Jun 16, 2026', source: 'walk-in' as const, status: 'pending' as const },
-    { id: 'r4', student: 'Hana K.', age: 15, grade: '10', school: 'St. Joseph\'s', program: 'Arduino Advanced', amount: 4000, date: 'Jun 15, 2026', source: 'online' as const, status: 'confirmed' as const },
-    { id: 'r5', student: 'Samson G.', age: 11, grade: '6', school: 'AAIT', program: 'VEX IQ Summer Camp', amount: 3500, date: 'Jun 14, 2026', source: 'walk-in' as const, status: 'cancelled' as const },
-    { id: 'r6', student: 'Selamawit B.', age: 13, grade: '8', school: 'Bole Prep', program: 'Coding Basics', amount: 2000, date: 'Jun 12, 2026', source: 'online' as const, status: 'confirmed' as const },
-  ]);
-
+  const [registrations, setRegistrations] = useState<Enrollment[]>([]);
+  const [payments, setPayments] = useState<EnrollmentPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sourceFilter, setSourceFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+
+  useEffect(() => {
+    Promise.all([fetchEnrollmentsApi(), fetchPaymentsApi()])
+      .then(([enrollmentData, paymentData]) => {
+        setRegistrations(enrollmentData);
+        setPayments(paymentData);
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Could not load registrations'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const paymentByEnrollment = payments.reduce<Record<string, EnrollmentPayment>>((map, payment) => {
+    map[payment.enrollment] = payment;
+    return map;
+  }, {});
 
   const filtered = registrations.filter(r => {
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-    const matchesSource = sourceFilter === 'all' || r.source === sourceFilter;
-    return matchesStatus && matchesSource;
+    const payment = paymentByEnrollment[r.id];
+    const paymentStatus = payment?.status || r.payment_status || 'PENDING';
+    const matchesPayment = paymentFilter === 'all' || paymentStatus === paymentFilter;
+    return matchesStatus && matchesPayment;
   });
 
-  const totalRevenue = registrations.filter(r => r.status === 'confirmed').reduce((s, r) => s + r.amount, 0);
+  const totalRevenue = payments.filter(p => p.status === 'PAID').reduce((s, p) => s + Number(p.amount), 0);
+  const confirmedCount = registrations.filter(r => r.status === 'ACTIVE' || r.status === 'COMPLETED').length;
+  const pendingCount = registrations.filter(r => r.status === 'PENDING_PAYMENT').length;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Registrations', value: registrations.length, icon: UserPlus, color: 'text-sky-600', bg: 'bg-sky-50' },
-          { label: 'Confirmed', value: registrations.filter(r => r.status === 'confirmed').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Pending', value: registrations.filter(r => r.status === 'pending').length, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Confirmed', value: confirmedCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Pending', value: pendingCount, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Revenue', value: `${(totalRevenue / 1000).toFixed(1)}K ETB`, icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((stat, i) => {
           const SIcon = stat.icon;
@@ -1104,16 +1122,19 @@ function RegistrationSection() {
               className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:border-brand-red"
             >
               <option value="all">All Status</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="pending">Pending</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="ACTIVE">Active</option>
+              <option value="PENDING_PAYMENT">Pending Payment</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
-            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
+            <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}
               className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:border-brand-red"
             >
-              <option value="all">All Sources</option>
-              <option value="online">Online</option>
-              <option value="walk-in">Walk-In</option>
+              <option value="all">All Payments</option>
+              <option value="PAID">Paid</option>
+              <option value="PENDING">Pending</option>
+              <option value="FAILED">Failed</option>
+              <option value="REFUNDED">Refunded</option>
             </select>
           </div>
         </div>
@@ -1121,41 +1142,47 @@ function RegistrationSection() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                {['Student', 'Program', 'School', 'Amount', 'Date', 'Source', 'Status'].map(h => (
+                {['Student', 'Program', 'Branch', 'Amount', 'Date', 'Payment', 'Status'].map(h => (
                   <th key={h} className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5 text-left">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
+              {loading && (
+                <tr><td colSpan={7} className="py-10 text-center text-slate-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
+              )}
+              {error && (
+                <tr><td colSpan={7} className="py-8 text-center text-sm text-red-500">{error}</td></tr>
+              )}
               {filtered.map((r, i) => (
                 <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
                   className="border-b border-slate-100 hover:bg-sky-50/30 transition-colors"
                 >
                   <td className="px-3 py-2.5">
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{r.student}</p>
-                      <p className="text-[11px] text-slate-400">Grade {r.grade} · Age {r.age}</p>
+                      <p className="text-sm font-medium text-slate-800">{r.student_name || r.student_email || 'Student'}</p>
+                      <p className="text-[11px] text-slate-400">{r.student_email || r.student}</p>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-sm text-slate-600">{r.program}</td>
-                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.school}</td>
-                  <td className="px-3 py-2.5 text-sm font-bold text-slate-700">{r.amount.toLocaleString()} ETB</td>
-                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.date}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-600">{r.class_name || r.sub_program_name || 'Class'}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.branch_name || '—'}</td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-slate-700">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} ETB` : '—'}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.enrolled_at?.slice(0, 10) || '—'}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${r.source === 'online' ? 'bg-sky-50 text-sky-600' : 'bg-purple-50 text-purple-600'}`}>
-                      {r.source}
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${paymentByEnrollment[r.id]?.status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {paymentByEnrollment[r.id]?.status || r.payment_status || 'PENDING'}
                     </span>
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={`flex items-center gap-1 text-[11px] font-bold ${
-                      r.status === 'confirmed' ? 'text-emerald-600' :
-                      r.status === 'pending' ? 'text-amber-600' : 'text-red-500'
+                      r.status === 'ACTIVE' || r.status === 'COMPLETED' ? 'text-emerald-600' :
+                      r.status === 'PENDING_PAYMENT' ? 'text-amber-600' : 'text-red-500'
                     }`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${
-                        r.status === 'confirmed' ? 'bg-emerald-500' :
-                        r.status === 'pending' ? 'bg-amber-500' : 'bg-red-500'
+                        r.status === 'ACTIVE' || r.status === 'COMPLETED' ? 'bg-emerald-500' :
+                        r.status === 'PENDING_PAYMENT' ? 'bg-amber-500' : 'bg-red-500'
                       }`} />
-                      {r.status}
+                      {r.status.replace('_', ' ')}
                     </span>
                   </td>
                 </motion.tr>

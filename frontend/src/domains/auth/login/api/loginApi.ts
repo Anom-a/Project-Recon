@@ -47,6 +47,7 @@ function parseJwt(token: string): Record<string, unknown> | null {
 const ROLE_MAP: Record<string, UserProfile['role']> = {
   super_admin: 'Admin',
   branch_manager: 'Manager',
+  secretary: 'Secretary',
   instructor: 'Instructor',
   student: 'Student',
 };

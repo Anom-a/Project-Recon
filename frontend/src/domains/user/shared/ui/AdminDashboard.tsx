@@ -15,7 +15,8 @@ import CmsDashboard from '@/src/domains/cms/admin/ui/CmsDashboard';
 import { NavItem } from '@/src/shared/ui/Sidebar';
 import { BranchSectionShell } from '@/src/domains/branches/ui/BranchSectionShell';
 import AcademicCatalogManager from '@/src/domains/learning/academics/ui/AcademicCatalogManager';
-import type { UserProfile, AppNotification } from '@/src/shared/types';
+import type { UserProfile, AppNotification, Enrollment, EnrollmentPayment } from '@/src/shared/types';
+import { fetchEnrollmentsApi, fetchPaymentsApi } from '@/src/domains/learning/academics/api/academicApi';
 import {
   fetchUsersApi,
   toggleUserStatusApi,
@@ -36,6 +37,7 @@ import {
   type AssignmentResponse,
 } from '../api/adminApi';
 import { getNotifications } from '@/src/domains/notification/model/notificationApi';
+import UserManagementPanel from './UserManagementPanel';
 import AccountSettings from '@/src/shared/ui/AccountSettings';
 import ProfileOverview from '@/src/domains/user/student/dashboard/ui/ProfileOverview';
 
@@ -78,6 +80,8 @@ const roleBadge = (role: string) => {
     Admin: 'bg-purple-50 text-purple-600',
     Manager: 'bg-amber-50 text-amber-600',
     Instructor: 'bg-blue-50 text-blue-600',
+    Secretary: 'bg-rose-50 text-rose-600',
+    Student: 'bg-emerald-50 text-emerald-600',
     Parent: 'bg-emerald-50 text-emerald-600',
   };
   return colors[role] || 'bg-slate-50 text-slate-600';
@@ -354,6 +358,9 @@ function UserManagement({ userRole }: { userRole?: string }) {
         first_name: editingUser.first_name,
         last_name: editingUser.last_name,
         email: editingUser.email,
+        phone_number: editingUser.phone_number || null,
+        gender: editingUser.gender || null,
+        date_of_birth: editingUser.date_of_birth || null,
       });
       setEditingUser(null);
       await load();
@@ -428,6 +435,7 @@ function UserManagement({ userRole }: { userRole?: string }) {
               <option value="all">All Roles</option>
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
+              <option value="secretary">Secretary</option>
               <option value="instructor">Instructor</option>
               <option value="student">Student</option>
             </select>
@@ -440,7 +448,7 @@ function UserManagement({ userRole }: { userRole?: string }) {
             </select>
             {data && <span className="text-xs text-slate-400">{data.count} total</span>}
             <button onClick={load} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Refresh"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
-            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark"><UserPlus className="w-3.5 h-3.5" /> Add User</button>
+            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-5 py-2.5 bg-brand-red text-white rounded-xl text-sm font-extrabold hover:bg-brand-red-dark shadow-md hover:shadow-lg"><UserPlus className="w-4 h-4" /> Add User</button>
           </div>
         </div>
 
@@ -534,6 +542,17 @@ function UserManagement({ userRole }: { userRole?: string }) {
               <div><label className="text-xs font-medium text-slate-500 mb-1 block">First Name</label><input value={formData.first_name} onChange={e => setFormData(p => ({ ...p, first_name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Yonas" /></div>
               <div><label className="text-xs font-medium text-slate-500 mb-1 block">Last Name</label><input value={formData.last_name} onChange={e => setFormData(p => ({ ...p, last_name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Tadesse" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={formData.phone_number} onChange={e => setFormData(p => ({ ...p, phone_number: e.target.value }))} placeholder="e.g. +251-911-000000" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Gender</label>
+                <select value={formData.gender} onChange={e => setFormData(p => ({ ...p, gender: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
+                  <option value="">Prefer not to say</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </div>
+            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Date of Birth</label><input type="date" value={formData.date_of_birth} onChange={e => setFormData(p => ({ ...p, date_of_birth: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
             <div><label className="text-xs font-medium text-slate-500 mb-1 block">Password</label>
               <div className="relative">
                 <input type={showPassword ? 'text' : 'password'} value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} className="w-full px-3 py-2 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. ••••••••" />
@@ -553,20 +572,11 @@ function UserManagement({ userRole }: { userRole?: string }) {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={formData.phone_number} onChange={e => setFormData(p => ({ ...p, phone_number: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. +251-911-000000" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Gender</label>
-                <select value={formData.gender} onChange={e => setFormData(p => ({ ...p, gender: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
-                  <option value="">Prefer not to say</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Date of Birth</label><input type="date" value={formData.date_of_birth} onChange={e => setFormData(p => ({ ...p, date_of_birth: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
               <div><label className="text-xs font-medium text-slate-500 mb-1 block">Role</label>
                 <select value={formData.role} onChange={e => setFormData(p => ({ ...p, role: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
                   <option value="instructor">Instructor</option>
+                  <option value="secretary">Secretary</option>
+                  <option value="student">Student</option>
                   {userRole === 'Admin' && <option value="branch_manager">Branch Manager</option>}
                 </select>
               </div>
@@ -588,11 +598,22 @@ function UserManagement({ userRole }: { userRole?: string }) {
       {editingUser && (
         <Modal title="Edit User" onClose={() => setEditingUser(null)}>
           <div className="space-y-3">
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={editingUser.email} onChange={e => setEditingUser(p => p ? { ...p, email: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={editingUser.email} onChange={e => setEditingUser(p => p ? { ...p, email: e.target.value } : p)} placeholder="e.g. yonas.tadesse@email.com" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">First Name</label><input value={editingUser.first_name} onChange={e => setEditingUser(p => p ? { ...p, first_name: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Last Name</label><input value={editingUser.last_name} onChange={e => setEditingUser(p => p ? { ...p, last_name: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">First Name</label><input value={editingUser.first_name} onChange={e => setEditingUser(p => p ? { ...p, first_name: e.target.value } : p)} placeholder="e.g. Yonas" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Last Name</label><input value={editingUser.last_name} onChange={e => setEditingUser(p => p ? { ...p, last_name: e.target.value } : p)} placeholder="e.g. Tadesse" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={editingUser.phone_number || ''} onChange={e => setEditingUser(p => p ? { ...p, phone_number: e.target.value } : p)} placeholder="e.g. +251-911-000000" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Gender</label>
+                <select value={editingUser.gender || ''} onChange={e => setEditingUser(p => p ? { ...p, gender: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
+                  <option value="">Prefer not to say</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </div>
+            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Date of Birth</label><input type="date" value={editingUser.date_of_birth || ''} onChange={e => setEditingUser(p => p ? { ...p, date_of_birth: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setEditingUser(null)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
               <button onClick={handleEdit} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark">Save</button>
@@ -629,8 +650,8 @@ function UserManagement({ userRole }: { userRole?: string }) {
               <div className="pt-3 border-t border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Role Assignments</span>
                 <div className="flex flex-wrap gap-2">
-                  {viewingUser.assignments.map(a => {
-                    const badge = roleBadge(a.role === 'super_admin' ? 'Admin' : a.role === 'branch_manager' ? 'Manager' : a.role === 'instructor' ? 'Instructor' : 'Student');
+                    {viewingUser.assignments.map(a => {
+                    const badge = roleBadge(a.role === 'super_admin' ? 'Admin' : a.role === 'branch_manager' ? 'Manager' : a.role === 'secretary' ? 'Secretary' : a.role === 'instructor' ? 'Instructor' : 'Student');
                     return (
                       <span key={a.id} className={`text-xs font-semibold px-2 py-1 rounded-lg ${badge}`}>
                         {a.role.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
@@ -693,6 +714,16 @@ const PERMISSIONS: Record<string, { label: string; permissions: string[] }> = {
       'Assign instructor roles (branch scope)',
     ],
   },
+  secretary: {
+    label: 'Secretary',
+    permissions: [
+      'Process student admissions & enrollments',
+      'Manage payments & receipts',
+      'Issue certificates',
+      'Manage daily branch operations',
+      'View student records',
+    ],
+  },
   instructor: {
     label: 'Instructor',
     permissions: [
@@ -753,6 +784,7 @@ function RolesPermissions() {
   const roleDefs = [
     { key: 'super_admin', label: 'Admin', color: 'red', icon: Shield, desc: 'Full system access. Manage users, branches, settings, and all platform resources.' },
     { key: 'branch_manager', label: 'Manager', color: 'amber', icon: Building, desc: 'Manage branch operations, users, registrations, and local content.' },
+    { key: 'secretary', label: 'Secretary', color: 'rose', icon: ClipboardList, desc: 'Handle admissions, enrollments, payments, certificates, and daily operations.' },
     { key: 'instructor', label: 'Instructor', color: 'blue', icon: GraduationCap, desc: 'Create and manage courses, grade students, moderate forum content.' },
     { key: 'student', label: 'Student', color: 'emerald', icon: Users, desc: 'Access courses, participate in forums, shop in store, view certificates.' },
   ] as const;
@@ -821,18 +853,21 @@ function RolesPermissions() {
   const colorMap: Record<string, string> = {
     red: 'bg-red-50 text-red-600 border-red-200',
     amber: 'bg-amber-50 text-amber-600 border-amber-200',
+    rose: 'bg-rose-50 text-rose-600 border-rose-200',
     blue: 'bg-blue-50 text-blue-600 border-blue-200',
     emerald: 'bg-emerald-50 text-emerald-600 border-emerald-200',
   };
   const colorBg: Record<string, string> = {
     red: 'bg-red-50 text-red-600',
     amber: 'bg-amber-50 text-amber-600',
+    rose: 'bg-rose-50 text-rose-600',
     blue: 'bg-blue-50 text-blue-600',
     emerald: 'bg-emerald-50 text-emerald-600',
   };
   const colorIcon: Record<string, string> = {
     red: 'bg-red-100 text-red-600',
     amber: 'bg-amber-100 text-amber-600',
+    rose: 'bg-rose-100 text-rose-600',
     blue: 'bg-blue-100 text-blue-600',
     emerald: 'bg-emerald-100 text-emerald-600',
   };
@@ -1107,13 +1142,14 @@ function RolesPermissions() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-slate-500 mb-1 block">Role</label>
-                  <select value={assignForm.role} onChange={e => setAssignForm(p => ({ ...p, role: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
-                    <option value="instructor">Instructor</option>
-                    <option value="branch_manager">Manager</option>
-                    <option value="super_admin">Admin</option>
-                    <option value="student">Student</option>
-                  </select>
+                    <select value={assignForm.role} onChange={e => setAssignForm(p => ({ ...p, role: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
+                      <option value="instructor">Instructor</option>
+                      <option value="secretary">Secretary</option>
+                      <option value="branch_manager">Manager</option>
+                      <option value="super_admin">Admin</option>
+                      <option value="student">Student</option>
+                    </select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-500 mb-1 block">Branch</label>
@@ -2052,25 +2088,58 @@ function MaintenancePanel() {
 }
 
 function AdminRegistrations() {
-  const registrations = [
-    { id: 'R-001', name: 'Kidus G.', program: 'Advanced Robotics', date: 'Jun 20, 2026', status: 'confirmed', amount: '12,500 ETB' },
-    { id: 'R-002', name: 'Hana M.', program: 'VEX Competition Prep', date: 'Jun 19, 2026', status: 'pending', amount: '8,000 ETB' },
-    { id: 'R-003', name: 'Yonas D.', program: 'Robotics 101', date: 'Jun 18, 2026', status: 'confirmed', amount: '5,000 ETB' },
-    { id: 'R-004', name: 'Tigist K.', program: 'Advanced Robotics', date: 'Jun 17, 2026', status: 'cancelled', amount: '12,500 ETB' },
-  ];
+  const [registrations, setRegistrations] = useState<Enrollment[]>([]);
+  const [payments, setPayments] = useState<EnrollmentPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([fetchEnrollmentsApi(), fetchPaymentsApi()])
+      .then(([enrollmentData, paymentData]) => {
+        setRegistrations(enrollmentData);
+        setPayments(paymentData);
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Could not load enrollments.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const paymentByEnrollment = useMemo(() => {
+    return payments.reduce<Record<string, EnrollmentPayment>>((map, payment) => {
+      map[payment.enrollment] = payment;
+      return map;
+    }, {});
+  }, [payments]);
+
+  const statusClass = (status: string) => {
+    if (status === 'ACTIVE' || status === 'COMPLETED') return 'bg-emerald-50 text-emerald-600';
+    if (status === 'PENDING_PAYMENT') return 'bg-amber-50 text-amber-600';
+    return 'bg-red-50 text-red-600';
+  };
+
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle className="w-4 h-4" /> {error}
+        </div>
+      )}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left"><tr><th className="px-4 py-3 font-semibold text-slate-600">Student</th><th className="px-4 py-3 font-semibold text-slate-600">Program</th><th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Date</th><th className="px-4 py-3 font-semibold text-slate-600">Status</th><th className="px-4 py-3 font-semibold text-slate-600 hidden lg:table-cell">Amount</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
           <tbody className="divide-y divide-slate-100">
+            {loading && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
+            )}
+            {!loading && registrations.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">No enrollments found.</td></tr>
+            )}
             {registrations.map(r => (
               <tr key={r.id} className="hover:bg-slate-50/50">
-                <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
-                <td className="px-4 py-3 text-slate-600">{r.program}</td>
-                <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{r.date}</td>
-                <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-lg ${r.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : r.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>{r.status}</span></td>
-                <td className="px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">{r.amount}</td>
+                <td className="px-4 py-3 font-medium text-slate-900">{r.student_name || r.student_email || 'Student'}</td>
+                <td className="px-4 py-3 text-slate-600">{r.class_name || r.sub_program_name || 'Class'}</td>
+                <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{r.enrolled_at?.slice(0, 10) || '—'}</td>
+                <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusClass(r.status)}`}>{r.status.replace('_', ' ')}</span></td>
+                <td className="px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} ETB` : '—'}</td>
                 <td className="px-4 py-3"><div className="flex gap-1"><button className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5"><Eye className="w-3.5 h-3.5" /></button><button className="p-1.5 rounded-lg text-slate-400 hover:text-brand-red hover:bg-brand-red/5"><Edit3 className="w-3.5 h-3.5" /></button></div></td>
               </tr>
             ))}
@@ -2088,7 +2157,7 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
   const renderPage = () => {
     switch (activeSection) {
       case 'overview': return <Overview />;
-      case 'users': return <UserManagement userRole={currentUser.role} />;
+      case 'users': return <UserManagementPanel title="User Management" />;
       case 'roles': return <RolesPermissions />;
       case 'academics': return <AcademicCatalogManager role="Admin" />;
       case 'partners': return <PartnerSponsorshipPanel />;
