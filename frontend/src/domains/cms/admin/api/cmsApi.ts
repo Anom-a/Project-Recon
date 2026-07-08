@@ -76,81 +76,90 @@ function withUiAliases<T>(endpoint: string, item: T): T {
 
 function toBackendPayload(endpoint: string, data: unknown): Record<string, unknown> {
   const source = (data ?? {}) as Record<string, unknown>;
+  const has = (k: string) => k in source;
 
-  if (endpoint === 'hero-banners') {
-    return {
-      title: source.title,
-      subtitle: source.subtitle,
-      description: source.description,
-      image: source.imageUrl ?? source.image ?? null,
-      button_url: source.linkUrl ?? source.button_url ?? null,
-      button_text: source.button_text ?? null,
-      video_url: source.video_url ?? null,
-      order: source.priority ?? 0,
-      is_active: source.isActive ?? source.is_active ?? true,
-    };
+  interface FieldMap { [backendKey: string]: string | string[] }
+  const map: Record<string, FieldMap> = {
+    'hero-banners': {
+      title: 'title',
+      subtitle: 'subtitle',
+      description: 'description',
+      image: ['imageUrl', 'image'],
+      button_url: ['linkUrl', 'button_url'],
+      button_text: 'button_text',
+      video_url: 'video_url',
+      order: 'priority',
+      is_active: ['isActive', 'is_active'],
+    },
+    news: {
+      title: 'title',
+      summary: ['subtitle', 'summary'],
+      content: 'content',
+      image: ['imageUrl', 'image'],
+      video_url: 'video_url',
+      button_text: 'button_text',
+      button_url: 'button_url',
+      type: ['category', 'type'],
+      author: 'author',
+      tags: 'tags',
+      is_active: ['isActive', 'is_active'],
+      published_at: ['publishedAt', 'published_at'],
+    },
+    partners: {
+      title: ['name', 'title'],
+      description: 'description',
+      image: ['logoUrl', 'image'],
+      website_url: ['websiteUrl', 'website_url'],
+      type: 'type',
+      order: 'priority',
+      is_active: ['isActive', 'is_active'],
+    },
+    about: {
+      title: 'title',
+      description: ['content', 'description'],
+      image: 'imageUrl',
+      mission: 'mission',
+      vision: 'vision',
+      is_active: ['isActive', 'is_active'],
+    },
+    faqs: {
+      question: 'question',
+      answer: 'answer',
+      category: 'category',
+      order: 'priority',
+      is_active: ['isActive', 'is_active'],
+    },
+    'contact-requests': {
+      status: 'status',
+      priority: 'priority',
+    },
+  };
+
+  const fieldMap = map[endpoint] ?? {};
+  const result: Record<string, unknown> = {};
+
+  for (const [backendKey, sourceKeys] of Object.entries(fieldMap)) {
+    const keys = Array.isArray(sourceKeys) ? sourceKeys : [sourceKeys];
+    const present = keys.some(k => has(k));
+    if (!present) continue;
+    let val: unknown = undefined;
+    for (const k of keys) {
+      if (has(k)) { val = source[k]; break; }
+    }
+    result[backendKey] = val ?? null;
   }
 
-  if (endpoint === 'news') {
-    return {
-      title: source.title,
-      slug: source.slug || String(source.title ?? '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-      summary: source.subtitle ?? source.summary ?? '',
-      content: source.content ?? '',
-      image: source.imageUrl ?? source.image ?? null,
-      video_url: source.video_url ?? null,
-      button_text: source.button_text ?? null,
-      button_url: source.button_url ?? null,
-      type: source.category === 'ANNOUNCEMENT' ? 'ANNOUNCEMENT' : source.type ?? 'NEWS',
-      author: source.author ?? null,
-      tags: source.tags ?? null,
-      is_active: source.isActive ?? source.is_active ?? true,
-      published_at: source.publishedAt ?? source.published_at ?? null,
-    };
+  // slug is a computed field for news and about
+  if ((endpoint === 'news' || endpoint === 'about') && has('title') && !has('slug')) {
+    result.slug = String(source.title ?? '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
 
-  if (endpoint === 'partners') {
-    return {
-      title: source.name ?? source.title,
-      description: source.description ?? '',
-      image: source.logoUrl ?? source.image ?? null,
-      website_url: source.websiteUrl ?? source.website_url ?? null,
-      type: source.type ?? 'PARTNER',
-      order: source.priority ?? 0,
-      is_active: source.isActive ?? source.is_active ?? true,
-    };
+  // status conversion for contact-requests
+  if (endpoint === 'contact-requests' && has('status') && typeof source.status === 'string') {
+    result.status = STATUS_TO_BACKEND[source.status] ?? source.status;
   }
 
-  if (endpoint === 'about') {
-    return {
-      title: source.title,
-      slug: source.slug || String(source.title ?? '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-      description: source.content ?? source.description ?? '',
-      image: source.imageUrl ?? null,
-      mission: source.mission ?? null,
-      vision: source.vision ?? null,
-      is_active: source.isActive ?? source.is_active ?? true,
-    };
-  }
-
-  if (endpoint === 'faqs') {
-    return {
-      question: source.question,
-      answer: source.answer,
-      category: source.category ?? null,
-      order: source.priority ?? 0,
-      is_active: source.isActive ?? source.is_active ?? true,
-    };
-  }
-
-  if (endpoint === 'contact-requests') {
-    return {
-      status: typeof source.status === 'string' ? STATUS_TO_BACKEND[source.status] ?? source.status : source.status,
-      priority: source.priority,
-    };
-  }
-
-  return source;
+  return result;
 }
 
 export const api = {
