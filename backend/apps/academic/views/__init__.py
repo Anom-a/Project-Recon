@@ -17,7 +17,13 @@ from apps.academic.views.class_view import (
     ClassActivateView,
     ClassDeactivateView,
 )
-
+from apps.academic.views.admission import AdmitStudentView
+from apps.academic.views.student import (
+    StudentRetrieveUpdateView,
+    StudentSearchView,
+    StudentActivateView,
+    StudentDeactivateView,
+)
 __all__ = [
     "ProgramListCreateView",
     "ProgramRetrieveUpdateView",
@@ -32,4 +38,9 @@ __all__ = [
     "ClassAssignInstructorView",
     "ClassActivateView",
     "ClassDeactivateView",
+    "AdmitStudentView",
+    "StudentRetrieveUpdateView",
+    "StudentSearchView",
+    "StudentActivateView",
+    "StudentDeactivateView",
 ]

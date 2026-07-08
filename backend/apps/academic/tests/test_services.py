@@ -1,9 +1,11 @@
+from datetime import date
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.test import TestCase
 
 from apps.academic.constants import ClassType
-from apps.academic.models import Program, SubProgram, Class
-from apps.academic.services import program_service, class_service
+from apps.academic.models import Program, SubProgram, Class, Student
+from apps.academic.services import program_service, class_service, admission_service, student_service
 from apps.accounts.models import Branch, User, UserAssignment
 from apps.accounts.constants import Roles
 from apps.accounts.services import user_service
@@ -259,3 +261,98 @@ class ClassServiceTest(TestCase):
         class_service.activate_class(klass)
         klass.refresh_from_db()
         self.assertTrue(klass.is_active)
+
+
+class AdmissionServiceTest(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(name="Main Branch", code="MB01")
+
+    def test_admit_student(self):
+        student = admission_service.admit_student(
+            email="student@test.com",
+            first_name="Test",
+            last_name="Student",
+            password="StrongP@ssw0rd!2026",
+            branch=self.branch,
+        )
+        self.assertIsNotNone(student)
+        self.assertEqual(student.user.email, "student@test.com")
+        self.assertEqual(student.branch, self.branch)
+        self.assertEqual(student.date_joined, date.today())
+        self.assertTrue(student.is_active)
+        self.assertTrue(Student.objects.filter(pk=student.pk).exists())
+
+    def test_admit_student_with_phone_number(self):
+        student = admission_service.admit_student(
+            email="student-phone@test.com",
+            first_name="Phone",
+            last_name="Test",
+            password="StrongP@ssw0rd!2026",
+            phone_number="+251911223344",
+            branch=self.branch,
+        )
+        student.user.refresh_from_db()
+        self.assertEqual(student.user.phone_number, "+251911223344")
+
+    def test_admit_student_with_custom_date(self):
+        custom_date = date(2025, 1, 15)
+        student = admission_service.admit_student(
+            email="student-date@test.com",
+            first_name="Date",
+            last_name="Test",
+            password="StrongP@ssw0rd!2026",
+            branch=self.branch,
+            date_joined=custom_date,
+        )
+        self.assertEqual(student.date_joined, custom_date)
+
+
+class StudentServiceTest(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(name="Main Branch", code="MB01")
+        self.student = admission_service.admit_student(
+            email="student-svc@test.com",
+            first_name="Service",
+            last_name="Test",
+            password="StrongP@ssw0rd!2026",
+            branch=self.branch,
+        )
+
+    def test_get_student_or_404(self):
+        result = student_service.get_student_or_404(self.student.pk)
+        self.assertEqual(result.pk, self.student.pk)
+
+    def test_update_student_name(self):
+        updated = student_service.update_student(
+            self.student, first_name="Updated", last_name="Name"
+        )
+        updated.user.refresh_from_db()
+        self.assertEqual(updated.user.first_name, "Updated")
+        self.assertEqual(updated.user.last_name, "Name")
+
+    def test_update_student_branch(self):
+        new_branch = Branch.objects.create(name="Adama Branch", code="AB01")
+        updated = student_service.update_student(self.student, branch=new_branch)
+        updated.refresh_from_db()
+        self.assertEqual(updated.branch, new_branch)
+
+    def test_search_students_by_name(self):
+        results = student_service.search_students("Service")
+        self.assertEqual(results.count(), 1)
+
+    def test_search_students_by_email(self):
+        results = student_service.search_students("student-svc")
+        self.assertEqual(results.count(), 1)
+
+    def test_search_students_no_match(self):
+        results = student_service.search_students("nonexistent")
+        self.assertEqual(results.count(), 0)
+
+    def test_activate_deactivate_student(self):
+        student_service.deactivate_student(self.student)
+        self.student.refresh_from_db()
+        self.assertFalse(self.student.is_active)
+
+        student_service.activate_student(self.student)
+        self.student.refresh_from_db()
+        self.assertTrue(self.student.is_active)

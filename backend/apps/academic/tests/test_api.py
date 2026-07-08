@@ -2,8 +2,8 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.academic.constants import ClassPeriod, ClassType
-from apps.academic.models import Program, SubProgram, Class
-from apps.academic.services import program_service, class_service
+from apps.academic.models import Program, SubProgram, Class, Student
+from apps.academic.services import program_service, class_service, admission_service
 from apps.accounts.models import Branch, UserAssignment
 from apps.accounts.constants import Roles
 from apps.accounts.services import user_service
@@ -57,6 +57,21 @@ class AcademicAPITestCase(APITestCase):
         student.save()
         self._authenticate(student)
         return student
+
+    def authenticate_as_secretary(self):
+        secretary = user_service.create_staff_user(
+            "secretary@test.com",
+            "Branch",
+            "Secretary",
+            self.password,
+            branch=self.branch,
+            role=Roles.SECRETARY,
+        )
+        user_service.activate_user(secretary)
+        secretary.is_email_verified = True
+        secretary.save()
+        self._authenticate(secretary)
+        return secretary
 
 
 class ProgramAPITest(AcademicAPITestCase):
@@ -339,3 +354,127 @@ class ClassAPITest(AcademicAPITestCase):
         self.assertEqual(response.status_code, 200)
         klass.refresh_from_db()
         self.assertTrue(klass.is_active)
+
+
+class AdmissionAPITest(AcademicAPITestCase):
+    def test_admit_unauthenticated_returns_401(self):
+        data = {
+            "email": "new-student@test.com",
+            "first_name": "New",
+            "last_name": "Student",
+            "password": "StrongP@ssw0rd!2026",
+            "branch": str(self.branch.pk),
+        }
+        response = self.client.post(f"{self.base_url}/admissions/", data, format="json")
+        self.assertEqual(response.status_code, 401)
+
+    def test_admit_as_super_admin(self):
+        self.authenticate_as_super_admin()
+        data = {
+            "email": "new-student@test.com",
+            "first_name": "New",
+            "last_name": "Student",
+            "password": "StrongP@ssw0rd!2026",
+            "branch": str(self.branch.pk),
+        }
+        response = self.client.post(f"{self.base_url}/admissions/", data, format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["email"], "new-student@test.com")
+        self.assertEqual(response.json()["first_name"], "New")
+        self.assertTrue(Student.objects.filter(user__email="new-student@test.com").exists())
+
+    def test_admit_as_branch_manager(self):
+        self.authenticate_as_branch_manager()
+        data = {
+            "email": "bm-student@test.com",
+            "first_name": "BM",
+            "last_name": "Student",
+            "password": "StrongP@ssw0rd!2026",
+            "branch": str(self.branch.pk),
+        }
+        response = self.client.post(f"{self.base_url}/admissions/", data, format="json")
+        self.assertEqual(response.status_code, 201)
+
+    def test_admit_as_secretary(self):
+        self.authenticate_as_secretary()
+        data = {
+            "email": "sec-student@test.com",
+            "first_name": "Sec",
+            "last_name": "Student",
+            "password": "StrongP@ssw0rd!2026",
+            "branch": str(self.branch.pk),
+        }
+        response = self.client.post(f"{self.base_url}/admissions/", data, format="json")
+        self.assertEqual(response.status_code, 201)
+
+    def test_admit_as_student_returns_403(self):
+        self.authenticate_as_student()
+        data = {
+            "email": "stu-student@test.com",
+            "first_name": "Stu",
+            "last_name": "Student",
+            "password": "StrongP@ssw0rd!2026",
+            "branch": str(self.branch.pk),
+        }
+        response = self.client.post(f"{self.base_url}/admissions/", data, format="json")
+        self.assertEqual(response.status_code, 403)
+
+
+class StudentAPITest(AcademicAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.authenticate_as_super_admin()
+        data = {
+            "email": "api-student@test.com",
+            "first_name": "API",
+            "last_name": "Student",
+            "password": "StrongP@ssw0rd!2026",
+            "branch": str(self.branch.pk),
+        }
+        response = self.client.post(f"{self.base_url}/admissions/", data, format="json")
+        self.student_pk = response.json()["id"]
+
+    def test_retrieve_student(self):
+        response = self.client.get(f"{self.base_url}/students/{self.student_pk}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["email"], "api-student@test.com")
+
+    def test_retrieve_student_unauthenticated_returns_401(self):
+        self.client.credentials()
+        response = self.client.get(f"{self.base_url}/students/{self.student_pk}/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_update_student(self):
+        response = self.client.patch(
+            f"{self.base_url}/students/{self.student_pk}/",
+            {"first_name": "UpdatedAPI"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["first_name"], "UpdatedAPI")
+
+    def test_search_students(self):
+        response = self.client.get(f"{self.base_url}/students/search/?q=api-student")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+
+    def test_search_students_empty_query(self):
+        response = self.client.get(f"{self.base_url}/students/search/?q=")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+    def test_deactivate_student(self):
+        response = self.client.post(f"{self.base_url}/students/{self.student_pk}/deactivate/")
+        self.assertEqual(response.status_code, 200)
+        student = Student.objects.get(pk=self.student_pk)
+        self.assertFalse(student.is_active)
+
+    def test_activate_student(self):
+        Student.objects.filter(pk=self.student_pk).update(is_active=False)
+        response = self.client.post(f"{self.base_url}/students/{self.student_pk}/activate/")
+        self.assertEqual(response.status_code, 200)
+        student = Student.objects.get(pk=self.student_pk)
+        self.assertTrue(student.is_active)
+
+
+

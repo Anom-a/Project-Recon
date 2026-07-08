@@ -5,6 +5,12 @@ from apps.academic.serializers.class_serializer import (
     ClassListSerializer,
     AssignInstructorSerializer,
 )
+from apps.academic.serializers.student import (
+    StudentSerializer,
+    StudentListSerializer,
+    StudentUpdateSerializer,
+)
+from apps.academic.serializers.admission import AdmitStudentSerializer
 
 __all__ = [
     "ProgramSerializer",
@@ -14,4 +20,8 @@ __all__ = [
     "ClassSerializer",
     "ClassListSerializer",
     "AssignInstructorSerializer",
+    "StudentSerializer",
+    "StudentListSerializer",
+    "StudentUpdateSerializer",
+    "AdmitStudentSerializer",
 ]

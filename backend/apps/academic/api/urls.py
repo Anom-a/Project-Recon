@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.academic.views import (
+    AdmitStudentView,
     ClassActivateView,
     ClassAssignInstructorView,
     ClassDeactivateView,
@@ -10,6 +11,10 @@ from apps.academic.views import (
     ProgramDeactivateView,
     ProgramListCreateView,
     ProgramRetrieveUpdateView,
+    StudentActivateView,
+    StudentDeactivateView,
+    StudentRetrieveUpdateView,
+    StudentSearchView,
     SubProgramActivateView,
     SubProgramDeactivateView,
     SubProgramListCreateView,
@@ -33,4 +38,11 @@ urlpatterns = [
     path("classes/<uuid:pk>/assign-instructor/", ClassAssignInstructorView.as_view(), name="class-assign-instructor"),
     path("classes/<uuid:pk>/activate/", ClassActivateView.as_view(), name="class-activate"),
     path("classes/<uuid:pk>/deactivate/", ClassDeactivateView.as_view(), name="class-deactivate"),
+    # Admission
+    path("admissions/", AdmitStudentView.as_view(), name="admit-student"),
+    # Student
+    path("students/search/", StudentSearchView.as_view(), name="student-search"),
+    path("students/<uuid:pk>/", StudentRetrieveUpdateView.as_view(), name="student-retrieve-update"),
+    path("students/<uuid:pk>/activate/", StudentActivateView.as_view(), name="student-activate"),
+    path("students/<uuid:pk>/deactivate/", StudentDeactivateView.as_view(), name="student-deactivate"),
 ]
