@@ -42,6 +42,15 @@ from apps.academic.serializers.attendance import (
     AttendanceRecordBulkSerializer,
     AttendanceSummarySerializer,
 )
+from apps.academic.serializers.progress import (
+    LearningMilestoneSerializer,
+    LearningMilestoneListSerializer,
+    CustomizeMilestoneSerializer,
+    StudentProgressSerializer,
+    RecordProgressSerializer,
+    UpdateProgressSerializer,
+    ProgressSummarySerializer,
+)
 
 __all__ = [
     "ProgramSerializer",
@@ -76,4 +85,11 @@ __all__ = [
     "AttendanceRecordSerializer",
     "AttendanceRecordBulkSerializer",
     "AttendanceSummarySerializer",
+    "LearningMilestoneSerializer",
+    "LearningMilestoneListSerializer",
+    "CustomizeMilestoneSerializer",
+    "StudentProgressSerializer",
+    "RecordProgressSerializer",
+    "UpdateProgressSerializer",
+    "ProgressSummarySerializer",
 ]

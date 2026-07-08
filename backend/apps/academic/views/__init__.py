@@ -58,6 +58,16 @@ from apps.academic.views.attendance import (
     EnrollmentAttendanceHistoryView,
     EnrollmentAttendanceSummaryView,
 )
+from apps.academic.views.progress import (
+    MilestoneListCreateView,
+    MilestoneRetrieveUpdateView,
+    MilestoneArchiveView,
+    MilestoneCustomizeView,
+    RecordProgressView,
+    UpdateProgressView,
+    ProgressHistoryView,
+    ProgressSummaryView,
+)
 
 __all__ = [
     "ProgramListCreateView",
@@ -102,4 +112,12 @@ __all__ = [
     "AttendanceRecordDetailView",
     "EnrollmentAttendanceHistoryView",
     "EnrollmentAttendanceSummaryView",
+    "MilestoneListCreateView",
+    "MilestoneRetrieveUpdateView",
+    "MilestoneArchiveView",
+    "MilestoneCustomizeView",
+    "RecordProgressView",
+    "UpdateProgressView",
+    "ProgressHistoryView",
+    "ProgressSummaryView",
 ]

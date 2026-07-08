@@ -7,6 +7,8 @@ from apps.academic.models.staff_attendance import StaffAttendanceSession, StaffA
 from apps.academic.models.enrollment import Enrollment
 from apps.academic.models.enrollment_payment import EnrollmentPayment
 from apps.academic.models.attendance import AttendanceSession, AttendanceRecord
+from apps.academic.models.learning_milestone import LearningMilestone
+from apps.academic.models.student_progress import StudentProgress
 
 __all__ = [
     "Program",
@@ -20,4 +22,6 @@ __all__ = [
     "EnrollmentPayment",
     "AttendanceSession",
     "AttendanceRecord",
+    "LearningMilestone",
+    "StudentProgress",
 ]

@@ -51,3 +51,9 @@ class PaymentStatus(models.TextChoices):
     FAILED = "FAILED", "Failed"
     REFUNDED = "REFUNDED", "Refunded"
     CANCELLED = "CANCELLED", "Cancelled"
+
+
+class ProgressStatus(models.TextChoices):
+    NOT_STARTED = "NOT_STARTED", "Not Started"
+    IN_PROGRESS = "IN_PROGRESS", "In Progress"
+    COMPLETED = "COMPLETED", "Completed"

@@ -3,6 +3,7 @@ from apps.academic.services import student_service
 from apps.academic.services import enrollment_service
 from apps.academic.services import payment_service
 from apps.academic.services import attendance_service
+from apps.academic.services import progress_service
 
 __all__ = [
     "admission_service",
@@ -10,4 +11,5 @@ __all__ = [
     "enrollment_service",
     "payment_service",
     "attendance_service",
+    "progress_service",
 ]

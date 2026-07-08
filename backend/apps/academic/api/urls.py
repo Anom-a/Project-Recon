@@ -21,6 +21,10 @@ from apps.academic.views import (
     EnrollmentPeriodDeactivateView,
     EnrollmentPeriodListCreateView,
     EnrollmentPeriodRetrieveUpdateView,
+    MilestoneArchiveView,
+    MilestoneCustomizeView,
+    MilestoneListCreateView,
+    MilestoneRetrieveUpdateView,
     OnlineEnrollmentView,
     OnlinePaymentVerifyView,
     OnlinePaymentWebhookView,
@@ -29,7 +33,10 @@ from apps.academic.views import (
     ProgramDeactivateView,
     ProgramListCreateView,
     ProgramRetrieveUpdateView,
+    ProgressHistoryView,
+    ProgressSummaryView,
     RecordDetailView,
+    RecordProgressView,
     RecordUpsertView,
     SessionDetailView,
     SessionListCreateView,
@@ -43,6 +50,7 @@ from apps.academic.views import (
     SubProgramDeactivateView,
     SubProgramListCreateView,
     SubProgramRetrieveUpdateView,
+    UpdateProgressView,
 )
 
 urlpatterns = [
@@ -91,6 +99,16 @@ urlpatterns = [
     # Payments
     path("payments/cash/", CashPaymentCreateView.as_view(), name="payment-cash-create"),
     path("payments/", PaymentListView.as_view(), name="payment-list"),
+    # Learning Milestones
+    path("learning-milestones/", MilestoneListCreateView.as_view(), name="milestone-list-create"),
+    path("learning-milestones/<uuid:pk>/", MilestoneRetrieveUpdateView.as_view(), name="milestone-retrieve-update"),
+    path("learning-milestones/<uuid:pk>/archive/", MilestoneArchiveView.as_view(), name="milestone-archive"),
+    path("learning-milestones/<uuid:pk>/customize/", MilestoneCustomizeView.as_view(), name="milestone-customize"),
+    # Student Progress
+    path("student-progress/", RecordProgressView.as_view(), name="student-progress-record"),
+    path("student-progress/<uuid:pk>/", UpdateProgressView.as_view(), name="student-progress-update"),
+    path("student-progress/enrollments/<uuid:enrollment_pk>/history/", ProgressHistoryView.as_view(), name="student-progress-history"),
+    path("student-progress/enrollments/<uuid:enrollment_pk>/summary/", ProgressSummaryView.as_view(), name="student-progress-summary"),
     # Attendance
     path("attendance/sessions/", AttendanceSessionListCreateView.as_view(), name="attendance-session-list-create"),
     path("attendance/sessions/<uuid:pk>/", AttendanceSessionDetailView.as_view(), name="attendance-session-detail"),

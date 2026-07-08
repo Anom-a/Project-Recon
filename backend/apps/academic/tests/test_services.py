@@ -8,13 +8,15 @@ from django.test import TestCase, override_settings
 from apps.academic.constants import (
     ClassType, ClassPeriod, AttendanceStatus, SessionStatus,
     EnrollmentStatus, PaymentMethod, PaymentProvider, PaymentStatus,
+    ProgressStatus,
 )
 from apps.academic.models import (
     Program, SubProgram, Class, Student, EnrollmentPeriod,
     StaffAttendanceSession, StaffAttendanceRecord, Enrollment, EnrollmentPayment,
-    AttendanceSession, AttendanceRecord,
+    AttendanceSession, AttendanceRecord, LearningMilestone, StudentProgress,
 )
 from apps.academic.services import program_service, class_service, admission_service, student_service, attendance_service
+from apps.academic.services import progress_service
 from apps.academic.services.enrollment_period_service import (
     create_enrollment_period,
     get_enrollment_period_or_404,
@@ -1069,3 +1071,273 @@ class AttendanceServiceTest(TestCase):
             self.instructor, session, topic="Updated Topic",
         )
         self.assertEqual(updated.topic, "Updated Topic")
+
+
+class ProgressServiceTest(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(name="Main Branch", code="MB01")
+        self.program = Program.objects.create(
+            name="Test Program", slug="test-program",
+            supports_group=True, supports_individual=True,
+        )
+        self.sub_program = SubProgram.objects.create(
+            program=self.program, name="Test Sub", slug="test-sub",
+            fee=Decimal("500.00"),
+        )
+
+        self.manager = user_service.create_staff_user(
+            "manager-prog@test.com", "Branch", "Manager", "StrongP@ssw0rd!2026",
+            branch=self.branch, role=Roles.BRANCH_MANAGER,
+        )
+        user_service.activate_user(self.manager)
+        self.manager.is_email_verified = True
+        self.manager.save()
+
+        self.instructor = user_service.create_staff_user(
+            "instructor-prog@test.com", "John", "Doe", "StrongP@ssw0rd!2026",
+            branch=self.branch, role=Roles.INSTRUCTOR,
+        )
+        user_service.activate_user(self.instructor)
+        self.instructor.is_email_verified = True
+        self.instructor.save()
+
+        self.other_instructor = user_service.create_staff_user(
+            "other-instr-prog@test.com", "Other", "Inst", "StrongP@ssw0rd!2026",
+            branch=self.branch, role=Roles.INSTRUCTOR,
+        )
+        user_service.activate_user(self.other_instructor)
+        self.other_instructor.is_email_verified = True
+        self.other_instructor.save()
+
+        self.klass = class_service.create_class(
+            sub_program=self.sub_program, branch=self.branch,
+            instructor=self.instructor, name="Prog Class",
+            class_type=ClassType.INDIVIDUAL,
+        )
+
+        self.other_klass = class_service.create_class(
+            sub_program=self.sub_program, branch=self.branch,
+            instructor=self.other_instructor, name="Other Prog Class",
+            class_type=ClassType.INDIVIDUAL,
+        )
+
+        self.student_user = user_service.create_student_user(
+            "student-prog@test.com", "Test", "Student", "StrongP@ssw0rd!2026",
+            self.branch,
+        )
+        user_service.activate_user(self.student_user)
+        self.student_model = Student.objects.create(
+            user=self.student_user, branch=self.branch, date_joined=date.today(),
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student_model, enrolled_class=self.klass,
+            status=EnrollmentStatus.ACTIVE,
+        )
+
+        self.shared_milestone = progress_service.create_milestone(
+            actor=self.manager,
+            sub_program=self.sub_program,
+            title="Variables",
+            description="Learn about variables",
+            scope_class=None,
+        )
+
+    def test_create_shared_milestone_as_manager(self):
+        milestone = progress_service.create_milestone(
+            actor=self.manager,
+            sub_program=self.sub_program,
+            title="Functions",
+            description="Learn about functions",
+            scope_class=None,
+        )
+        self.assertEqual(milestone.title, "Functions")
+        self.assertIsNone(milestone.scope_class)
+        self.assertTrue(milestone.is_active)
+
+    def test_create_class_specific_milestone_as_instructor(self):
+        milestone = progress_service.create_milestone(
+            actor=self.instructor,
+            sub_program=self.sub_program,
+            title="Custom Topic",
+            description="Instructor custom topic",
+            scope_class=self.klass,
+        )
+        self.assertEqual(milestone.scope_class, self.klass)
+        self.assertEqual(milestone.title, "Custom Topic")
+
+    def test_instructor_cannot_create_shared_milestone(self):
+        with self.assertRaises(DjangoValidationError):
+            progress_service.create_milestone(
+                actor=self.instructor,
+                sub_program=self.sub_program,
+                title="Shared By Instructor",
+                scope_class=None,
+            )
+
+    def test_instructor_cannot_create_for_another_class(self):
+        with self.assertRaises(DjangoValidationError):
+            progress_service.create_milestone(
+                actor=self.instructor,
+                sub_program=self.sub_program,
+                title="Wrong Class",
+                scope_class=self.other_klass,
+            )
+
+    def test_list_milestones_returns_shared_and_class_specific(self):
+        progress_service.create_milestone(
+            actor=self.instructor,
+            sub_program=self.sub_program,
+            title="Class Only",
+            scope_class=self.klass,
+        )
+        milestones = progress_service.list_milestones(
+            sub_program=self.sub_program, scope_class=self.klass
+        )
+        titles = [m.title for m in milestones]
+        self.assertIn("Variables", titles)
+        self.assertIn("Class Only", titles)
+
+    def test_update_milestone_as_manager(self):
+        updated = progress_service.update_milestone(
+            self.manager, self.shared_milestone, title="Updated Variables"
+        )
+        self.assertEqual(updated.title, "Updated Variables")
+
+    def test_instructor_cannot_update_shared_milestone(self):
+        with self.assertRaises(DjangoValidationError):
+            progress_service.update_milestone(
+                self.instructor, self.shared_milestone, title="Hacked"
+            )
+
+    def test_instructor_can_update_own_class_milestone(self):
+        class_milestone = progress_service.create_milestone(
+            actor=self.instructor,
+            sub_program=self.sub_program,
+            title="My Topic",
+            scope_class=self.klass,
+        )
+        updated = progress_service.update_milestone(
+            self.instructor, class_milestone, title="Updated Topic"
+        )
+        self.assertEqual(updated.title, "Updated Topic")
+
+    def test_archive_milestone(self):
+        archived = progress_service.archive_milestone(
+            self.manager, self.shared_milestone
+        )
+        self.assertFalse(archived.is_active)
+
+    def test_customize_milestone(self):
+        customized = progress_service.customize_milestone(
+            self.instructor, self.shared_milestone, self.klass
+        )
+        self.assertEqual(customized.title, self.shared_milestone.title)
+        self.assertEqual(customized.scope_class, self.klass)
+        self.assertIsNotNone(customized.id)
+
+    def test_customize_requires_shared_milestone(self):
+        class_milestone = progress_service.create_milestone(
+            actor=self.instructor,
+            sub_program=self.sub_program,
+            title="Already Class",
+            scope_class=self.klass,
+        )
+        with self.assertRaises(DjangoValidationError):
+            progress_service.customize_milestone(
+                self.instructor, class_milestone, self.klass
+            )
+
+    def test_record_progress(self):
+        record = progress_service.record_progress(
+            actor=self.instructor,
+            enrollment=self.enrollment,
+            milestone=self.shared_milestone,
+            status=ProgressStatus.IN_PROGRESS,
+        )
+        self.assertEqual(record.status, ProgressStatus.IN_PROGRESS)
+        self.assertEqual(record.milestone, self.shared_milestone)
+        self.assertEqual(record.enrollment, self.enrollment)
+
+    def test_record_progress_sets_completed_at(self):
+        record = progress_service.record_progress(
+            actor=self.instructor,
+            enrollment=self.enrollment,
+            milestone=self.shared_milestone,
+            status=ProgressStatus.COMPLETED,
+        )
+        self.assertIsNotNone(record.completed_at)
+
+    def test_record_progress_wrong_subprogram_raises(self):
+        other_program = Program.objects.create(
+            name="Other Program", slug="other-program",
+        )
+        other_sub = SubProgram.objects.create(
+            program=other_program, name="Other Sub", slug="other-sub",
+            fee=Decimal("300.00"),
+        )
+        other_milestone = progress_service.create_milestone(
+            actor=self.manager, sub_program=other_sub, title="Other Topic",
+        )
+        with self.assertRaises(DjangoValidationError):
+            progress_service.record_progress(
+                actor=self.instructor,
+                enrollment=self.enrollment,
+                milestone=other_milestone,
+            )
+
+    def test_update_progress(self):
+        record = progress_service.record_progress(
+            actor=self.instructor,
+            enrollment=self.enrollment,
+            milestone=self.shared_milestone,
+        )
+        updated = progress_service.update_progress(
+            self.instructor, record, status=ProgressStatus.COMPLETED
+        )
+        self.assertEqual(updated.status, ProgressStatus.COMPLETED)
+        self.assertIsNotNone(updated.completed_at)
+
+    def test_get_progress_history(self):
+        progress_service.record_progress(
+            actor=self.instructor,
+            enrollment=self.enrollment,
+            milestone=self.shared_milestone,
+            status=ProgressStatus.COMPLETED,
+        )
+        history = progress_service.get_progress_history(self.enrollment)
+        self.assertEqual(history.count(), 1)
+
+    def test_get_progress_summary(self):
+        progress_service.record_progress(
+            actor=self.instructor,
+            enrollment=self.enrollment,
+            milestone=self.shared_milestone,
+            status=ProgressStatus.COMPLETED,
+        )
+        summary = progress_service.get_progress_summary(self.enrollment)
+        self.assertEqual(summary["completed"], 1)
+        self.assertEqual(summary["total"], 1)
+
+    def test_duplicate_milestone_title_raises(self):
+        with self.assertRaises(DjangoValidationError):
+            progress_service.create_milestone(
+                actor=self.manager,
+                sub_program=self.sub_program,
+                title="Variables",
+                scope_class=None,
+            )
+
+    def test_duplicate_progress_updates(self):
+        progress_service.record_progress(
+            actor=self.instructor,
+            enrollment=self.enrollment,
+            milestone=self.shared_milestone,
+            status=ProgressStatus.NOT_STARTED,
+        )
+        record = progress_service.record_progress(
+            actor=self.instructor,
+            enrollment=self.enrollment,
+            milestone=self.shared_milestone,
+            status=ProgressStatus.COMPLETED,
+        )
+        self.assertEqual(record.status, ProgressStatus.COMPLETED)
