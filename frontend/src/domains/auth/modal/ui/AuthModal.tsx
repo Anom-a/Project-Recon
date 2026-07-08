@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mail, Lock, User, ShieldCheck, Info, Sparkles } from 'lucide-react';
+import { X, Mail, Lock, User, ShieldCheck, Info, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
 import { UserProfile } from '@/src/shared/types';
+import { http } from '@/src/shared/api/http';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'Student' | 'Instructor'>('Student');
   const [errorMsg, setErrorMsg] = useState('');
+  const [registered, setRegistered] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -26,6 +29,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
       setEmail('');
       setName('');
       setPassword('');
+      setRegistered(false);
     }
   }, [isOpen, initialMode]);
 
@@ -62,19 +66,52 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           });
       });
     } else {
-      const mockUser: UserProfile = {
-        id: '',
+      setSubmitting(true);
+      http.post('/cms/contact-requests/', {
+        name,
         email,
-        name: name || (email.split('@')[0].toUpperCase().replace('.', ' ')),
-        role: role,
-        xpPoints: 20,
-        badges: ['Starter Badge']
-      };
-
-      onAuthSuccess(mockUser);
-      onClose();
+        phone: '',
+        subject: `New account request: ${role}`,
+        description: `Full Name: ${name}\nEmail: ${email}\nRequested Role: ${role}\nPassword preference submitted with request.`,
+      }).then(() => {
+        setSubmitting(false);
+        setRegistered(true);
+      }).catch((err) => {
+        setSubmitting(false);
+        setErrorMsg(err instanceof Error ? err.message : 'Submission failed. Please try again.');
+      });
     }
   };
+
+  if (registered) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose}
+          className="absolute inset-0 bg-white/20 backdrop-blur-sm" />
+        <motion.div initial={{ opacity: 0, scale: 0.96, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 z-10 border border-slate-100 text-center">
+          <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+          </div>
+          <h3 className="font-black text-xl text-slate-900 mb-2">Request Submitted!</h3>
+          <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+            Thanks <strong>{name}</strong>! Your account request for <strong>{role}</strong> has been sent to our team.
+            An administrator will review and create your account. You'll receive login credentials at <strong className="text-brand-red">{email}</strong> once approved.
+          </p>
+          <div className="flex gap-3">
+            <button onClick={() => { setRegistered(false); setMode('login'); }}
+              className="flex-1 bg-gradient-to-r from-brand-red to-brand-red-dark text-white py-3 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-brand-red/25 hover:shadow-xl transition-all">
+              Sign In
+            </button>
+            <button onClick={onClose}
+              className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-black text-sm uppercase tracking-wider hover:bg-slate-200 transition-all">
+              Done
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -219,11 +256,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-brand-red to-brand-red-dark text-white py-3 rounded-xl hover:shadow-xl hover:shadow-brand-red/40 active:scale-98 transition-all font-black text-sm uppercase tracking-wider mt-2 shadow-lg shadow-brand-red/25"
+            disabled={submitting}
+            className="w-full bg-gradient-to-r from-brand-red to-brand-red-dark disabled:from-slate-200 disabled:to-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white py-3 rounded-xl hover:shadow-xl hover:shadow-brand-red/40 active:scale-98 transition-all font-black text-sm uppercase tracking-wider mt-2 shadow-lg shadow-brand-red/25"
           >
             <span className="relative z-10 flex items-center justify-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-brand-red/50" />
-              <span>{mode === 'login' ? 'Boot Interactive Console' : 'Establish Student Profile'}</span>
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-brand-red/50" />}
+              <span>{submitting ? 'Submitting...' : mode === 'login' ? 'Boot Interactive Console' : 'Submit Request'}</span>
             </span>
           </button>
 
