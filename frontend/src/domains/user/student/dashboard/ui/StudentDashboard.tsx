@@ -1,20 +1,18 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import {
   User, CalendarDays, Target, Calendar, BookOpen, Medal,
-  PanelLeftClose, PanelLeftOpen, Zap, TrendingUp, Clock,
-  Award, Flame, BarChart3, ChevronRight, MessageCircle,
-  X, Trophy, Video, Gift, FileText, LogOut,
-  Cpu, Swords, ClipboardList, Users, Sparkles, GraduationCap,
-  Activity, Star, Search
+  Zap, TrendingUp, Clock, Award, Flame, BarChart3,
+  ChevronRight, MessageCircle, Trophy, Video, Gift, FileText,
+  Cpu, Swords, ClipboardList, Users, Star, Search, Loader2
 } from 'lucide-react';
-import { UserProfile } from '@/src/shared/types';
-import { ROBOTICS_PROGRAMS, MOCK_VEX_TEAM, MOCK_VEX_MATCHES, MOCK_VEX_AWARDS, MOCK_VEX_ROBOTS } from '@/src/shared/constants/mock-data';
+import { UserProfile, Enrollment } from '@/src/shared/types';
+import { MOCK_VEX_TEAM, MOCK_VEX_MATCHES, MOCK_VEX_AWARDS, MOCK_VEX_ROBOTS } from '@/src/shared/constants/mock-data';
+import { fetchStudentsApi, fetchEnrollmentsApi, fetchProgramsApi } from '@/src/domains/learning/academics/api/academicApi';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import { NavItem } from '@/src/shared/ui/Sidebar';
 import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
 
-import heroImg from '@/assets/0M6A6595.00_07_20_18.Still028.jpg';
 import profileImg from '@/assets/photo_2026-06-15_14-39-27.jpg';
 
 import ProfileOverview from './ProfileOverview';
@@ -64,29 +62,55 @@ function getGreeting() {
 
 export default function StudentDashboard({ currentUser, onLogout }: StudentDashboardProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
+  const [studentId, setStudentId] = useState<string | null>(null);
+  const [studentLoading, setStudentLoading] = useState(true);
+  const [enrolledCount, setEnrolledCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
 
-  const enrolledDetails: typeof ROBOTICS_PROGRAMS = [];
-  const streakDays = 12;
-  const completedProjects = 14;
-  const progressPct = 65;
+  useEffect(() => {
+    fetchStudentsApi().then(students => {
+      const s = students.find(st => st.user === currentUser.id || st.email === currentUser.email);
+      if (s) {
+        setStudentId(s.id);
+        fetchEnrollmentsApi(s.id).then(e => {
+          setEnrolledCount(e.length);
+          setActiveCount(e.filter(en => en.status === 'ACTIVE').length);
+        }).catch(() => {});
+      }
+    }).catch(() => {}).finally(() => setStudentLoading(false));
+  }, [currentUser.id, currentUser.email]);
 
   const renderPage = () => {
+    if (!studentId) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          {studentLoading ? (
+            <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+          ) : (
+            <div className="text-center text-slate-400">
+              <User className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p className="text-sm font-medium">Student profile not found. Contact the administration.</p>
+            </div>
+          )}
+        </div>
+      );
+    }
     switch (activeSection) {
       case 'overview':
-        return <OverviewPage currentUser={currentUser} enrolledDetails={enrolledDetails} streakDays={streakDays} completedProjects={completedProjects} progressPct={progressPct} onNavigate={setActiveSection} />;
+        return <OverviewPage currentUser={currentUser} studentId={studentId} onNavigate={setActiveSection} />;
       case 'profile':    return <ProfileOverview currentUser={currentUser} />;
-      case 'attendance': return <AttendanceTracker />;
-      case 'progress':   return <ProgressMilestones />;
+      case 'attendance': return <AttendanceTracker studentId={studentId} />;
+      case 'progress':   return <ProgressMilestones studentId={studentId} />;
       case 'events':     return <UpcomingEvents />;
-      case 'resources':  return <LearningResources />;
+      case 'resources':  return <LearningResources studentId={studentId} />;
       case 'achievements': return <Achievements />;
       case 'feedback':   return <ParentFeedback />;
-      case 'certificates': return <CertificateGenerator />;
+      case 'certificates': return <CertificateGenerator studentId={studentId} />;
       case 'leaderboard': return <Leaderboard />;
       case 'videos':     return <VideoLibrary />;
       case 'referrals':  return <ReferralProgram />;
       case 'vex-team':   return <VexTeamHub />;
-      case 'registrations': return <MyRegistrations />;
+      case 'registrations': return <MyRegistrations studentId={studentId} />;
     }
   };
 
@@ -114,8 +138,8 @@ export default function StudentDashboard({ currentUser, onLogout }: StudentDashb
         subtitle="Progress, events, certificates, and VEX team readiness."
         signals={[
           { label: 'XP', value: currentUser.xpPoints.toLocaleString(), detail: 'current points', icon: Zap, tone: 'amber' },
-          { label: 'Progress', value: `${progressPct}%`, detail: 'active track average', icon: TrendingUp, tone: 'emerald' },
-          { label: 'Programs', value: String(enrolledDetails.length), detail: 'currently enrolled', icon: BookOpen, tone: enrolledDetails.length ? 'blue' : 'amber' },
+          { label: 'Active', value: String(activeCount), detail: 'active enrollments', icon: TrendingUp, tone: 'emerald' },
+          { label: 'Programs', value: String(enrolledCount), detail: 'currently enrolled', icon: BookOpen, tone: enrolledCount ? 'blue' : 'amber' },
           { label: 'VEX Team', value: MOCK_VEX_TEAM.name ? 'Ready' : 'Open', detail: 'team hub status', icon: Users, tone: 'emerald' },
         ]}
       />
@@ -128,21 +152,37 @@ export default function StudentDashboard({ currentUser, onLogout }: StudentDashb
 
 interface OverviewProps {
   currentUser: UserProfile;
-  enrolledDetails: typeof ROBOTICS_PROGRAMS;
-  streakDays: number;
-  completedProjects: number;
-  progressPct: number;
+  studentId: string;
   onNavigate: (s: SectionId) => void;
 }
 
-function OverviewPage({ currentUser, enrolledDetails, streakDays, completedProjects, progressPct, onNavigate }: OverviewProps) {
+function OverviewPage({ currentUser, studentId, onNavigate }: OverviewProps) {
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [programs, setPrograms] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      fetchEnrollmentsApi(studentId),
+      fetchProgramsApi(),
+    ]).then(([enr, progs]) => {
+      setEnrollments(enr);
+      setPrograms(progs.map(p => ({ id: p.id, name: p.name })));
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [studentId]);
+
   const firstName = currentUser.name.split(' ')[0];
+  const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
+  const completedEnrollments = enrollments.filter(e => e.status === 'COMPLETED');
+  const streakDays = 12;
+  const completedProjects = completedEnrollments.length;
+  const progressPct = activeEnrollments.length > 0 ? 65 : 0;
 
   const quickStats = [
     { label: 'XP Points', value: currentUser.xpPoints.toLocaleString(), icon: Zap, color: 'text-amber-400' },
     { label: 'Day Streak', value: `${streakDays} days`, icon: Flame, color: 'text-orange-400' },
     { label: 'Progress', value: `${progressPct}%`, icon: TrendingUp, color: 'text-emerald-400' },
-    { label: 'Projects', value: `${completedProjects}`, icon: Target, color: 'text-purple-400' },
+    { label: 'Enrollments', value: `${enrollments.length}`, icon: BookOpen, color: 'text-purple-400' },
   ];
 
   const upcomingItems = [
@@ -209,20 +249,22 @@ function OverviewPage({ currentUser, enrolledDetails, streakDays, completedProje
             </button>
           </div>
           <div className="p-5 space-y-4">
-            {enrolledDetails.length > 0 ? enrolledDetails.map((prog, i) => (
+            {loading ? (
+              <div className="text-center py-8"><Loader2 className="w-6 h-6 animate-spin mx-auto text-slate-400" /></div>
+            ) : activeEnrollments.length > 0 ? activeEnrollments.map((enr, i) => (
               <motion.div
-                key={prog.id}
+                key={enr.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 + i * 0.1 }}
                 className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-brand-border hover:border-brand-red/20 transition-all group"
               >
-                <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
-                  <img src={prog.image} alt={prog.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                <div className="w-12 h-12 rounded-xl bg-brand-red/10 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-6 h-6 text-brand-red" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-base text-slate-900 truncate">{prog.title}</h4>
-                  <p className="text-sm text-slate-500">{prog.category} · {prog.level}</p>
+                  <h4 className="font-bold text-sm text-slate-900 truncate">{enr.program_name || enr.sub_program_name || enr.class_name || 'Program'}</h4>
+                  <p className="text-xs text-slate-500">{enr.class_name} · {enr.branch_name}</p>
                   <div className="mt-2 w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
@@ -232,12 +274,12 @@ function OverviewPage({ currentUser, enrolledDetails, streakDays, completedProje
                     />
                   </div>
                 </div>
-                <span className="text-sm font-black text-brand-red shrink-0">{progressPct}%</span>
+                <span className="text-xs font-bold text-slate-400 shrink-0">{enr.enrolled_at?.slice(0, 10)}</span>
               </motion.div>
             )) : (
               <div className="text-center py-8 text-slate-400">
                 <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p className="text-sm font-medium">No programs enrolled yet. Explore our tracks!</p>
+                <p className="text-sm font-medium">No active enrollments yet.</p>
               </div>
             )}
           </div>
