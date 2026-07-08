@@ -57,3 +57,12 @@ class ProgressStatus(models.TextChoices):
     NOT_STARTED = "NOT_STARTED", "Not Started"
     IN_PROGRESS = "IN_PROGRESS", "In Progress"
     COMPLETED = "COMPLETED", "Completed"
+
+
+class MaterialType(models.TextChoices):
+    PDF = "PDF", "PDF"
+    PPT = "PPT", "PPT"
+    PPTX = "PPTX", "PPTX"
+    DOC = "DOC", "DOC"
+    DOCX = "DOCX", "DOCX"
+    IMAGE = "IMAGE", "Image"

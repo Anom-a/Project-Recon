@@ -1,3 +1,4 @@
+import os
 from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
@@ -8,7 +9,7 @@ from django.test import TestCase, override_settings
 from apps.academic.constants import (
     ClassType, ClassPeriod, AttendanceStatus, SessionStatus,
     EnrollmentStatus, PaymentMethod, PaymentProvider, PaymentStatus,
-    ProgressStatus,
+    ProgressStatus, MaterialType,
 )
 from apps.academic.models import (
     Program, SubProgram, Class, Student, EnrollmentPeriod,
@@ -17,6 +18,7 @@ from apps.academic.models import (
 )
 from apps.academic.services import program_service, class_service, admission_service, student_service, attendance_service
 from apps.academic.services import progress_service
+from apps.academic.services import learning_material_service
 from apps.academic.services.enrollment_period_service import (
     create_enrollment_period,
     get_enrollment_period_or_404,
@@ -1341,3 +1343,243 @@ class ProgressServiceTest(TestCase):
             status=ProgressStatus.COMPLETED,
         )
         self.assertEqual(record.status, ProgressStatus.COMPLETED)
+
+
+class LearningMaterialServiceTest(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(name="Main Branch", code="MB01")
+        self.program = Program.objects.create(
+            name="Material Program", slug="material-program",
+            supports_group=True, supports_individual=True,
+        )
+        self.sub_program = SubProgram.objects.create(
+            program=self.program, name="Material Sub", slug="material-sub",
+            fee=Decimal("500.00"),
+        )
+        self.manager = user_service.create_staff_user(
+            "manager-mat@test.com", "Branch", "Manager", "StrongP@ssw0rd!2026",
+            branch=self.branch, role=Roles.BRANCH_MANAGER,
+        )
+        user_service.activate_user(self.manager)
+        self.manager.is_email_verified = True
+        self.manager.save()
+
+        self.instructor = user_service.create_staff_user(
+            "instructor-mat@test.com", "John", "Doe", "StrongP@ssw0rd!2026",
+            branch=self.branch, role=Roles.INSTRUCTOR,
+        )
+        user_service.activate_user(self.instructor)
+        self.instructor.is_email_verified = True
+        self.instructor.save()
+
+        self.other_instructor = user_service.create_staff_user(
+            "other-instr-mat@test.com", "Other", "Inst", "StrongP@ssw0rd!2026",
+            branch=self.branch, role=Roles.INSTRUCTOR,
+        )
+        user_service.activate_user(self.other_instructor)
+        self.other_instructor.is_email_verified = True
+        self.other_instructor.save()
+
+        self.klass = class_service.create_class(
+            sub_program=self.sub_program, branch=self.branch,
+            instructor=self.instructor, name="Mat Class",
+            class_type=ClassType.INDIVIDUAL,
+        )
+
+        self.student_user = user_service.create_student_user(
+            "student-mat@test.com", "Test", "Student", "StrongP@ssw0rd!2026",
+            self.branch,
+        )
+        user_service.activate_user(self.student_user)
+        self.student_model = Student.objects.create(
+            user=self.student_user, branch=self.branch, date_joined=date.today(),
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student_model, enrolled_class=self.klass,
+            status=EnrollmentStatus.ACTIVE,
+        )
+
+    def _create_temp_file(self, name="test.pdf"):
+        from io import BytesIO
+        from django.core.files.base import ContentFile
+        from PIL import Image
+        ext = os.path.splitext(name)[1].lower()
+        if ext == ".pdf":
+            content = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF"
+        elif ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
+            buf = BytesIO()
+            img = Image.new("RGB", (1, 1), color="red")
+            if ext in (".jpg", ".jpeg"):
+                img.save(buf, format="JPEG")
+            elif ext == ".png":
+                img.save(buf, format="PNG")
+            elif ext == ".gif":
+                img.save(buf, format="GIF")
+            elif ext == ".webp":
+                img.save(buf, format="WebP")
+            content = buf.getvalue()
+        elif ext == ".docx":
+            content = b"PK\x03\x04" + b"\x00" * 30
+        else:
+            content = b"test content"
+        return ContentFile(content, name=name)
+
+    def test_upload_material_as_manager(self):
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="Material Manager", file=file,
+        )
+        self.assertEqual(material.title, "Material Manager")
+        self.assertEqual(material.material_type, MaterialType.PDF)
+        self.assertEqual(material.uploaded_by, self.manager)
+
+    def test_upload_material_as_instructor(self):
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.instructor, sub_program=self.sub_program,
+            title="Material Instructor", file=file,
+        )
+        self.assertEqual(material.title, "Material Instructor")
+
+    def test_instructor_cannot_upload_to_unowned_sub_program(self):
+        file = self._create_temp_file()
+        other_program = Program.objects.create(
+            name="Other Prog", slug="other-prog",
+        )
+        other_sub = SubProgram.objects.create(
+            program=other_program, name="Other Sub", slug="other-sub",
+            fee=Decimal("300.00"),
+        )
+        with self.assertRaises(DjangoValidationError):
+            learning_material_service.upload_material(
+                actor=self.instructor, sub_program=other_sub,
+                title="No Access", file=file,
+            )
+
+    def test_list_materials(self):
+        file = self._create_temp_file()
+        learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="List Test", file=file,
+        )
+        materials = learning_material_service.list_materials(
+            sub_program=self.sub_program,
+        )
+        self.assertEqual(materials.count(), 1)
+
+    def test_list_materials_filters_by_uploaded_by(self):
+        file = self._create_temp_file()
+        learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="By Manager", file=file,
+        )
+        materials = learning_material_service.list_materials(
+            uploaded_by=self.manager,
+        )
+        self.assertEqual(materials.count(), 1)
+        materials = learning_material_service.list_materials(
+            uploaded_by=self.instructor,
+        )
+        self.assertEqual(materials.count(), 0)
+
+    def test_update_material_title(self):
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="Old Title", file=file,
+        )
+        updated = learning_material_service.update_material(
+            self.manager, material, title="New Title",
+        )
+        self.assertEqual(updated.title, "New Title")
+
+    def test_update_material_file_replaces_type(self):
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="File Test", file=file,
+        )
+        self.assertEqual(material.material_type, MaterialType.PDF)
+        png_file = self._create_temp_file(name="image.png")
+        updated = learning_material_service.update_material(
+            self.manager, material, file=png_file,
+        )
+        self.assertEqual(updated.material_type, MaterialType.IMAGE)
+
+    def test_instructor_cannot_update_others_material(self):
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="Not Yours", file=file,
+        )
+        with self.assertRaises(DjangoValidationError):
+            learning_material_service.update_material(
+                self.instructor, material, title="Hacked",
+            )
+
+    def test_delete_material_soft_deletes(self):
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="To Delete", file=file,
+        )
+        deleted = learning_material_service.delete_material(
+            self.manager, material,
+        )
+        self.assertFalse(deleted.is_active)
+
+    def test_deleted_material_not_in_list(self):
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="Gone", file=file,
+        )
+        learning_material_service.delete_material(self.manager, material)
+        materials = learning_material_service.list_materials(
+            sub_program=self.sub_program,
+        )
+        self.assertEqual(materials.count(), 0)
+
+    def test_get_student_materials(self):
+        file = self._create_temp_file()
+        learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="Student Can See", file=file,
+        )
+        materials = learning_material_service.get_student_materials(
+            self.student_model,
+        )
+        self.assertEqual(materials.count(), 1)
+
+    def test_get_student_materials_excludes_other_sub_programs(self):
+        file = self._create_temp_file()
+        learning_material_service.upload_material(
+            actor=self.manager, sub_program=self.sub_program,
+            title="Visible", file=file,
+        )
+        other_program = Program.objects.create(
+            name="Hidden Prog", slug="hidden-prog",
+        )
+        other_sub = SubProgram.objects.create(
+            program=other_program, name="Hidden Sub", slug="hidden-sub",
+            fee=Decimal("400.00"),
+        )
+        other_file = self._create_temp_file()
+        learning_material_service.upload_material(
+            actor=self.manager, sub_program=other_sub,
+            title="Hidden", file=other_file,
+        )
+        materials = learning_material_service.get_student_materials(
+            self.student_model,
+        )
+        self.assertEqual(materials.count(), 1)
+
+    def test_detect_material_type_from_extension(self):
+        from apps.academic.services.learning_material_service import _detect_material_type
+        self.assertEqual(_detect_material_type("doc.pdf"), MaterialType.PDF)
+        self.assertEqual(_detect_material_type("slide.pptx"), MaterialType.PPTX)
+        self.assertEqual(_detect_material_type("photo.jpg"), MaterialType.IMAGE)
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        with self.assertRaises(DjangoValidationError):
+            _detect_material_type("unknown.xyz")

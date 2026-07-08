@@ -51,6 +51,10 @@ from apps.academic.serializers.progress import (
     UpdateProgressSerializer,
     ProgressSummarySerializer,
 )
+from apps.academic.serializers.learning_material import (
+    LearningMaterialSerializer,
+    LearningMaterialListSerializer,
+)
 
 __all__ = [
     "ProgramSerializer",
@@ -92,4 +96,6 @@ __all__ = [
     "RecordProgressSerializer",
     "UpdateProgressSerializer",
     "ProgressSummarySerializer",
+    "LearningMaterialSerializer",
+    "LearningMaterialListSerializer",
 ]

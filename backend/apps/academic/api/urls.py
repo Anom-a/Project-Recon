@@ -21,6 +21,10 @@ from apps.academic.views import (
     EnrollmentPeriodDeactivateView,
     EnrollmentPeriodListCreateView,
     EnrollmentPeriodRetrieveUpdateView,
+    MaterialDeleteView,
+    MaterialDownloadView,
+    MaterialListCreateView,
+    MaterialRetrieveUpdateView,
     MilestoneArchiveView,
     MilestoneCustomizeView,
     MilestoneListCreateView,
@@ -109,6 +113,11 @@ urlpatterns = [
     path("student-progress/<uuid:pk>/", UpdateProgressView.as_view(), name="student-progress-update"),
     path("student-progress/enrollments/<uuid:enrollment_pk>/history/", ProgressHistoryView.as_view(), name="student-progress-history"),
     path("student-progress/enrollments/<uuid:enrollment_pk>/summary/", ProgressSummaryView.as_view(), name="student-progress-summary"),
+    # Learning Materials
+    path("learning-materials/", MaterialListCreateView.as_view(), name="material-list-create"),
+    path("learning-materials/<uuid:pk>/", MaterialRetrieveUpdateView.as_view(), name="material-retrieve-update"),
+    path("learning-materials/<uuid:pk>/delete/", MaterialDeleteView.as_view(), name="material-delete"),
+    path("learning-materials/<uuid:pk>/download/", MaterialDownloadView.as_view(), name="material-download"),
     # Attendance
     path("attendance/sessions/", AttendanceSessionListCreateView.as_view(), name="attendance-session-list-create"),
     path("attendance/sessions/<uuid:pk>/", AttendanceSessionDetailView.as_view(), name="attendance-session-detail"),

@@ -71,6 +71,11 @@ def user_is_secretary(user) -> bool:
     return Roles.SECRETARY in get_active_roles(user)
 
 
+def user_is_student(user) -> bool:
+    """Return True when the user has an active Student assignment."""
+    return Roles.STUDENT in get_active_roles(user)
+
+
 def user_manages_branch(user, branch_id) -> bool:
     """
     Return True when the user is Super Admin or manages the given branch.

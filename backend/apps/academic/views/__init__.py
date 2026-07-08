@@ -68,6 +68,12 @@ from apps.academic.views.progress import (
     ProgressHistoryView,
     ProgressSummaryView,
 )
+from apps.academic.views.learning_material import (
+    MaterialListCreateView,
+    MaterialRetrieveUpdateView,
+    MaterialDeleteView,
+    MaterialDownloadView,
+)
 
 __all__ = [
     "ProgramListCreateView",
@@ -120,4 +126,8 @@ __all__ = [
     "UpdateProgressView",
     "ProgressHistoryView",
     "ProgressSummaryView",
+    "MaterialListCreateView",
+    "MaterialRetrieveUpdateView",
+    "MaterialDeleteView",
+    "MaterialDownloadView",
 ]

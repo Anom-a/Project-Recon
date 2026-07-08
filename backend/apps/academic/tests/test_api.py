@@ -1,3 +1,4 @@
+import os
 from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
@@ -16,6 +17,7 @@ from apps.academic.models import (
 )
 from apps.academic.services import program_service, class_service, admission_service, attendance_service
 from apps.academic.services import progress_service
+from apps.academic.services import learning_material_service
 from apps.academic.services.enrollment_period_service import (
     create_enrollment_period,
     deactivate_enrollment_period,
@@ -1436,3 +1438,246 @@ class ProgressAPITest(AcademicAPITestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+
+class LearningMaterialAPITest(AcademicAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.program = Program.objects.create(
+            name="Mat API Program", slug="mat-api-program",
+            supports_group=True, supports_individual=True,
+        )
+        self.sub_program = SubProgram.objects.create(
+            program=self.program, name="Mat API Sub", slug="mat-api-sub",
+            fee=Decimal("500.00"),
+        )
+        self.klass = class_service.create_class(
+            sub_program=self.sub_program, branch=self.branch,
+            instructor=self.instructor, name="API Mat Class",
+            class_type=ClassType.INDIVIDUAL,
+        )
+        self.student_user = user_service.create_student_user(
+            "api-mat-student@test.com", "API", "Student", self.password, self.branch,
+        )
+        user_service.activate_user(self.student_user)
+        self.student_model = Student.objects.create(
+            user=self.student_user, branch=self.branch, date_joined=date.today(),
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student_model, enrolled_class=self.klass,
+            status=EnrollmentStatus.ACTIVE,
+        )
+
+    def _create_temp_file(self, name="test.pdf"):
+        from io import BytesIO
+        from django.core.files.base import ContentFile
+        from PIL import Image
+        ext = os.path.splitext(name)[1].lower()
+        if ext == ".pdf":
+            content = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF"
+        elif ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
+            buf = BytesIO()
+            img = Image.new("RGB", (1, 1), color="red")
+            if ext in (".jpg", ".jpeg"):
+                img.save(buf, format="JPEG")
+            elif ext == ".png":
+                img.save(buf, format="PNG")
+            elif ext == ".gif":
+                img.save(buf, format="GIF")
+            elif ext == ".webp":
+                img.save(buf, format="WebP")
+            content = buf.getvalue()
+        elif ext == ".docx":
+            content = b"PK\x03\x04" + b"\x00" * 30
+        else:
+            content = b"test content"
+        return ContentFile(content, name=name)
+
+    def test_upload_as_super_admin(self):
+        self.authenticate_as_super_admin()
+        file = self._create_temp_file()
+        response = self.client.post(
+            f"{self.base_url}/learning-materials/",
+            {
+                "sub_program": str(self.sub_program.pk),
+                "title": "API Upload",
+                "file": file,
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertIn("id", response.json())
+        self.assertEqual(response.json()["material_type"], "PDF")
+
+    def test_upload_as_instructor(self):
+        self._authenticate(self.instructor)
+        file = self._create_temp_file()
+        response = self.client.post(
+            f"{self.base_url}/learning-materials/",
+            {
+                "sub_program": str(self.sub_program.pk),
+                "title": "Instructor Upload",
+                "file": file,
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 201)
+
+    def test_upload_unauthenticated_returns_401(self):
+        self.client.credentials()
+        file = self._create_temp_file()
+        response = self.client.post(
+            f"{self.base_url}/learning-materials/",
+            {
+                "sub_program": str(self.sub_program.pk),
+                "title": "No Auth",
+                "file": file,
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_upload_as_student_returns_403(self):
+        self.authenticate_as_student()
+        file = self._create_temp_file()
+        response = self.client.post(
+            f"{self.base_url}/learning-materials/",
+            {
+                "sub_program": str(self.sub_program.pk),
+                "title": "Student Upload",
+                "file": file,
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_list_materials(self):
+        self.authenticate_as_super_admin()
+        file = self._create_temp_file()
+        learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="List Test", file=file,
+        )
+        response = self.client.get(
+            f"{self.base_url}/learning-materials/"
+            f"?sub_program={self.sub_program.pk}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+
+    def test_retrieve_material(self):
+        self.authenticate_as_super_admin()
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="Retrieve Test", file=file,
+        )
+        response = self.client.get(
+            f"{self.base_url}/learning-materials/{material.pk}/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["title"], "Retrieve Test")
+
+    def test_update_material(self):
+        self.authenticate_as_super_admin()
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="Update Title", file=file,
+        )
+        response = self.client.patch(
+            f"{self.base_url}/learning-materials/{material.pk}/",
+            {"title": "Updated"},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["title"], "Updated")
+
+    def test_update_material_replaces_file(self):
+        self.authenticate_as_super_admin()
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="File Replace", file=file,
+        )
+        png_file = self._create_temp_file(name="new_image.png")
+        response = self.client.patch(
+            f"{self.base_url}/learning-materials/{material.pk}/",
+            {"file": png_file},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["material_type"], "IMAGE")
+
+    def test_delete_material(self):
+        self.authenticate_as_super_admin()
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="Delete Test", file=file,
+        )
+        response = self.client.post(
+            f"{self.base_url}/learning-materials/{material.pk}/delete/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["is_active"])
+
+    def test_download_material(self):
+        self.authenticate_as_super_admin()
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="Download Test", file=file,
+        )
+        response = self.client.get(
+            f"{self.base_url}/learning-materials/{material.pk}/download/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response["Content-Disposition"].endswith('.pdf"'),
+        )
+
+    def test_download_deleted_material_returns_404(self):
+        self.authenticate_as_super_admin()
+        file = self._create_temp_file()
+        material = learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="Gone", file=file,
+        )
+        learning_material_service.delete_material(self.super_admin, material)
+        response = self.client.get(
+            f"{self.base_url}/learning-materials/{material.pk}/download/"
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_student_can_view_enrolled_sub_program_materials(self):
+        file = self._create_temp_file()
+        learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="Student Visible", file=file,
+        )
+        self._authenticate(self.student_user)
+        response = self.client.get(
+            f"{self.base_url}/learning-materials/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+
+    def test_student_cannot_view_unenrolled_sub_program_materials(self):
+        other_program = Program.objects.create(
+            name="Other API", slug="other-api",
+        )
+        other_sub = SubProgram.objects.create(
+            program=other_program, name="Other API Sub", slug="other-api-sub",
+            fee=Decimal("400.00"),
+        )
+        file = self._create_temp_file()
+        learning_material_service.upload_material(
+            actor=self.super_admin, sub_program=other_sub,
+            title="Hidden From Student", file=file,
+        )
+        self._authenticate(self.student_user)
+        response = self.client.get(
+            f"{self.base_url}/learning-materials/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 0)

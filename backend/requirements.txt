@@ -2,6 +2,7 @@ Django>=5.0,<6.0
 psycopg2-binary
 django-environ
 Pillow
+python-magic
 djangorestframework
 djangorestframework-simplejwt
 drf-spectacular
