@@ -147,6 +147,7 @@ def create_certificate(
     return cert
 
 
+@transaction.atomic
 def update_certificate(
     actor, certificate, *, title=None, body_text=None,
     background=None, institute_logo=None, signature=None,

@@ -3,6 +3,7 @@ from io import BytesIO
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from PIL import Image
 
@@ -143,6 +144,7 @@ def upload_material(actor, *, sub_program, title, file, description=""):
     return material
 
 
+@transaction.atomic
 def update_material(actor, material, *, title=None, description=None, file=None):
     _validate_owner_access(actor, material)
 

@@ -1,6 +1,9 @@
 import logging
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.shortcuts import get_object_or_404
+
+logger = logging.getLogger(__name__)
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
@@ -48,7 +51,7 @@ class CashPaymentCreateView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
-        enrollment = Enrollment.objects.get(pk=data.pop("enrollment"))
+        enrollment = get_object_or_404(Enrollment, pk=data.pop("enrollment"))
 
         try:
             payment = create_cash_payment(

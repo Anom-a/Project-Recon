@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
@@ -37,6 +38,9 @@ class BaseReportView(generics.GenericAPIView):
         return serializer.validated_data
 
 
+@extend_schema_view(
+    get=extend_schema(summary="Student Academic Report (PDF)", tags=["Academic - Reports"]),
+)
 class StudentAcademicReportView(BaseReportView):
     permission_classes = [IsAuthenticated, CanViewReport]
 
@@ -48,6 +52,9 @@ class StudentAcademicReportView(BaseReportView):
         return self.get_pdf_response(pdf_bytes, f"academic_report_{name}")
 
 
+@extend_schema_view(
+    get=extend_schema(summary="Enrollment History Report (PDF)", tags=["Academic - Reports"]),
+)
 class EnrollmentReportView(BaseReportView):
     permission_classes = [IsAuthenticated, CanViewReport]
 
@@ -59,6 +66,9 @@ class EnrollmentReportView(BaseReportView):
         return self.get_pdf_response(pdf_bytes, f"enrollment_history_{name}")
 
 
+@extend_schema_view(
+    get=extend_schema(summary="Attendance Summary Report (PDF)", tags=["Academic - Reports"]),
+)
 class AttendanceReportView(BaseReportView):
     permission_classes = [IsAuthenticated, CanViewReport]
 
@@ -73,6 +83,9 @@ class AttendanceReportView(BaseReportView):
         return self.get_pdf_response(pdf_bytes, f"attendance_summary_{name}")
 
 
+@extend_schema_view(
+    get=extend_schema(summary="Learning Progress Report (PDF)", tags=["Academic - Reports"]),
+)
 class ProgressReportView(BaseReportView):
     permission_classes = [IsAuthenticated, CanViewReport]
 
@@ -87,6 +100,9 @@ class ProgressReportView(BaseReportView):
         return self.get_pdf_response(pdf_bytes, f"progress_summary_{name}")
 
 
+@extend_schema_view(
+    get=extend_schema(summary="Certificate Report (PDF)", tags=["Academic - Reports"]),
+)
 class CertificateReportView(BaseReportView):
     permission_classes = [IsAuthenticated, CanViewReport]
 
@@ -98,6 +114,9 @@ class CertificateReportView(BaseReportView):
         return self.get_pdf_response(pdf_bytes, f"certificates_{name}")
 
 
+@extend_schema_view(
+    get=extend_schema(summary="Class Report (PDF)", tags=["Academic - Reports"]),
+)
 class ClassReportView(BaseReportView):
     permission_classes = [IsAuthenticated, CanViewStaffReport]
 
@@ -109,6 +128,9 @@ class ClassReportView(BaseReportView):
         return self.get_pdf_response(pdf_bytes, filename)
 
 
+@extend_schema_view(
+    get=extend_schema(summary="Sub Program Report (PDF)", tags=["Academic - Reports"]),
+)
 class SubProgramReportView(BaseReportView):
     permission_classes = [IsAuthenticated, CanViewStaffReport]
 
@@ -120,6 +142,9 @@ class SubProgramReportView(BaseReportView):
         return self.get_pdf_response(pdf_bytes, filename)
 
 
+@extend_schema_view(
+    get=extend_schema(summary="Program Report (PDF)", tags=["Academic - Reports"]),
+)
 class ProgramReportView(BaseReportView):
     permission_classes = [IsAuthenticated, CanViewStaffReport]
 

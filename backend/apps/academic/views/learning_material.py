@@ -151,13 +151,15 @@ class MaterialDownloadView(generics.GenericAPIView):
             )
 
         file_path = material.file.path
-        if not os.path.exists(file_path):
+        try:
+            f = open(file_path, "rb")
+        except FileNotFoundError:
             return Response(
                 {"detail": "File not found on disk."}, status=status.HTTP_404_NOT_FOUND
             )
 
         response = FileResponse(
-            open(file_path, "rb"),
+            f,
             as_attachment=True,
             filename=os.path.basename(material.file.name),
         )

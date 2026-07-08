@@ -50,7 +50,7 @@ class SessionListCreateView(generics.ListCreateAPIView):
         )
 
     def perform_create(self, serializer):
-        enrolled_class = ClassModel.objects.get(pk=serializer.validated_data["enrolled_class"])
+        enrolled_class = get_object_or_404(ClassModel, pk=serializer.validated_data["enrolled_class"])
         try:
             session = create_session(
                 actor=self.request.user,

@@ -17,7 +17,7 @@ class LearningMilestone(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

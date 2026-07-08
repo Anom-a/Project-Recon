@@ -10,13 +10,13 @@ class StaffAttendanceSession(models.Model):
     branch = models.ForeignKey(
         "accounts.Branch", on_delete=models.PROTECT, related_name="staff_attendance_sessions"
     )
-    date = models.DateField()
-    status = models.CharField(max_length=10, choices=SessionStatus.choices, default=SessionStatus.DRAFT)
+    date = models.DateField(db_index=True)
+    status = models.CharField(max_length=10, choices=SessionStatus.choices, default=SessionStatus.DRAFT, db_index=True)
     notes = models.TextField(blank=True, default="")
     created_by = models.ForeignKey(
         "accounts.User", on_delete=models.PROTECT, related_name="created_attendance_sessions"
     )
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -37,7 +37,7 @@ class StaffAttendanceRecord(models.Model):
     staff_member = models.ForeignKey(
         "accounts.User", on_delete=models.PROTECT, related_name="attendance_records"
     )
-    status = models.CharField(max_length=10, choices=AttendanceStatus.choices)
+    status = models.CharField(max_length=10, choices=AttendanceStatus.choices, db_index=True)
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

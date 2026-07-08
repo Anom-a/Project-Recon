@@ -13,11 +13,12 @@ class Enrollment(models.Model):
     enrolled_class = models.ForeignKey(
         "academic.Class", on_delete=models.PROTECT, related_name="enrollments"
     )
-    enrolled_at = models.DateTimeField(auto_now_add=True)
+    enrolled_at = models.DateTimeField(auto_now_add=True, db_index=True)
     status = models.CharField(
         max_length=20,
         choices=EnrollmentStatus.choices,
         default=EnrollmentStatus.PENDING_PAYMENT,
+        db_index=True,
     )
     remarks = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)

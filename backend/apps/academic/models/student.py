@@ -11,11 +11,11 @@ class Student(models.Model):
     branch = models.ForeignKey(
         "accounts.Branch", on_delete=models.PROTECT, related_name="students"
     )
-    date_joined = models.DateField()
+    date_joined = models.DateField(db_index=True)
     guardian_name = models.CharField(max_length=255, blank=True, default="")
     guardian_phone = models.CharField(max_length=20, blank=True, default="")
     guardian_email = models.EmailField(blank=True, default="")
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -188,6 +188,22 @@ class SubProgramServiceTest(TestCase):
         sub.refresh_from_db()
         self.assertTrue(sub.is_active)
 
+    def test_create_sub_program_negative_fee_raises_error(self):
+        with self.assertRaises(DjangoValidationError):
+            program_service.create_sub_program(
+                program=self.program,
+                name="Bad",
+                slug="bad",
+                fee=-100.00,
+            )
+
+    def test_update_sub_program_negative_fee_raises_error(self):
+        sub = program_service.create_sub_program(
+            program=self.program, name="Python", slug="python", fee=500.00
+        )
+        with self.assertRaises(DjangoValidationError):
+            program_service.update_sub_program(sub, fee=-50.00)
+
 
 class ClassServiceTest(TestCase):
     def setUp(self):

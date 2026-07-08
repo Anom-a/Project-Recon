@@ -3,6 +3,7 @@ from datetime import date
 from io import BytesIO
 
 from django.conf import settings
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 
 from reportlab.lib import colors
@@ -586,13 +587,15 @@ def generate_class_report(class_id):
         items.append(Spacer(1, 6))
 
     # Attendance sessions
-    sessions = AttendanceSession.objects.filter(enrolled_class=klass).order_by("-session_date")
+    sessions = AttendanceSession.objects.filter(enrolled_class=klass).annotate(
+        record_count=Count("records")
+    ).order_by("-session_date")
     if sessions.exists():
         items.append(Paragraph("Attendance Sessions", _section_style()))
         headers = ["Date", "Topic", "Recorded By", "Records"]
         rows = []
         for s in sessions:
-            record_count = AttendanceRecord.objects.filter(attendance_session=s).count()
+            record_count = s.record_count
             recorder = f"{s.recorded_by.first_name} {s.recorded_by.last_name}".strip() or str(s.recorded_by.email)
             rows.append(
                 [
@@ -639,6 +642,7 @@ def generate_sub_program_report(sub_program_id):
 
     classes = list(
         Class.objects.filter(sub_program=sub).select_related("branch", "instructor")
+        .annotate(enrollment_count=Count("enrollments"))
         .order_by("name")
     )
     if classes:
@@ -646,7 +650,7 @@ def generate_sub_program_report(sub_program_id):
         headers = ["Name", "Branch", "Instructor", "Type", "Capacity", "Enrollments", "Active"]
         rows = []
         for c in classes:
-            enroll_count = Enrollment.objects.filter(enrolled_class=c).count()
+            enroll_count = c.enrollment_count
             rows.append(
                 [
                     c.name,
@@ -692,15 +696,18 @@ def generate_program_report(program_id):
     items.append(Spacer(1, 6))
 
     subs = list(
-        SubProgram.objects.filter(program=prog).order_by("name")
+        SubProgram.objects.filter(program=prog).annotate(
+            class_count=Count("classes", distinct=True),
+            total_enrollments=Count("classes__enrollments", distinct=True),
+        ).order_by("name")
     )
     if subs:
         items.append(Paragraph(f"Sub Programs ({len(subs)})", _section_style()))
         headers = ["Name", "Fee", "Duration", "Classes", "Total Enrollments"]
         rows = []
         for s in subs:
-            class_count = Class.objects.filter(sub_program=s).count()
-            total_enrollments = Enrollment.objects.filter(enrolled_class__sub_program=s).count()
+            class_count = s.class_count
+            total_enrollments = s.total_enrollments
             rows.append(
                 [
                     s.name,

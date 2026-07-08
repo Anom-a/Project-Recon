@@ -276,6 +276,29 @@ class SubProgramAPITest(AcademicAPITestCase):
         sub.refresh_from_db()
         self.assertFalse(sub.is_active)
 
+    def test_create_sub_program_negative_fee_returns_400(self):
+        self.authenticate_as_super_admin()
+        data = {
+            "program": str(self.program.pk),
+            "name": "Bad",
+            "slug": "bad",
+            "fee": "-100.00",
+        }
+        response = self.client.post(f"{self.base_url}/sub-programs/", data, format="json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_update_sub_program_negative_fee_returns_400(self):
+        self.authenticate_as_super_admin()
+        sub = program_service.create_sub_program(
+            program=self.program, name="Python", slug="python", fee=500.00
+        )
+        response = self.client.patch(
+            f"{self.base_url}/sub-programs/{sub.pk}/",
+            {"fee": "-50.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 class ClassAPITest(AcademicAPITestCase):
     def setUp(self):

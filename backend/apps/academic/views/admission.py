@@ -8,6 +8,8 @@ from apps.academic.services.admission_service import (
     admit_student,
     
 )
+from django.shortcuts import get_object_or_404
+
 from apps.accounts.models import Branch
 
 
@@ -23,7 +25,7 @@ class AdmitStudentView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
-        branch = Branch.objects.get(pk=data.pop("branch"))
+        branch = get_object_or_404(Branch, pk=data.pop("branch"))
 
         student = admit_student(
             **data,

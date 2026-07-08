@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 
 from apps.academic.constants import SessionStatus
 from apps.academic.models import StaffAttendanceSession, StaffAttendanceRecord
@@ -101,25 +102,26 @@ def upsert_records(actor, session, records_data):
 
     from apps.accounts.models import User
 
-    created = []
-    for item in records_data:
-        staff_member = item["staff_member"]
-        if not isinstance(staff_member, User):
-            staff_member = User.objects.get(pk=staff_member)
-        record, _ = StaffAttendanceRecord.objects.update_or_create(
-            session=session,
-            staff_member=staff_member,
-            defaults={"status": item["status"], "notes": item.get("notes", "")},
+    with transaction.atomic():
+        created = []
+        for item in records_data:
+            staff_member = item["staff_member"]
+            if not isinstance(staff_member, User):
+                staff_member = User.objects.get(pk=staff_member)
+            record, _ = StaffAttendanceRecord.objects.update_or_create(
+                session=session,
+                staff_member=staff_member,
+                defaults={"status": item["status"], "notes": item.get("notes", "")},
+            )
+            created.append(record)
+        log_action(
+            actor=actor,
+            action="STAFF_ATTENDANCE_RECORDS_UPSERTED",
+            resource_type="StaffAttendanceSession",
+            resource_id=session.id,
+            branch=session.branch,
         )
-        created.append(record)
-    log_action(
-        actor=actor,
-        action="STAFF_ATTENDANCE_RECORDS_UPSERTED",
-        resource_type="StaffAttendanceSession",
-        resource_id=session.id,
-        branch=session.branch,
-    )
-    return created
+        return created
 
 
 def get_record_or_404(pk):

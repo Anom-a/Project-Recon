@@ -12,18 +12,19 @@ class EnrollmentPayment(models.Model):
         "academic.Enrollment", on_delete=models.PROTECT, related_name="payment"
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices)
+    payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices, db_index=True)
     payment_provider = models.CharField(
         max_length=10, choices=PaymentProvider.choices, null=True, blank=True
     )
     transaction_reference = models.CharField(
         max_length=255, null=True, blank=True, db_index=True
     )
-    payment_date = models.DateTimeField(null=True, blank=True)
+    payment_date = models.DateTimeField(null=True, blank=True, db_index=True)
     status = models.CharField(
         max_length=20,
         choices=PaymentStatus.choices,
         default=PaymentStatus.PENDING,
+        db_index=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

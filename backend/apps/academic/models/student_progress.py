@@ -20,6 +20,7 @@ class StudentProgress(models.Model):
         max_length=20,
         choices=ProgressStatus.choices,
         default=ProgressStatus.NOT_STARTED,
+        db_index=True,
     )
     completed_at = models.DateTimeField(null=True, blank=True)
     remarks = models.TextField(blank=True, default="")

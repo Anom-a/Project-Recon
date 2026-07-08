@@ -1,9 +1,15 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.shortcuts import get_object_or_404
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import generics, status
+from rest_framework import filters, generics, status
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+
+
+class EnrollmentPagination(PageNumberPagination):
+    page_size = 20
 
 from apps.academic.models import Student
 from apps.academic.models.class_model import Class as ClassModel
@@ -30,11 +36,22 @@ from apps.academic.services.enrollment_service import (
 )
 class EnrollmentListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAcademicStaff]
+    pagination_class = EnrollmentPagination
 
     def get_serializer_class(self):
         if self.request.method == "GET":
             return EnrollmentListSerializer
         return EnrollStudentSerializer
+
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        "student__user__first_name",
+        "student__user__last_name",
+        "student__user__email",
+        "enrolled_class__name",
+    ]
+    ordering_fields = ["enrolled_at", "status"]
+    ordering = ["-enrolled_at"]
 
     def get_queryset(self):
         return list_enrollments()
@@ -43,8 +60,8 @@ class EnrollmentListCreateView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        student = Student.objects.get(pk=data.pop("student"))
-        enrolled_class = ClassModel.objects.get(pk=data.pop("enrolled_class"))
+        student = get_object_or_404(Student, pk=data.pop("student"))
+        enrolled_class = get_object_or_404(ClassModel, pk=data.pop("enrolled_class"))
         try:
             enrollment = enroll_student(
                 request.user,
@@ -104,9 +121,10 @@ class OnlineEnrollmentView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
-        enrolled_class = ClassModel.objects.select_related(
-            "sub_program__program", "branch"
-        ).get(pk=data.pop("enrolled_class"))
+        enrolled_class = get_object_or_404(
+            ClassModel.objects.select_related("sub_program__program", "branch"),
+            pk=data.pop("enrolled_class"),
+        )
         callback_url = data.pop("callback_url")
         return_url = data.pop("return_url", None)
 

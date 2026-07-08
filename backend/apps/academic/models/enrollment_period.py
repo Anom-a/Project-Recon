@@ -16,12 +16,12 @@ class EnrollmentPeriod(models.Model):
     sub_program = models.ForeignKey(
         "academic.SubProgram", on_delete=models.PROTECT, related_name="enrollment_periods"
     )
-    class_type = models.CharField(max_length=10, choices=ClassType.choices)
+    class_type = models.CharField(max_length=10, choices=ClassType.choices, db_index=True)
     class_period = models.CharField(max_length=10, choices=ClassPeriod.choices, null=True, blank=True)
     title = models.CharField(max_length=255)
-    start_date = models.DateField()
-    end_date = models.DateField()
-    is_active = models.BooleanField(default=True)
+    start_date = models.DateField(db_index=True)
+    end_date = models.DateField(db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
