@@ -41,7 +41,10 @@ export const cmsPublicApi = {
   getPartners: () => http.get<CmsPartnerResponse[]>('/cms/partners/'),
   getAboutUs: () => http.get<AboutUsResponse[]>('/cms/about/'),
   getAboutUsDetail: (slug: string) => http.get<AboutUsResponse>(`/cms/about/${slug}/`),
-  getFaqs: () => http.get<FaqResponse[]>('/cms/faqs/'),
+  getFaqs: async () => {
+    const res = await http.get<FaqResponse[] | { results: FaqResponse[] }>('/cms/faqs/');
+    return Array.isArray(res) ? res : (res.results ?? []);
+  },
   submitContactRequest: (data: { name: string; email: string; subject?: string; description: string }) => 
     http.post('/cms/contact-requests/', data),
 };

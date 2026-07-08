@@ -48,7 +48,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
       .catch(console.error);
     
     cmsPublicApi.getFaqs()
-      .then(data => setFaqs(data.filter(f => f.is_active).sort((a, b) => a.order - b.order)))
+      .then(data => setFaqs(data.filter(f => f.is_active).sort((a, b) => (a.order ?? 999) - (b.order ?? 999))))
       .catch(console.error);
 
     setProgramsLoading(true);
