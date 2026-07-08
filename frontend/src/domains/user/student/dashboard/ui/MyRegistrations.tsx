@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Calendar, ChevronDown, Download, Filter, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react';
-import { ROBOTICS_PROGRAMS } from '@/src/shared/constants/mock-data';
+import { Search, Calendar, ChevronDown, Download, Filter, CheckCircle, Clock, XCircle, AlertCircle, Eye, X } from 'lucide-react';
 
 const MOCK_REGISTRATIONS = [
   { id: 'REG-001', program: 'VEX Robotics Competition', level: 'Advanced', date: '2026-09-15', fee: 2500, status: 'confirmed', type: 'Competition' },
@@ -27,22 +26,27 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
 export default function MyRegistrations() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [registrations, setRegistrations] = useState(MOCK_REGISTRATIONS);
 
-  const filtered = MOCK_REGISTRATIONS.filter(r => {
+  const filtered = registrations.filter(r => {
     const matchSearch = r.program.toLowerCase().includes(search.toLowerCase()) || r.id.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || r.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const totalFee = MOCK_REGISTRATIONS.filter(r => r.status === 'confirmed' || r.status === 'pending').reduce((sum, r) => sum + r.fee, 0);
+  const cancelRegistration = (id: string) => {
+    setRegistrations(prev => prev.map(r => r.id === id ? { ...r, status: 'cancelled' as const } : r));
+  };
+
+  const totalFee = registrations.filter(r => r.status === 'confirmed' || r.status === 'pending').reduce((sum, r) => sum + r.fee, 0);
 
   return (
     <div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total Registrations', value: MOCK_REGISTRATIONS.length.toString(), color: 'text-brand-blue' },
-          { label: 'Confirmed', value: MOCK_REGISTRATIONS.filter(r => r.status === 'confirmed').length.toString(), color: 'text-emerald-600' },
-          { label: 'Pending', value: MOCK_REGISTRATIONS.filter(r => r.status === 'pending').length.toString(), color: 'text-amber-600' },
+          { label: 'Total Registrations', value: registrations.length.toString(), color: 'text-brand-blue' },
+          { label: 'Confirmed', value: registrations.filter(r => r.status === 'confirmed').length.toString(), color: 'text-emerald-600' },
+          { label: 'Pending', value: registrations.filter(r => r.status === 'pending').length.toString(), color: 'text-amber-600' },
           { label: 'Total Fees', value: `ETB ${totalFee.toLocaleString()}`, color: 'text-brand-red' },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-brand-border rounded-xl px-4 py-3">
@@ -87,6 +91,7 @@ export default function MyRegistrations() {
                 <th className="text-left px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Date</th>
                 <th className="text-right px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Fee (ETB)</th>
                 <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -108,11 +113,19 @@ export default function MyRegistrations() {
                         {reg.status.charAt(0).toUpperCase() + reg.status.slice(1)}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button className="p-1 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50" title="View details"><Eye className="w-3.5 h-3.5" /></button>
+                        {reg.status !== 'cancelled' && (
+                          <button onClick={() => cancelRegistration(reg.id)} className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50" title="Cancel registration"><X className="w-3.5 h-3.5" /></button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-8 text-xs text-slate-400">No registrations found</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-xs text-slate-400">No registrations found</td></tr>
               )}
             </tbody>
           </table>
