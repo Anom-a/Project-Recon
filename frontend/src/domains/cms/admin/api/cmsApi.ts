@@ -36,13 +36,15 @@ function withUiAliases<T>(endpoint: string, item: T): T {
     record.imageUrl = record.image;
     record.linkUrl = record.button_url;
     record.isActive = record.is_active;
-    record.priority = 0;
+    record.priority = record.order ?? 0;
   }
   if (endpoint === 'news') {
     record.subtitle = record.summary;
     record.imageUrl = record.image;
     record.category = record.type;
     record.publishedAt = record.published_at;
+    record.author = record.author;
+    record.tags = record.tags;
     record.isActive = record.is_active;
   }
   if (endpoint === 'partners') {
@@ -50,15 +52,17 @@ function withUiAliases<T>(endpoint: string, item: T): T {
     record.logoUrl = record.image;
     record.websiteUrl = record.website_url;
     record.isActive = record.is_active;
-    record.priority = 0;
+    record.priority = record.order ?? 0;
   }
   if (endpoint === 'about') {
     record.content = record.description;
+    record.imageUrl = record.image;
     record.isActive = record.is_active;
   }
   if (endpoint === 'faqs') {
     record.isActive = record.is_active;
-    record.priority = 0;
+    record.category = record.category;
+    record.priority = record.order ?? 0;
   }
   if (endpoint === 'contact-requests') {
     record.message = record.description;
@@ -82,6 +86,7 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
       button_url: source.linkUrl ?? source.button_url ?? null,
       button_text: source.button_text ?? null,
       video_url: source.video_url ?? null,
+      order: source.priority ?? 0,
       is_active: source.isActive ?? source.is_active ?? true,
     };
   }
@@ -97,6 +102,8 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
       button_text: source.button_text ?? null,
       button_url: source.button_url ?? null,
       type: source.category === 'ANNOUNCEMENT' ? 'ANNOUNCEMENT' : source.type ?? 'NEWS',
+      author: source.author ?? null,
+      tags: source.tags ?? null,
       is_active: source.isActive ?? source.is_active ?? true,
       published_at: source.publishedAt ?? source.published_at ?? null,
     };
@@ -109,6 +116,7 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
       image: source.logoUrl ?? source.image ?? null,
       website_url: source.websiteUrl ?? source.website_url ?? null,
       type: source.type ?? 'PARTNER',
+      order: source.priority ?? 0,
       is_active: source.isActive ?? source.is_active ?? true,
     };
   }
@@ -118,6 +126,9 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
       title: source.title,
       slug: source.slug || String(source.title ?? '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
       description: source.content ?? source.description ?? '',
+      image: source.imageUrl ?? null,
+      mission: source.mission ?? null,
+      vision: source.vision ?? null,
       is_active: source.isActive ?? source.is_active ?? true,
     };
   }
@@ -126,6 +137,8 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
     return {
       question: source.question,
       answer: source.answer,
+      category: source.category ?? null,
+      order: source.priority ?? 0,
       is_active: source.isActive ?? source.is_active ?? true,
     };
   }
@@ -142,8 +155,9 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
 
 export const api = {
   getAll: async <T>(endpoint: string): Promise<T[]> => {
-    const res = await http.get<{ results: T[] }>(`${PREFIX}/${endpoint}/`);
-    return res.results.map(item => withUiAliases(endpoint, item));
+    const res = await http.get<{ results: T[] } | T[]>(`${PREFIX}/${endpoint}/`);
+    const items = Array.isArray(res) ? res : (res.results ?? []);
+    return items.map(item => withUiAliases(endpoint, item));
   },
   create: async (endpoint: string, data: unknown) => {
     return http.post(`${PREFIX}/${endpoint}/`, toBackendPayload(endpoint, data));

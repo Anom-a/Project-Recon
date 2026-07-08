@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Building, Plus, Edit2, Trash2, X, Globe, Lock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Building, Plus, Edit2, Trash2, X, Globe, Lock, Search } from 'lucide-react';
 import { api, AboutUs } from '../api/cmsApi';
 import type { Toast } from './CmsDashboard';
 
@@ -14,6 +14,8 @@ export default function AboutUsManager({ addToast }: Props) {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<AboutUs> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => { load(); }, []);
 
@@ -24,12 +26,28 @@ export default function AboutUsManager({ addToast }: Props) {
     setLoading(false);
   };
 
-  const openCreate = () => setEditing({ ...emptyForm() });
-  const openEdit = (item: AboutUs) => setEditing({ ...item });
-  const closeForm = () => setEditing(null);
+  const filtered = useMemo(() => {
+    if (!search) return items;
+    const q = search.toLowerCase();
+    return items.filter(item =>
+      item.title.toLowerCase().includes(q) ||
+      item.content?.toLowerCase().includes(q)
+    );
+  }, [items, search]);
+
+  const openCreate = () => { setEditing({ ...emptyForm() }); setFormErrors({}); };
+  const openEdit = (item: AboutUs) => { setEditing({ ...item }); setFormErrors({}); };
+  const closeForm = () => { setEditing(null); setFormErrors({}); };
+
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!editing?.title?.trim()) errors.title = 'Title is required';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const save = async () => {
-    if (!editing) return;
+    if (!editing || !validate()) return;
     setSaving(true);
     try {
       if (editing.id) {
@@ -58,22 +76,37 @@ export default function AboutUsManager({ addToast }: Props) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
-      <div className="flex items-center justify-between p-4 border-b border-slate-200">
-        <h2 className="font-bold text-slate-800">About Us Sections</h2>
+      <div className="flex items-center justify-between p-4 border-b border-slate-200 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <h2 className="font-bold text-slate-800">About Us Sections</h2>
+          {!loading && <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{filtered.length} / {items.length}</span>}
+        </div>
         <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold text-white bg-brand-red hover:bg-red-700">
           <Plus className="w-3.5 h-3.5" /> Add Section
         </button>
       </div>
 
+      <div className="p-3 border-b border-slate-100">
+        <div className="relative max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search sections..."
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red/30" />
+        </div>
+      </div>
+
       {loading ? (
         <div className="p-8 text-center text-sm text-slate-400">Loading...</div>
-      ) : items.length === 0 ? (
-        <div className="p-8 text-center text-sm text-slate-400">No about sections yet</div>
+      ) : filtered.length === 0 ? (
+        <div className="p-8 text-center text-sm text-slate-400">
+          {items.length === 0 ? 'No about sections yet' : 'No sections match your search'}
+        </div>
       ) : (
         <div className="divide-y divide-slate-100">
-          {items.map(item => (
+          {filtered.map(item => (
             <div key={item.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors">
-              <Building className="w-5 h-5 text-slate-400 shrink-0" />
+              <div className="w-10 h-10 rounded-xl bg-slate-100 shrink-0 flex items-center justify-center overflow-hidden">
+                {item.imageUrl ? <img src={item.imageUrl} alt="" className="w-full h-full object-cover" /> : <Building className="w-5 h-5 text-slate-400" />}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-slate-800 truncate">{item.title}</p>
                 <p className="text-xs text-slate-400 truncate line-clamp-1">{item.content}</p>
@@ -96,8 +129,13 @@ export default function AboutUsManager({ addToast }: Props) {
               <button onClick={closeForm} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-4 flex flex-col gap-3">
-              <Field label="Title" value={editing.title ?? ''} onChange={v => setEditing({ ...editing, title: v })} />
+              <Field label="Title" value={editing.title ?? ''} onChange={v => { setEditing({ ...editing, title: v }); if (formErrors.title) setFormErrors(prev => ({ ...prev, title: '' })); }} error={formErrors.title} required />
               <Field label="Image URL" value={editing.imageUrl ?? ''} onChange={v => setEditing({ ...editing, imageUrl: v })} />
+              {editing.imageUrl && (
+                <div className="rounded-xl overflow-hidden border border-slate-200">
+                  <img src={editing.imageUrl} alt="" className="w-full h-32 object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </div>
+              )}
               <Textarea label="Content" value={editing.content ?? ''} onChange={v => setEditing({ ...editing, content: v })} />
               <Textarea label="Mission" value={editing.mission ?? ''} onChange={v => setEditing({ ...editing, mission: v })} />
               <Textarea label="Vision" value={editing.vision ?? ''} onChange={v => setEditing({ ...editing, vision: v })} />
@@ -120,22 +158,30 @@ export default function AboutUsManager({ addToast }: Props) {
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Field({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
   return (
     <div>
-      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{label}</label>
+      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+        {label}
+        {required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
       <input value={value} onChange={e => onChange(e.target.value)}
-        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/30" />
+        className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
 
-function Textarea({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Textarea({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
   return (
     <div>
-      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{label}</label>
+      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+        {label}
+        {required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
       <textarea value={value} onChange={e => onChange(e.target.value)} rows={4}
-        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/30 resize-none" />
+        className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-none ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
