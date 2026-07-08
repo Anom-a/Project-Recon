@@ -179,6 +179,14 @@ export async function fetchAttendanceRecordsApi(sessionId: string): Promise<Atte
   catch { return []; }
 }
 
+export async function createAttendanceSessionApi(payload: { enrolled_class: string; session_date: string; topic?: string }): Promise<AttendanceSession> {
+  return http.post<AttendanceSession>(`${BASE}/attendance/sessions/`, payload);
+}
+
+export async function recordBulkAttendanceApi(sessionId: string, records: { enrollment: string; status: string; remarks?: string }[]): Promise<any> {
+  return http.post(`${BASE}/attendance/sessions/${sessionId}/records/`, { records });
+}
+
 // ─── Milestones & Progress ───
 export async function fetchMilestonesApi(subProgramId: string): Promise<LearningMilestone[]> {
   try { return unwrapList(await http.get<ListResponse<LearningMilestone>>(`${BASE}/learning-milestones/?sub_program=${subProgramId}`)); }
@@ -188,6 +196,10 @@ export async function fetchMilestonesApi(subProgramId: string): Promise<Learning
 export async function fetchStudentProgressApi(enrollmentId: string): Promise<StudentProgress[]> {
   try { return unwrapList(await http.get<ListResponse<StudentProgress>>(`${BASE}/student-progress/enrollments/${enrollmentId}/history/`)); }
   catch { return []; }
+}
+
+export async function updateStudentProgressApi(id: string, payload: { status: string; remarks?: string }): Promise<StudentProgress> {
+  return http.patch<StudentProgress>(`${BASE}/student-progress/${id}/`, payload);
 }
 
 // ─── Learning Materials ───

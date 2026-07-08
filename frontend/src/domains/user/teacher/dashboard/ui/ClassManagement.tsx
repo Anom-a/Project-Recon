@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Users, Search, X, CheckCircle2, Clock, UserCheck, AlertCircle } from 'lucide-react';
+import { Users, Search, X, CheckCircle2, Clock, UserCheck, AlertCircle, Calendar, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { createAttendanceSessionApi, recordBulkAttendanceApi } from '@/src/domains/learning/academics/api/academicApi';
 
 interface Props {
   students: any[];
@@ -10,7 +11,10 @@ interface Props {
 export default function ClassManagement({ students, enrollments }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [attended, setAttended] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const selectedDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   const toggleAttendance = (id: string) => {
     setAttended(prev => {
@@ -18,6 +22,32 @@ export default function ClassManagement({ students, enrollments }: Props) {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+    setSaved(false);
+  };
+
+  const recordAttendance = async () => {
+    const enrolledStudents = students.filter(s => enrollments.some(e => e.student === s.id));
+    if (enrolledStudents.length === 0) return;
+    setSaving(true);
+    try {
+      const session = await createAttendanceSessionApi({
+        enrolled_class: enrollments[0]?.enrolled_class || '',
+        session_date: todayStr,
+        topic: 'Daily Attendance',
+      });
+      const records = Array.from(attended).map(studentId => {
+        const enrollment = enrollments.find(e => e.student === studentId);
+        return { enrollment: enrollment?.id || '', status: 'PRESENT' };
+      });
+      if (records.length > 0) {
+        await recordBulkAttendanceApi(session.id, records);
+      }
+      setSaved(true);
+    } catch (e) {
+      console.error('Failed to record attendance', e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const displayList = students.map(s => ({
@@ -39,26 +69,34 @@ export default function ClassManagement({ students, enrollments }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Students', value: totalCount, icon: Users, color: 'text-[#2563EB]', bg: 'bg-blue-50', border: 'border-blue-200' },
-          { label: 'Present Today', value: attendedCount, icon: UserCheck, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-          { label: 'Absent', value: absentCount, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
-          { label: 'Attendance Rate', value: `${attendancePct}%`, icon: CheckCircle2, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
-        ].map((stat, i) => (
-          <motion.div key={stat.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-            className={`bg-white rounded-2xl p-5 shadow-sm border ${stat.border} flex items-center gap-3`}
-          >
-            <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center shrink-0`}>
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
-            </div>
-            <div>
-              <p className="font-mono text-[9px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
-              <p className="font-display font-extrabold text-xl text-slate-900">{stat.value}</p>
-            </div>
-          </motion.div>
-        ))}
+      <div className="flex items-center justify-between">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+          {[
+            { label: 'Total Students', value: totalCount, icon: Users, color: 'text-[#2563EB]', bg: 'bg-blue-50', border: 'border-blue-200' },
+            { label: 'Present Today', value: attendedCount, icon: UserCheck, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+            { label: 'Absent', value: absentCount, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
+            { label: 'Attendance Rate', value: `${attendancePct}%`, icon: CheckCircle2, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
+          ].map((stat, i) => (
+            <motion.div key={stat.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              className={`bg-white rounded-2xl p-5 shadow-sm border ${stat.border} flex items-center gap-3`}
+            >
+              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center shrink-0`}>
+                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+              </div>
+              <div>
+                <p className="font-mono text-[9px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                <p className="font-display font-extrabold text-xl text-slate-900">{stat.value}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
+
+      {saved && (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-xs text-emerald-700">
+          <CheckCircle2 className="w-4 h-4" /> Attendance recorded successfully
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-brand-border-light/60 shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-brand-border-light/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -69,18 +107,26 @@ export default function ClassManagement({ students, enrollments }: Props) {
               <span className="font-sans text-xs text-slate-500">{selectedDate}</span>
             </div>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input type="text" placeholder="Search students..." value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-brand-border-light rounded-xl text-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 transition-all"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
-                <X className="w-4 h-4" />
-              </button>
-            )}
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input type="text" placeholder="Search students..." value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-brand-border-light rounded-xl text-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 transition-all"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <button onClick={recordAttendance} disabled={saving || attendedCount === 0}
+              className="flex items-center gap-1.5 text-xs font-bold bg-emerald-500 text-white px-3 py-2.5 rounded-xl hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Calendar className="w-3.5 h-3.5" />}
+              {saving ? 'Saving...' : 'Record'}
+            </button>
           </div>
         </div>
 

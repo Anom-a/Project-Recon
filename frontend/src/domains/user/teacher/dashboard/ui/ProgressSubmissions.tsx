@@ -1,29 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, CheckCircle2, Search, FileText, Clock, Eye, ChevronDown, Star, Loader2 } from 'lucide-react';
+import { Edit3, CheckCircle2, Search, FileText, Clock, Eye, ChevronDown, Star, Loader2, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { fetchStudentProgressApi, fetchMilestonesApi } from '@/src/domains/learning/academics/api/academicApi';
+import { fetchStudentProgressApi, fetchMilestonesApi, updateStudentProgressApi } from '@/src/domains/learning/academics/api/academicApi';
 
 interface Props {
   students: any[];
   enrollments: any[];
 }
 
+const STATUS_STYLES: Record<string, string> = {
+  NOT_STARTED: 'bg-slate-100 text-slate-500',
+  IN_PROGRESS: 'bg-blue-50 text-blue-600',
+  COMPLETED: 'bg-emerald-50 text-emerald-600',
+};
+
 export default function ProgressSubmissions({ students, enrollments }: Props) {
   const [progressSearch, setProgressSearch] = useState('');
   const [progressMap, setProgressMap] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [subProgramId, setSubProgramId] = useState<string | null>(null);
+  const [milestones, setMilestones] = useState<any[]>([]);
 
   useEffect(() => {
     if (enrollments.length === 0) { setLoading(false); return; }
+    const spId = enrollments[0]?.enrolled_class;
+    let classSubProgramId: string | null = null;
     setLoading(true);
-    Promise.all(enrollments.map(e => fetchStudentProgressApi(e.id)))
-      .then(results => {
-        const map: Record<string, any[]> = {};
-        enrollments.forEach((e, i) => { map[e.student] = Array.isArray(results[i]) ? results[i] : []; });
-        setProgressMap(map);
-      }).finally(() => setLoading(false));
+
+    Promise.all([
+      ...enrollments.map(e => fetchStudentProgressApi(e.id)),
+    ]).then(results => {
+      const map: Record<string, any[]> = {};
+      enrollments.forEach((e, i) => { map[e.student] = Array.isArray(results[i]) ? results[i] : []; });
+      setProgressMap(map);
+    }).finally(() => setLoading(false));
   }, [enrollments]);
+
+  const updateStatus = async (progressId: string, newStatus: string) => {
+    setUpdating(progressId);
+    try {
+      await updateStudentProgressApi(progressId, { status: newStatus });
+      setProgressMap(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(key => {
+          next[key] = next[key].map(p => p.id === progressId ? { ...p, status: newStatus } : p);
+        });
+        return next;
+      });
+    } catch (e) {
+      console.error('Failed to update progress', e);
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   const filtered = progressSearch.trim()
     ? students.filter(s =>
@@ -35,13 +66,19 @@ export default function ProgressSubmissions({ students, enrollments }: Props) {
   const completedCount = (studentId: string) => getProgress(studentId).filter(p => p.status === 'COMPLETED').length;
   const totalCount = (studentId: string) => getProgress(studentId).length;
 
+  const nextStatus = (current: string) => {
+    if (current === 'NOT_STARTED') return 'IN_PROGRESS';
+    if (current === 'IN_PROGRESS') return 'COMPLETED';
+    return 'COMPLETED';
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="bg-white rounded-2xl border border-brand-border-light/60 shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-brand-border-light/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h3 className="font-display font-bold text-lg text-slate-900">Student Progress Overview</h3>
-            <p className="font-sans text-xs text-slate-500 mt-1">Track individual student performance and skill completion</p>
+            <p className="font-sans text-xs text-slate-500 mt-1">Track and update individual student milestone progress</p>
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -120,10 +157,20 @@ export default function ProgressSubmissions({ students, enrollments }: Props) {
                                     <div className={`w-2 h-2 rounded-full ${p.status === 'COMPLETED' ? 'bg-emerald-500' : p.status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-slate-300'}`} />
                                     <span className="text-[13px] font-medium text-slate-700">{p.milestone_title || 'Milestone'}</span>
                                   </div>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    p.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' :
-                                    p.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
-                                  }`}>{p.status.replace('_', ' ')}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[p.status] || ''}`}>
+                                      {p.status.replace('_', ' ')}
+                                    </span>
+                                    {p.status !== 'COMPLETED' && (
+                                      <button onClick={() => updateStatus(p.id, nextStatus(p.status))}
+                                        disabled={updating === p.id}
+                                        className="text-[10px] font-bold bg-[#2563EB] text-white px-2 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                                      >
+                                        {updating === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                                        {p.status === 'NOT_STARTED' ? 'Start' : p.status === 'IN_PROGRESS' ? 'Complete' : ''}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
