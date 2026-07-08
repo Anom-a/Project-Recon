@@ -172,20 +172,29 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
               style={{ fontSize: 'clamp(32px, 6vw, 64px)', lineHeight: '1.1' }}
               id="hero-title"
             >
-              ETHIO ROBOTICS <br />
-              <span className="text-[#ed1c24] drop-shadow-[0_2px_14px_rgba(237,28,36,0.45)]">builds future engineers</span> <br />
-              through real robots.
+              {banners[currentSlide]?.title ? (
+                <>{banners[currentSlide].title}</>
+              ) : (
+                <>ETHIO ROBOTICS <br />
+                <span className="text-[#ed1c24] drop-shadow-[0_2px_14px_rgba(237,28,36,0.45)]">builds future engineers</span> <br />
+                through real robots.</>
+              )}
             </motion.h1>
 
-            {/* Quote */}
-            <motion.p
-              {...stagger(0.35)}
-              className="font-display font-semibold text-white/90 italic tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
-              style={{ fontSize: 'clamp(14px, 2vw, 20px)' }}
-              id="hero-quote"
-            >
-              "Encouraging creativity through Competition."
-            </motion.p>
+            {/* Subtitle / Quote */}
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={banners[currentSlide]?.subtitle || 'default-subtitle'}
+                {...stagger(0.35)}
+                className="font-display font-semibold text-white/90 italic tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+                style={{ fontSize: 'clamp(14px, 2vw, 20px)' }}
+                id="hero-quote"
+              >
+                {banners[currentSlide]?.subtitle 
+                  ? `"${banners[currentSlide].subtitle}"` 
+                  : '"Encouraging creativity through Competition."'}
+              </motion.p>
+            </AnimatePresence>
 
             {/* Description */}
             <motion.p
@@ -257,16 +266,29 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
               className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-4"
               id="hero-actions"
             >
-              <button
-                onClick={onDiscoverPrograms}
-                className="group relative inline-flex items-center justify-center font-sans font-semibold text-sm bg-gradient-to-r from-[#ed1c24] to-[#b5121b] text-white px-8 py-4 rounded-xl shadow-[0_4px_15px_-2px_rgba(237,28,36,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(237,28,36,0.45)] hover:-translate-y-1 active:scale-[0.97] transition-all duration-300 overflow-hidden"
-                id="btn-discover-programs"
-              >
-                <span className="relative z-[1] flex items-center gap-2">
-                  Explore Competitions
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </button>
+              {banners[currentSlide]?.button_text && banners[currentSlide]?.button_url ? (
+                <a
+                  href={banners[currentSlide].button_url!}
+                  target="_blank" rel="noopener noreferrer"
+                  className="group relative inline-flex items-center justify-center font-sans font-semibold text-sm bg-gradient-to-r from-[#ed1c24] to-[#b5121b] text-white px-8 py-4 rounded-xl shadow-[0_4px_15px_-2px_rgba(237,28,36,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(237,28,36,0.45)] hover:-translate-y-1 active:scale-[0.97] transition-all duration-300 overflow-hidden"
+                >
+                  <span className="relative z-[1] flex items-center gap-2">
+                    {banners[currentSlide].button_text}
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </a>
+              ) : (
+                <button
+                  onClick={onDiscoverPrograms}
+                  className="group relative inline-flex items-center justify-center font-sans font-semibold text-sm bg-gradient-to-r from-[#ed1c24] to-[#b5121b] text-white px-8 py-4 rounded-xl shadow-[0_4px_15px_-2px_rgba(237,28,36,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(237,28,36,0.45)] hover:-translate-y-1 active:scale-[0.97] transition-all duration-300 overflow-hidden"
+                  id="btn-discover-programs"
+                >
+                  <span className="relative z-[1] flex items-center gap-2">
+                    Explore Competitions
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </button>
+              )}
 
               <button
                 onClick={onJoinCommunity}

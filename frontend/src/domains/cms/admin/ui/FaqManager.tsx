@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { HelpCircle, Plus, Edit2, Trash2, X, Globe, Lock, GripVertical, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { HelpCircle, Plus, Edit2, Trash2, X, GripVertical, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { api, Faq } from '../api/cmsApi';
 import type { Toast } from './CmsDashboard';
 
@@ -150,8 +150,13 @@ export default function FaqManager({ addToast }: Props) {
                     <button onClick={() => toggleExpand(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
                       {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                     </button>
-                    <button onClick={() => toggleActive(item)} className={`p-1.5 rounded-lg transition-colors ${item.isActive ? 'text-emerald-500 hover:bg-emerald-50' : 'text-slate-300 hover:bg-slate-100'}`}>
-                      {item.isActive ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                    <button onClick={() => toggleActive(item)}
+                      className={`text-xs font-bold px-2 py-1 rounded-lg transition-colors ${
+                        item.isActive 
+                          ? 'bg-emerald-100 text-emerald-700 hover:bg-red-100 hover:text-red-700' 
+                          : 'bg-amber-100 text-amber-700 hover:bg-emerald-100 hover:text-emerald-700'
+                      }`}>
+                      {item.isActive ? 'Published' : 'Draft'}
                     </button>
                     <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50"><Edit2 className="w-3.5 h-3.5" /></button>
                     <button onClick={() => remove(item.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
