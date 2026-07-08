@@ -1,7 +1,7 @@
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
 
-from apps.academic.constants import ClassType
+from apps.academic.constants import ClassPeriod, ClassType
 from apps.academic.models import Program, SubProgram, Class
 from apps.academic.services import program_service, class_service
 from apps.accounts.models import Branch, UserAssignment
@@ -253,6 +253,7 @@ class ClassAPITest(AcademicAPITestCase):
             "instructor": str(self.instructor.pk),
             "name": "Python Group A",
             "class_type": ClassType.GROUP,
+            "class_period": ClassPeriod.FULL_DAY,
             "capacity": 20,
         }
         response = self.client.post(f"{self.base_url}/classes/", data, format="json")
@@ -279,6 +280,7 @@ class ClassAPITest(AcademicAPITestCase):
             "instructor": str(self.instructor.pk),
             "name": "Python Group A",
             "class_type": ClassType.GROUP,
+            "class_period": ClassPeriod.HALF_DAY,
             "capacity": 20,
         }
         response = self.client.post(f"{self.base_url}/classes/", data, format="json")
@@ -316,6 +318,7 @@ class ClassAPITest(AcademicAPITestCase):
             instructor=self.instructor,
             name="Python Group A",
             class_type=ClassType.GROUP,
+            class_period=ClassPeriod.FULL_DAY,
             capacity=20,
         )
         response = self.client.get(f"{self.base_url}/classes/")

@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from apps.academic.constants import ClassType
+from apps.academic.constants import ClassPeriod, ClassType
 
 
 class Class(models.Model):
@@ -18,6 +18,7 @@ class Class(models.Model):
     )
     name = models.CharField(max_length=255)
     class_type = models.CharField(max_length=10, choices=ClassType.choices)
+    class_period = models.CharField(max_length=10, choices=ClassPeriod.choices, null=True, blank=True)
     capacity = models.PositiveIntegerField(null=True, blank=True)
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
