@@ -1,7 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Mail, Phone, BookOpen, ShieldCheck, Check, CreditCard, Lock, MapPin, CheckCircle2, ChevronRight, ChevronLeft, Laptop, Cpu, Globe, Info, ArrowRight } from 'lucide-react';
+import { User, Mail, Phone, BookOpen, ShieldCheck, Check, CreditCard, Lock, MapPin, CheckCircle2, ChevronRight, ChevronLeft, Laptop, Cpu, Globe, Info, ArrowRight, Clock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { registerApi } from '../api/registerApi';
+import { fetchProgramsApi } from '../../../learning/academics/api/academicApi';
+import type { Program } from '@/src/shared/types';
+
+interface SavedEnrollment {
+  ref: string;
+  name: string;
+  studentEmail: string;
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
+  courses: string;
+  total: number;
+  paymentMethod: string;
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  submittedAt: string;
+}
+
+const STORAGE_KEY = 'enrollments';
+
+function loadEnrollments(): SavedEnrollment[] {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+}
+
+function saveEnrollment(e: SavedEnrollment) {
+  const list = loadEnrollments();
+  list.unshift(e);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+function genRef(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return `ERR-${code}`;
+}
 
 import slide1 from '@/assets/slider/faj.jpg';
 import slide2 from '@/assets/slider/photo_2026-06-15_14-40-10.jpg';
@@ -62,6 +97,17 @@ export default function StudentRegistration() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [lastRef, setLastRef] = useState('');
+  const [savedEnrollments] = useState<SavedEnrollment[]>(loadEnrollments);
+  const [showHistory, setShowHistory] = useState(false);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [programsLoading, setProgramsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProgramsApi().then(data => {
+      if (data.length > 0) setPrograms(data);
+    }).catch(() => {}).finally(() => setProgramsLoading(false));
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -81,7 +127,16 @@ export default function StudentRegistration() {
     });
   };
 
-  const allCourses = COURSE_CATEGORIES.flatMap(cat => cat.courses);
+  const courseCategories = programs.length > 0
+    ? programs.map(p => ({
+        id: p.slug || p.id,
+        title: p.name,
+        icon: p.name.toLowerCase().includes('robot') || p.name.toLowerCase().includes('vex') ? Cpu : Laptop,
+        courses: [{ id: p.slug || p.id, name: p.name, priceClass: 3500, pricePrivate: 7000, desc: p.description || '' }],
+      }))
+    : COURSE_CATEGORIES;
+
+  const allCourses = courseCategories.flatMap(cat => cat.courses);
 
   const subtotal = Object.keys(selectedCourses).reduce((sum, id) => {
     const course = allCourses.find(c => c.id === id);
@@ -107,6 +162,7 @@ export default function StudentRegistration() {
       return;
     }
     setIsSubmitting(true);
+    const ref = genRef();
     try {
       await registerApi({
         ...formData,
@@ -122,6 +178,20 @@ export default function StudentRegistration() {
         paymentMethod,
         total: grandTotal,
       });
+      saveEnrollment({
+        ref,
+        name: formData.name,
+        studentEmail: formData.studentEmail,
+        parentName: formData.parentName,
+        parentEmail: formData.parentEmail,
+        parentPhone: formData.parentPhone,
+        courses: Object.keys(selectedCourses).map(id => allCourses.find(c => c.id === id)!.name).join(', '),
+        total: grandTotal,
+        paymentMethod,
+        status: 'PENDING',
+        submittedAt: new Date().toISOString(),
+      });
+      setLastRef(ref);
       setIsSubmitting(false);
       setIsSuccess(true);
     } catch (err) {
@@ -152,12 +222,24 @@ export default function StudentRegistration() {
             <CheckCircle2 className="w-8 h-8 text-brand-red" />
           </div>
           <h2 className="font-black text-2xl text-slate-900 uppercase tracking-tight mb-2">Registration Complete!</h2>
+          <div className="bg-slate-100 rounded-xl px-4 py-3 mb-4 inline-block mx-auto">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">Reference</span>
+            <span className="font-black text-lg text-brand-red tracking-widest">{lastRef}</span>
+          </div>
           <p className="text-slate-600 font-medium mb-8 text-sm leading-relaxed">
             Thank you for registering <strong className="text-slate-900">{formData.name}</strong>. Your request was sent to the admissions team. They will confirm payment and dashboard access through <strong className="text-brand-red">{formData.parentEmail}</strong>.
+            Your enrollment has been saved locally — you can view it in <strong>My Enrollments</strong> below.
           </p>
-          <button onClick={() => window.location.reload()} className="w-full bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-8 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm shadow-lg shadow-brand-red/30 hover:shadow-xl hover:shadow-brand-red/45 transition-all active:scale-[0.97]">
-            Back to Home
-          </button>
+          <div className="flex gap-3">
+            <button onClick={() => { setIsSuccess(false); setStep(1); setFormData({ name: '', studentEmail: '', age: '', grade: '', school: '', parentName: '', parentPhone: '', parentEmail: '' }); setSelectedCourses({}); }}
+              className="flex-1 bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-8 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm shadow-lg shadow-brand-red/30 hover:shadow-xl hover:shadow-brand-red/45 transition-all active:scale-[0.97]">
+              New Registration
+            </button>
+            <button onClick={() => window.location.reload()}
+              className="flex-1 bg-slate-100 text-slate-700 px-8 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm hover:bg-slate-200 transition-all">
+              Back to Home
+            </button>
+          </div>
         </motion.div>
       </div>
     );
@@ -209,6 +291,44 @@ export default function StudentRegistration() {
       </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
+
+        {/* My Enrollments */}
+        {savedEnrollments.length > 0 && (
+          <div className="mb-8">
+            <button onClick={() => setShowHistory(!showHistory)}
+              className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white/90 backdrop-blur-sm px-4 py-2.5 rounded-xl border border-slate-200 hover:border-brand-red/30 hover:text-brand-red transition-all shadow-sm">
+              {showHistory ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              My Enrollments ({savedEnrollments.length})
+            </button>
+            <AnimatePresence>
+              {showHistory && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                  className="mt-3 bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 overflow-hidden shadow-lg">
+                  <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                    {savedEnrollments.map((enr, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-brand-red">{enr.ref}</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${enr.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : enr.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                              {enr.status}
+                            </span>
+                          </div>
+                          <p className="text-sm font-bold text-slate-800 truncate mt-1">{enr.name}</p>
+                          <p className="text-xs text-slate-500 truncate">{enr.courses} &middot; {enr.total.toLocaleString()} ETB</p>
+                        </div>
+                        <div className="text-[10px] text-slate-400 shrink-0 ml-2 text-right">
+                          <Clock className="w-3 h-3 inline mr-1" />
+                          {new Date(enr.submittedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Step Indicator */}
         <div className="flex items-center justify-center mb-12">
@@ -357,7 +477,7 @@ export default function StudentRegistration() {
                   animate="visible"
                   className="flex flex-col gap-6"
                 >
-                  {COURSE_CATEGORIES.map((category) => (
+                  {courseCategories.map((category) => (
                     <motion.div
                       key={category.id}
                       variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
@@ -404,7 +524,7 @@ export default function StudentRegistration() {
                                     <span className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${isSelectedClass ? 'text-brand-red' : 'text-slate-500'}`}>Group</span>
                                     <span className={`font-black text-sm ${isSelectedClass ? 'text-brand-red' : 'text-slate-700'}`}>{course.priceClass.toLocaleString()} ETB</span>
                                   </button>
-                                  {category.id !== 'robotics' && (
+                                  {(programs.length === 0 || (programs.find(p => p.slug === category.id || p.id === category.id)?.supports_individual ?? true)) && (
                                     <button
                                       onClick={() => toggleCourse(course.id, 'private')}
                                       className={`flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border-2 transition-all ${
