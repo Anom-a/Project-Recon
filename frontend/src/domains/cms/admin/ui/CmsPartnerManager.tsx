@@ -40,9 +40,14 @@ export default function CmsPartnerManager({ addToast }: Props) {
   const openEdit = (item: Partner) => { setEditing({ ...item }); setFormErrors({}); };
   const closeForm = () => { setEditing(null); setFormErrors({}); };
 
+  const clearError = (field: string) => { if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' })); };
+
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!editing?.name?.trim()) errors.name = 'Partner name is required';
+    if (!editing?.logoUrl?.trim()) errors.logoUrl = 'Logo URL is required';
+    if (!editing?.websiteUrl?.trim()) errors.websiteUrl = 'Website URL is required';
+    if (!editing?.description?.trim()) errors.description = 'Description is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -147,17 +152,19 @@ export default function CmsPartnerManager({ addToast }: Props) {
               <button onClick={closeForm} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-4 flex flex-col gap-3">
-              <Field label="Partner Name" value={editing.name ?? ''} onChange={v => { setEditing({ ...editing, name: v }); if (formErrors.name) setFormErrors(prev => ({ ...prev, name: '' })); }} error={formErrors.name} required />
-              <Field label="Logo URL" value={editing.logoUrl ?? ''} onChange={v => setEditing({ ...editing, logoUrl: v })} />
+              <Field label="Partner Name" value={editing.name ?? ''} onChange={v => { setEditing({ ...editing, name: v }); clearError('name'); }} error={formErrors.name} required placeholder="e.g. Acme Robotics" />
+              <Field label="Logo URL" value={editing.logoUrl ?? ''} onChange={v => { setEditing({ ...editing, logoUrl: v }); clearError('logoUrl'); }} error={formErrors.logoUrl} required placeholder="e.g. https://example.com/logo.png" />
               {editing.logoUrl && (
                 <div className="rounded-xl overflow-hidden border border-slate-200 p-4 flex items-center justify-center bg-white">
                   <img src={editing.logoUrl} alt="" className="max-h-20 object-contain" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
               )}
-              <Field label="Website URL" value={editing.websiteUrl ?? ''} onChange={v => setEditing({ ...editing, websiteUrl: v })} />
-              <Textarea label="Description" value={editing.description ?? ''} onChange={v => setEditing({ ...editing, description: v })} />
+              <Field label="Website URL" value={editing.websiteUrl ?? ''} onChange={v => { setEditing({ ...editing, websiteUrl: v }); clearError('websiteUrl'); }} error={formErrors.websiteUrl} required placeholder="e.g. https://www.acmerobotics.com" />
+              <Textarea label="Description" value={editing.description ?? ''} onChange={v => { setEditing({ ...editing, description: v }); clearError('description'); }} error={formErrors.description} required placeholder="e.g. Leading provider of robotics education materials..." />
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Priority</label>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                  Priority <span className="text-red-400 ml-0.5">*</span>
+                </label>
                 <input type="number" value={editing.priority ?? 0} onChange={e => setEditing({ ...editing, priority: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/30" />
               </div>
@@ -180,28 +187,28 @@ export default function CmsPartnerManager({ addToast }: Props) {
   );
 }
 
-function Field({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Field({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <input value={value} onChange={e => onChange(e.target.value)}
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
 
-function Textarea({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Textarea({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} rows={3}
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={3} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-none ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>

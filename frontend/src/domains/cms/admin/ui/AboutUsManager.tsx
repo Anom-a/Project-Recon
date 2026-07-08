@@ -39,9 +39,15 @@ export default function AboutUsManager({ addToast }: Props) {
   const openEdit = (item: AboutUs) => { setEditing({ ...item }); setFormErrors({}); };
   const closeForm = () => { setEditing(null); setFormErrors({}); };
 
+  const clearError = (field: string) => { if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' })); };
+
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!editing?.title?.trim()) errors.title = 'Title is required';
+    if (!editing?.imageUrl?.trim()) errors.imageUrl = 'Image URL is required';
+    if (!editing?.content?.trim()) errors.content = 'Content is required';
+    if (!editing?.mission?.trim()) errors.mission = 'Mission is required';
+    if (!editing?.vision?.trim()) errors.vision = 'Vision is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -129,16 +135,16 @@ export default function AboutUsManager({ addToast }: Props) {
               <button onClick={closeForm} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-4 flex flex-col gap-3">
-              <Field label="Title" value={editing.title ?? ''} onChange={v => { setEditing({ ...editing, title: v }); if (formErrors.title) setFormErrors(prev => ({ ...prev, title: '' })); }} error={formErrors.title} required />
-              <Field label="Image URL" value={editing.imageUrl ?? ''} onChange={v => setEditing({ ...editing, imageUrl: v })} />
+              <Field label="Title" value={editing.title ?? ''} onChange={v => { setEditing({ ...editing, title: v }); clearError('title'); }} error={formErrors.title} required placeholder="e.g. Our Story, Mission & Vision" />
+              <Field label="Image URL" value={editing.imageUrl ?? ''} onChange={v => { setEditing({ ...editing, imageUrl: v }); clearError('imageUrl'); }} error={formErrors.imageUrl} required placeholder="e.g. https://example.com/about.jpg" />
               {editing.imageUrl && (
                 <div className="rounded-xl overflow-hidden border border-slate-200">
                   <img src={editing.imageUrl} alt="" className="w-full h-32 object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
               )}
-              <Textarea label="Content" value={editing.content ?? ''} onChange={v => setEditing({ ...editing, content: v })} />
-              <Textarea label="Mission" value={editing.mission ?? ''} onChange={v => setEditing({ ...editing, mission: v })} />
-              <Textarea label="Vision" value={editing.vision ?? ''} onChange={v => setEditing({ ...editing, vision: v })} />
+              <Textarea label="Content" value={editing.content ?? ''} onChange={v => { setEditing({ ...editing, content: v }); clearError('content'); }} error={formErrors.content} required placeholder="e.g. We are dedicated to empowering the next generation of innovators..." />
+              <Textarea label="Mission" value={editing.mission ?? ''} onChange={v => { setEditing({ ...editing, mission: v }); clearError('mission'); }} error={formErrors.mission} required placeholder="e.g. To inspire and equip students with STEM skills..." />
+              <Textarea label="Vision" value={editing.vision ?? ''} onChange={v => { setEditing({ ...editing, vision: v }); clearError('vision'); }} error={formErrors.vision} required placeholder="e.g. A world where every student has access to quality STEM education..." />
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={editing.isActive ?? true} onChange={e => setEditing({ ...editing, isActive: e.target.checked })} className="rounded" />
                 Active
@@ -158,28 +164,28 @@ export default function AboutUsManager({ addToast }: Props) {
   );
 }
 
-function Field({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Field({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <input value={value} onChange={e => onChange(e.target.value)}
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
 
-function Textarea({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Textarea({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} rows={4}
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={4} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-none ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>

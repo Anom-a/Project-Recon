@@ -46,9 +46,17 @@ export default function NewsManager({ addToast }: Props) {
   const openEdit = (item: News) => { setEditing({ ...item }); setFormErrors({}); };
   const closeForm = () => { setEditing(null); setFormErrors({}); };
 
+  const clearError = (field: string) => { if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' })); };
+
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!editing?.title?.trim()) errors.title = 'Title is required';
+    if (!editing?.subtitle?.trim()) errors.subtitle = 'Subtitle is required';
+    if (!editing?.author?.trim()) errors.author = 'Author is required';
+    if (!editing?.imageUrl?.trim()) errors.imageUrl = 'Image URL is required';
+    if (!editing?.category?.trim()) errors.category = 'Category is required';
+    if (!editing?.tags?.trim()) errors.tags = 'Tags are required';
+    if (!editing?.publishedAt?.toString().trim()) errors.publishedAt = 'Published date is required';
     if (!editing?.content?.trim()) errors.content = 'Content is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -166,19 +174,19 @@ export default function NewsManager({ addToast }: Props) {
               <button onClick={closeForm} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-4 flex flex-col gap-3">
-              <Field label="Title" value={editing.title ?? ''} onChange={v => { setEditing({ ...editing, title: v }); if (formErrors.title) setFormErrors(prev => ({ ...prev, title: '' })); }} error={formErrors.title} required />
-              <Field label="Subtitle" value={editing.subtitle ?? ''} onChange={v => setEditing({ ...editing, subtitle: v })} />
-              <Field label="Author" value={editing.author ?? ''} onChange={v => setEditing({ ...editing, author: v })} />
-              <Field label="Image URL" value={editing.imageUrl ?? ''} onChange={v => setEditing({ ...editing, imageUrl: v })} />
+              <Field label="Title" value={editing.title ?? ''} onChange={v => { setEditing({ ...editing, title: v }); clearError('title'); }} error={formErrors.title} required placeholder="e.g. New VEX Robotics Competition Announced" />
+              <Field label="Subtitle" value={editing.subtitle ?? ''} onChange={v => { setEditing({ ...editing, subtitle: v }); clearError('subtitle'); }} error={formErrors.subtitle} required placeholder="e.g. Teams from across the country will compete" />
+              <Field label="Author" value={editing.author ?? ''} onChange={v => { setEditing({ ...editing, author: v }); clearError('author'); }} error={formErrors.author} required placeholder="e.g. John Doe" />
+              <Field label="Image URL" value={editing.imageUrl ?? ''} onChange={v => { setEditing({ ...editing, imageUrl: v }); clearError('imageUrl'); }} error={formErrors.imageUrl} required placeholder="e.g. https://example.com/image.jpg" />
               {editing.imageUrl && (
                 <div className="rounded-xl overflow-hidden border border-slate-200">
                   <img src={editing.imageUrl} alt="" className="w-full h-32 object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
               )}
-              <Field label="Category" value={editing.category ?? ''} onChange={v => setEditing({ ...editing, category: v })} />
-              <Field label="Tags (comma-separated)" value={editing.tags ?? ''} onChange={v => setEditing({ ...editing, tags: v })} />
-              <Field label="Published Date" type="date" value={editing.publishedAt?.slice(0, 10) ?? ''} onChange={v => setEditing({ ...editing, publishedAt: v })} />
-              <Textarea label="Content" value={editing.content ?? ''} onChange={v => { setEditing({ ...editing, content: v }); if (formErrors.content) setFormErrors(prev => ({ ...prev, content: '' })); }} error={formErrors.content} required />
+              <Field label="Category" value={editing.category ?? ''} onChange={v => { setEditing({ ...editing, category: v }); clearError('category'); }} error={formErrors.category} required placeholder="e.g. NEWS, ANNOUNCEMENT, EVENT" />
+              <Field label="Tags (comma-separated)" value={editing.tags ?? ''} onChange={v => { setEditing({ ...editing, tags: v }); clearError('tags'); }} error={formErrors.tags} required placeholder="e.g. robotics, competition, vex" />
+              <Field label="Published Date" type="date" value={editing.publishedAt?.slice(0, 10) ?? ''} onChange={v => { setEditing({ ...editing, publishedAt: v }); clearError('publishedAt'); }} error={formErrors.publishedAt} required />
+              <Textarea label="Content" value={editing.content ?? ''} onChange={v => { setEditing({ ...editing, content: v }); clearError('content'); }} error={formErrors.content} required placeholder="e.g. Write the full article content here..." />
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={editing.isActive ?? true} onChange={e => setEditing({ ...editing, isActive: e.target.checked })} className="rounded" />
                 Active
@@ -198,28 +206,28 @@ export default function NewsManager({ addToast }: Props) {
   );
 }
 
-function Field({ label, value, onChange, type = 'text', error, required }: { label: string; value: string; onChange: (v: string) => void; type?: string; error?: string; required?: boolean }) {
+function Field({ label, value, onChange, type = 'text', error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)}
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
 
-function Textarea({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Textarea({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} rows={5}
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={5} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-none ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>

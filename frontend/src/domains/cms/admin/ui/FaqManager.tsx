@@ -54,10 +54,13 @@ export default function FaqManager({ addToast }: Props) {
   const openEdit = (item: Faq) => { setEditing({ ...item }); setFormErrors({}); };
   const closeForm = () => { setEditing(null); setFormErrors({}); };
 
+  const clearError = (field: string) => { if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' })); };
+
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!editing?.question?.trim()) errors.question = 'Question is required';
     if (!editing?.answer?.trim()) errors.answer = 'Answer is required';
+    if (!editing?.category?.trim()) errors.category = 'Category is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -173,11 +176,13 @@ export default function FaqManager({ addToast }: Props) {
               <button onClick={closeForm} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-4 flex flex-col gap-3">
-              <Field label="Question" value={editing.question ?? ''} onChange={v => { setEditing({ ...editing, question: v }); if (formErrors.question) setFormErrors(prev => ({ ...prev, question: '' })); }} error={formErrors.question} required />
-              <Textarea label="Answer" value={editing.answer ?? ''} onChange={v => { setEditing({ ...editing, answer: v }); if (formErrors.answer) setFormErrors(prev => ({ ...prev, answer: '' })); }} error={formErrors.answer} required />
-              <Field label="Category" value={editing.category ?? ''} onChange={v => setEditing({ ...editing, category: v })} />
+              <Field label="Question" value={editing.question ?? ''} onChange={v => { setEditing({ ...editing, question: v }); clearError('question'); }} error={formErrors.question} required placeholder="e.g. How do I register for a program?" />
+              <Textarea label="Answer" value={editing.answer ?? ''} onChange={v => { setEditing({ ...editing, answer: v }); clearError('answer'); }} error={formErrors.answer} required placeholder="e.g. You can register by visiting our registration page..." />
+              <Field label="Category" value={editing.category ?? ''} onChange={v => { setEditing({ ...editing, category: v }); clearError('category'); }} error={formErrors.category} required placeholder="e.g. Registration, Programs, General" />
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Priority</label>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                  Priority <span className="text-red-400 ml-0.5">*</span>
+                </label>
                 <input type="number" value={editing.priority ?? 0} onChange={e => setEditing({ ...editing, priority: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/30" />
               </div>
@@ -200,28 +205,28 @@ export default function FaqManager({ addToast }: Props) {
   );
 }
 
-function Field({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Field({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <input value={value} onChange={e => onChange(e.target.value)}
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
 
-function Textarea({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Textarea({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} rows={4}
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={4} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-none ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>

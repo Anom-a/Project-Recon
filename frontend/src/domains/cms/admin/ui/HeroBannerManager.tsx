@@ -43,9 +43,15 @@ export default function HeroBannerManager({ addToast }: Props) {
   const openEdit = (item: HeroBanner) => { setEditing({ ...item }); setFormErrors({}); };
   const closeForm = () => { setEditing(null); setFormErrors({}); };
 
+  const clearError = (field: string) => { if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' })); };
+
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!editing?.title?.trim()) errors.title = 'Title is required';
+    if (!editing?.subtitle?.trim()) errors.subtitle = 'Subtitle is required';
+    if (!editing?.description?.trim()) errors.description = 'Description is required';
+    if (!editing?.imageUrl?.trim()) errors.imageUrl = 'Image URL is required';
+    if (!editing?.linkUrl?.trim()) errors.linkUrl = 'Link URL is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -97,18 +103,20 @@ export default function HeroBannerManager({ addToast }: Props) {
             <button onClick={closeForm} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4" /></button>
           </div>
           <div className="p-4 flex flex-col gap-3">
-            <Field label="Title" value={editing.title ?? ''} onChange={v => { setEditing({ ...editing, title: v }); if (formErrors.title) setFormErrors(prev => ({ ...prev, title: '' })); }} error={formErrors.title} required />
-            <Field label="Subtitle" value={editing.subtitle ?? ''} onChange={v => setEditing({ ...editing, subtitle: v })} />
-            <Textarea label="Description" value={editing.description ?? ''} onChange={v => setEditing({ ...editing, description: v })} />
-            <Field label="Image URL" value={editing.imageUrl ?? ''} onChange={v => setEditing({ ...editing, imageUrl: v })} />
+            <Field label="Title" value={editing.title ?? ''} onChange={v => { setEditing({ ...editing, title: v }); clearError('title'); }} error={formErrors.title} required placeholder="e.g. Welcome to STEM Center" />
+            <Field label="Subtitle" value={editing.subtitle ?? ''} onChange={v => { setEditing({ ...editing, subtitle: v }); clearError('subtitle'); }} error={formErrors.subtitle} required placeholder="e.g. Building the Future, One Robot at a Time" />
+            <Textarea label="Description" value={editing.description ?? ''} onChange={v => { setEditing({ ...editing, description: v }); clearError('description'); }} error={formErrors.description} required placeholder="e.g. A brief overview of what makes our program unique..." />
+            <Field label="Image URL" value={editing.imageUrl ?? ''} onChange={v => { setEditing({ ...editing, imageUrl: v }); clearError('imageUrl'); }} error={formErrors.imageUrl} required placeholder="e.g. https://example.com/banner.jpg" />
             {editing.imageUrl && (
               <div className="rounded-xl overflow-hidden border border-slate-200">
                 <img src={editing.imageUrl} alt="" className="w-full h-36 object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
             )}
-            <Field label="Link URL" value={editing.linkUrl ?? ''} onChange={v => setEditing({ ...editing, linkUrl: v })} />
+            <Field label="Link URL" value={editing.linkUrl ?? ''} onChange={v => { setEditing({ ...editing, linkUrl: v }); clearError('linkUrl'); }} error={formErrors.linkUrl} required placeholder="e.g. https://example.com/register" />
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Priority</label>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
+                Priority <span className="text-red-400 ml-0.5">*</span>
+              </label>
               <input type="number" value={editing.priority ?? 0} onChange={e => setEditing({ ...editing, priority: parseInt(e.target.value) || 0 })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/30" />
             </div>
@@ -200,28 +208,28 @@ export default function HeroBannerManager({ addToast }: Props) {
 }
 
 /* ── Shared Field Components ── */
-function Field({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Field({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <input value={value} onChange={e => onChange(e.target.value)}
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
 
-function Textarea({ label, value, onChange, error, required }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean }) {
+function Textarea({ label, value, onChange, error, required, placeholder }: { label: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; placeholder?: string }) {
   return (
     <div>
       <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} rows={3}
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={3} placeholder={placeholder}
         className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-none ${error ? 'border-red-300 focus:ring-red-30 bg-red-50' : 'border-slate-200 focus:ring-brand-red/30'}`} />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
