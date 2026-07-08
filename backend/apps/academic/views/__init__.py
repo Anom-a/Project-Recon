@@ -84,6 +84,16 @@ from apps.academic.views.certificate import (
     StudentCertificateListView,
     StudentCertificateRetrieveView,
 )
+from apps.academic.views.academic_report import (
+    StudentAcademicReportView,
+    EnrollmentReportView,
+    AttendanceReportView,
+    ProgressReportView,
+    CertificateReportView,
+    ClassReportView,
+    SubProgramReportView,
+    ProgramReportView,
+)
 
 __all__ = [
     "ProgramListCreateView",
@@ -148,4 +158,12 @@ __all__ = [
     "StudentCertificateListView",
     "StudentCertificateRetrieveView",
     "CertificatePublicVerifyView",
+    "StudentAcademicReportView",
+    "EnrollmentReportView",
+    "AttendanceReportView",
+    "ProgressReportView",
+    "CertificateReportView",
+    "ClassReportView",
+    "SubProgramReportView",
+    "ProgramReportView",
 ]

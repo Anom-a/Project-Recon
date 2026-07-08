@@ -63,6 +63,7 @@ from apps.academic.serializers.certificate import (
     StudentCertificateListSerializer,
     PublicCertificateVerifySerializer,
 )
+from apps.academic.serializers.academic_report import ReportQuerySerializer
 
 __all__ = [
     "ProgramSerializer",
@@ -112,4 +113,5 @@ __all__ = [
     "StudentCertificateSerializer",
     "StudentCertificateListSerializer",
     "PublicCertificateVerifySerializer",
+    "ReportQuerySerializer",
 ]

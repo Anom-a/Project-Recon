@@ -7,3 +7,4 @@ djangorestframework
 djangorestframework-simplejwt
 drf-spectacular
 requests
+reportlab>=4.0,<5.0

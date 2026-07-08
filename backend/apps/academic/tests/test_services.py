@@ -1762,3 +1762,100 @@ class CertificateServiceTest(TestCase):
         )
         certs = get_student_certificates(student=self.student_model)
         self.assertEqual(certs.count(), 1)
+
+
+class AcademicReportServiceTest(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(name="Report Branch", code="RB01")
+        self.program = Program.objects.create(
+            name="Report Program", slug="report-program",
+            supports_group=True, supports_individual=True,
+        )
+        self.sub_program = SubProgram.objects.create(
+            program=self.program, name="Report Sub", slug="report-sub",
+            fee=Decimal("300.00"),
+        )
+        self.instructor = user_service.create_staff_user(
+            "rep-instr@test.com", "Report", "Instructor", "StrongP@ssw0rd!2026",
+            branch=self.branch, role=Roles.INSTRUCTOR,
+        )
+        user_service.activate_user(self.instructor)
+        self.instructor.is_email_verified = True
+        self.instructor.save()
+
+        self.student_user = user_service.create_student_user(
+            "rep-stud@test.com", "Report", "Student", "StrongP@ssw0rd!2026",
+            self.branch,
+        )
+        user_service.activate_user(self.student_user)
+        self.student_model = Student.objects.create(
+            user=self.student_user, branch=self.branch, date_joined=date.today(),
+        )
+        self.klass = class_service.create_class(
+            sub_program=self.sub_program, branch=self.branch,
+            instructor=self.instructor, name="Report Class",
+            class_type=ClassType.GROUP, capacity=10,
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student_model, enrolled_class=self.klass,
+            status=EnrollmentStatus.ACTIVE,
+        )
+        EnrollmentPayment.objects.create(
+            enrollment=self.enrollment, amount=Decimal("300.00"),
+            payment_method=PaymentMethod.CASH, status=PaymentStatus.PAID,
+        )
+
+    # -- Student reports --
+
+    def test_generate_student_report_returns_pdf(self):
+        from apps.academic.services.academic_report_service import generate_student_report
+        pdf = generate_student_report(self.student_model.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_generate_student_report_invalid_student(self):
+        from apps.academic.services.academic_report_service import generate_student_report
+        from django.http import Http404
+        with self.assertRaises(Http404):
+            generate_student_report("00000000-0000-0000-0000-000000000000")
+
+    def test_generate_enrollment_report_returns_pdf(self):
+        from apps.academic.services.academic_report_service import generate_enrollment_report
+        pdf = generate_enrollment_report(self.student_model.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_generate_attendance_report_returns_pdf(self):
+        from apps.academic.services.academic_report_service import generate_attendance_report
+        pdf = generate_attendance_report(self.student_model.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_generate_attendance_report_filtered_by_enrollment(self):
+        from apps.academic.services.academic_report_service import generate_attendance_report
+        pdf = generate_attendance_report(self.student_model.id, enrollment_id=self.enrollment.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_generate_progress_report_returns_pdf(self):
+        from apps.academic.services.academic_report_service import generate_progress_report
+        pdf = generate_progress_report(self.student_model.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_generate_certificate_report_returns_pdf(self):
+        from apps.academic.services.academic_report_service import generate_certificate_report
+        pdf = generate_certificate_report(self.student_model.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    # -- Staff reports --
+
+    def test_generate_class_report_returns_pdf(self):
+        from apps.academic.services.academic_report_service import generate_class_report
+        pdf = generate_class_report(self.klass.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_generate_sub_program_report_returns_pdf(self):
+        from apps.academic.services.academic_report_service import generate_sub_program_report
+        pdf = generate_sub_program_report(self.sub_program.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_generate_program_report_returns_pdf(self):
+        from apps.academic.services.academic_report_service import generate_program_report
+        pdf = generate_program_report(self.program.id)
+        self.assertTrue(pdf.startswith(b"%PDF"))

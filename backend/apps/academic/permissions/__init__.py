@@ -6,6 +6,8 @@ from apps.accounts.permissions.roles import (
     user_is_secretary,
 )
 
+from apps.academic.permissions.academic_report import CanViewReport, CanViewStaffReport
+
 
 class IsAcademicAdmin(BasePermission):
     """

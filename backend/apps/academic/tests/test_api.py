@@ -1885,3 +1885,134 @@ class CertificateAPITest(AcademicAPITestCase):
             format="multipart",
         )
         self.assertEqual(response.status_code, 401)
+
+
+class ReportAPITest(AcademicAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.program = program_service.create_program(
+            name="Report Prog", slug="report-prog",
+            supports_group=True, supports_individual=True,
+        )
+        self.sub_program = program_service.create_sub_program(
+            program=self.program, name="Report Sub", slug="report-sub",
+            fee=Decimal("300.00"),
+        )
+        self.class_model = class_service.create_class(
+            sub_program=self.sub_program, branch=self.branch,
+            instructor=self.instructor, name="Report Class",
+            class_type=ClassType.GROUP, capacity=10,
+        )
+        self.student_user = user_service.create_student_user(
+            "repapi@test.com", "Report", "Student", self.password, self.branch,
+        )
+        user_service.activate_user(self.student_user)
+        self.student_user.is_email_verified = True
+        self.student_user.save()
+        self.student_model = Student.objects.create(
+            user=self.student_user, branch=self.branch, date_joined=date.today(),
+        )
+
+    # -- Permission tests for student reports --
+
+    def test_student_academic_report_unauthenticated_returns_401(self):
+        response = self.client.get(
+            f"{self.base_url}/reports/students/{self.student_model.pk}/academic/"
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_student_academic_report_as_super_admin(self):
+        self.authenticate_as_super_admin()
+        response = self.client.get(
+            f"{self.base_url}/reports/students/{self.student_model.pk}/academic/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("Content-Disposition", response)
+
+    def test_student_academic_report_as_student_self(self):
+        self._authenticate(self.student_user)
+        response = self.client.get(
+            f"{self.base_url}/reports/students/{self.student_model.pk}/academic/"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_student_academic_report_as_other_student_returns_403(self):
+        other_user = user_service.create_student_user(
+            "other@test.com", "Other", "Student", self.password, self.branch,
+        )
+        user_service.activate_user(other_user)
+        other_user.is_email_verified = True
+        other_user.save()
+        self._authenticate(other_user)
+        response = self.client.get(
+            f"{self.base_url}/reports/students/{self.student_model.pk}/academic/"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_enrollment_report_as_branch_manager(self):
+        self.authenticate_as_branch_manager()
+        response = self.client.get(
+            f"{self.base_url}/reports/students/{self.student_model.pk}/enrollments/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_attendance_report_as_secretary(self):
+        self.authenticate_as_secretary()
+        response = self.client.get(
+            f"{self.base_url}/reports/students/{self.student_model.pk}/attendance/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_progress_report(self):
+        self.authenticate_as_super_admin()
+        response = self.client.get(
+            f"{self.base_url}/reports/students/{self.student_model.pk}/progress/"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_certificate_report(self):
+        self.authenticate_as_super_admin()
+        response = self.client.get(
+            f"{self.base_url}/reports/students/{self.student_model.pk}/certificates/"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    # -- Staff reports permission tests --
+
+    def test_class_report_as_super_admin(self):
+        self.authenticate_as_super_admin()
+        response = self.client.get(
+            f"{self.base_url}/reports/classes/{self.class_model.pk}/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_class_report_as_instructor(self):
+        self._authenticate(self.instructor)
+        response = self.client.get(
+            f"{self.base_url}/reports/classes/{self.class_model.pk}/"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_sub_program_report_as_branch_manager(self):
+        self.authenticate_as_branch_manager()
+        response = self.client.get(
+            f"{self.base_url}/reports/sub-programs/{self.sub_program.pk}/"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_program_report_as_secretary(self):
+        self.authenticate_as_secretary()
+        response = self.client.get(
+            f"{self.base_url}/reports/programs/{self.program.pk}/"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_class_report_unauthenticated_returns_401(self):
+        response = self.client.get(
+            f"{self.base_url}/reports/classes/{self.class_model.pk}/"
+        )
+        self.assertEqual(response.status_code, 401)
