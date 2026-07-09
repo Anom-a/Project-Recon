@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, UserPlus, Users, Mail, Phone, Shield } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, UserPlus, Users, Mail, Phone, Shield, CheckCircle2, ArrowRight } from 'lucide-react';
 import { StudentProfile } from '@/src/shared/types';
 import { fetchStudentsApi, admitStudentApi, fetchClassesApi } from '@/src/domains/learning/academics/api/academicApi';
 import { branchesApi } from '@/src/domains/user/shared/api/adminApi';
@@ -85,6 +85,21 @@ export default function AdmissionsPanel() {
         <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 bg-brand-red text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-brand-red-dark transition-colors self-start">
           <Plus className="w-3.5 h-3.5" /> New Admission
         </button>
+      </div>
+
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-3">
+        <div className="flex items-start gap-2">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+          <div>
+            <p className="text-sm font-bold text-slate-900">Student approval flow</p>
+            <div className="mt-1 grid gap-1 text-xs text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+              <p className="flex gap-1.5"><ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-blue-500" /> Public requests arrive under Admin CMS Contact Requests.</p>
+              <p className="flex gap-1.5"><ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-blue-500" /> Admin reviews and confirms the request details.</p>
+              <p className="flex gap-1.5"><ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-blue-500" /> Admin, Manager, or Secretary creates the student here.</p>
+              <p className="flex gap-1.5"><ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-blue-500" /> Enrollment becomes pending until payment is recorded or verified.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && (

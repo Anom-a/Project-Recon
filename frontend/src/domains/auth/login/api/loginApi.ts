@@ -39,10 +39,10 @@ function parseJwt(token: string): Record<string, unknown> | null {
  * Backend role constants → frontend UserProfile role mapping.
  *
  * Backend roles (from UserAssignment.role):
- *   super_admin, branch_manager, instructor, student
+ *   super_admin, branch_manager, secretary, instructor, student
  *
  * Frontend UserProfile roles:
- *   Admin, Manager, Instructor, Student
+ *   Admin, Manager, Secretary, Instructor, Student
  */
 const ROLE_MAP: Record<string, UserProfile['role']> = {
   super_admin: 'Admin',
@@ -59,8 +59,8 @@ const ROLE_MAP: Record<string, UserProfile['role']> = {
 function resolveRole(assignments: Array<{ role: string; is_primary?: boolean; is_active?: boolean }>): UserProfile['role'] {
   if (!assignments || assignments.length === 0) return 'Student';
 
-  // Priority order: super_admin > branch_manager > instructor > student
-  const priority = ['super_admin', 'branch_manager', 'instructor', 'student'];
+  // Priority order mirrors backend operational responsibility.
+  const priority = ['super_admin', 'branch_manager', 'secretary', 'instructor', 'student'];
 
   // Check primary assignment first
   const primary = assignments.find((a) => a.is_primary && a.is_active);

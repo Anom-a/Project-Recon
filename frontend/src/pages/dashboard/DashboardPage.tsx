@@ -11,17 +11,19 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage({ currentUser, onLogout }: DashboardPageProps) {
-  if (currentUser.role === 'Admin') {
-    return <AdminDashboard currentUser={currentUser} onLogout={onLogout} />;
+  switch (currentUser.role) {
+    case 'Admin':
+      return <AdminDashboard currentUser={currentUser} onLogout={onLogout} />;
+    case 'Manager':
+    case 'EventManager':
+      return <ManagerDashboard currentUser={currentUser} onLogout={onLogout} />;
+    case 'Instructor':
+      return <TeacherDashboard currentUser={currentUser} onLogout={onLogout} />;
+    case 'Secretary':
+      return <SecretaryDashboard currentUser={currentUser} onLogout={onLogout} />;
+    case 'Student':
+    case 'Parent':
+    default:
+      return <StudentDashboard currentUser={currentUser} onLogout={onLogout} />;
   }
-  if (currentUser.role === 'Manager' || currentUser.role === 'EventManager') {
-    return <ManagerDashboard currentUser={currentUser} onLogout={onLogout} />;
-  }
-  if (currentUser.role === 'Instructor') {
-    return <TeacherDashboard currentUser={currentUser} onLogout={onLogout} />;
-  }
-  if (currentUser.role === 'Secretary') {
-    return <SecretaryDashboard currentUser={currentUser} onLogout={onLogout} />;
-  }
-  return <StudentDashboard currentUser={currentUser} onLogout={onLogout} />;
 }

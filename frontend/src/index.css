@@ -519,10 +519,6 @@
 .animate-border-scan { animation: border-scan 4s linear infinite; }
 .animate-shine { background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%); background-size: 200% 100%; animation: shine-sweep 3s ease-in-out infinite; }
 
-.hover\\:pause:hover .animate-marquee {
-  animation-play-state: paused;
-}
-
 .marquee-container:hover .animate-marquee {
   animation-play-state: paused;
 }

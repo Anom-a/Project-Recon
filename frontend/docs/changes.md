@@ -32,3 +32,19 @@
   - Created `securityApi.ts` to expose Device Verification, Email Verification, and Password Change logic.
   - Integrated `fetchUsersApi`, `toggleUserStatusApi`, and `createStaffApi` directly into `AdminDashboard.tsx`, allowing real-time User listing, suspension, and invitation, replacing the previous hardcoded `MOCK_USERS`.
   - Added a "Change Admin Password" section inside `SystemSettings` to securely consume `POST /accounts/password/change/`.
+
+### Step 4: RBAC and Academic API Completion (Completed)
+- **Objective**: Align frontend access control and API adapters with the completed Accounts, CMS, and Academic backend modules.
+- **Implementation**:
+  - Added a centralized role/permission registry in `src/shared/auth/permissions.ts` for Admin, Manager, Secretary, Instructor, Student, Parent, and EventManager.
+  - Updated app navigation and protected command-center rendering to use shared permission checks instead of scattered role conditionals.
+  - Fixed login role resolution so `secretary` backend assignments map reliably to the Secretary dashboard.
+  - Expanded `academicApi.ts` to cover the remaining backend routes for classes, enrollment periods, online payment verification, student activation, attendance summaries, staff attendance, milestones, progress summaries, learning materials, certificate templates, certificate verification, and report/material downloads.
+  - Replaced manual query-string concatenation with a small shared query builder inside the academic adapter.
+  - Removed an invalid CSS selector that produced a Vite optimizer warning during production builds.
+
+## Current Production Recommendations
+- Add route-level code splitting for the large dashboard modules; the production bundle is valid but the main chunk is still over Vite's recommended 500 kB threshold.
+- Standardize API response pagination shapes in Accounts/CMS wrappers so every list adapter accepts both DRF paginated and plain-array responses consistently.
+- Replace the remaining mock-only operational panels with backend endpoints as those APIs become available, especially store inventory, events, tournaments, communications, and analytics.
+- Add focused component tests for role-specific dashboard navigation once a test runner is selected.

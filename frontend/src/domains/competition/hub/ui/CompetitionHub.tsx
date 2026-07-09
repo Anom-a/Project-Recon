@@ -61,7 +61,7 @@ export default function CompetitionHub({ currentUser }: CompetitionHubProps) {
   const sc: Record<string, { bg: string; text: string; dot: string }> = {
     upcoming: { bg: 'bg-brand-blue/10', text: 'text-brand-blue', dot: 'bg-brand-blue' },
     live: { bg: 'bg-brand-red/10', text: 'text-brand-red', dot: 'bg-brand-red animate-pulse' },
-    completed: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-500' },
+    completed: { bg: 'bg-emerald-500/10', text: 'text-emerald-600', dot: 'bg-emerald-500' },
   };
 
   const FILTERS: { id: StatusFilter; icon: React.ElementType }[] = [
@@ -226,7 +226,7 @@ function TournamentsView({
                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${s.bg} ${s.text} text-[9px] font-black uppercase tracking-wider`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{t.status}
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{t.category}</span>
+                <span className={`text-[9px] font-black text-white px-2 py-0.5 rounded-md bg-gradient-to-r ${CATEGORY_COLORS[t.category] || 'from-slate-500 to-slate-600'}`}>{t.category}</span>
               </div>
               <h3 className={`font-black text-base mb-1 transition-colors ${isSelected ? 'text-brand-red' : 'text-slate-900'}`}>{t.name}</h3>
               <div className="flex flex-col gap-1.5 text-xs text-slate-500 mt-2">
