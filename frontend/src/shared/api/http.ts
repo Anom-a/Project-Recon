@@ -83,8 +83,8 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
             // Refresh failed, user needs to login again
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
-            // Reload to clear state, or dispatch event.
-            window.location.reload(); 
+            localStorage.removeItem('ethio_robotics_user');
+            window.dispatchEvent(new CustomEvent('auth:logout'));
           }
         } catch {
           localStorage.removeItem('access_token');

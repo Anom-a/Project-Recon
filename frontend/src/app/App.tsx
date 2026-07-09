@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import Navbar from '../shared/ui/Navbar';
@@ -23,6 +23,7 @@ import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import { useAuth } from '../shared/hooks/useAuth';
 import { useCart } from '../shared/hooks/useCart';
 import { useNavigation } from '../shared/hooks/useNavigation';
+import { hasPermission } from '../shared/auth/permissions';
 
 import { ActiveTab, CartItem, UserProfile } from '../shared/types';
 
@@ -89,8 +90,21 @@ export default function App() {
 
   const onAuthSuccess = (userProfile: UserProfile) => {
     handleAuthSuccess(userProfile);
-    handleTabChange('dashboard');
   };
+
+  const prevUser = useRef(currentUser);
+  useEffect(() => {
+    if (currentUser && !prevUser.current) {
+      handleTabChange('dashboard');
+    }
+    prevUser.current = currentUser;
+  }, [currentUser, handleTabChange]);
+
+  useEffect(() => {
+    const onLogout = () => handleLogoutAndNavigate();
+    window.addEventListener('auth:logout', onLogout);
+    return () => window.removeEventListener('auth:logout', onLogout);
+  }, []);
 
   if (activeTab === 'login' || activeTab === 'register') {
     return (
@@ -191,7 +205,7 @@ export default function App() {
             </motion.div>
           )}
 
-          {activeTab === 'command-center' && currentUser && (currentUser.role === 'Manager' || currentUser.role === 'Admin') && (
+          {activeTab === 'command-center' && currentUser && hasPermission(currentUser, 'command-center:view') && (
             <motion.div key="command-center-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
               <EventCommandCenter currentUser={currentUser} onLogout={handleLogoutAndNavigate} />
             </motion.div>
