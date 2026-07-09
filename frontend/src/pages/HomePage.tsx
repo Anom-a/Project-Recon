@@ -115,7 +115,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         transition={{ duration: 0.6 }}
         className="bg-gradient-to-r from-brand-blue via-brand-blue-dark to-brand-blue py-12 relative overflow-hidden"
       >
-        <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
@@ -134,11 +134,11 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                   transition={{ delay: i * 0.1 }}
                   className="text-center"
                 >
-                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <StatIcon className="w-5 h-5 text-slate-900" />
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <StatIcon className="w-5 h-5 text-white" />
                   </div>
                   <p className="font-black text-3xl md:text-4xl text-white tracking-tight">{stat.value}</p>
-                  <p className="text-sm text-slate-900/70 font-medium mt-1">{stat.label}</p>
+                  <p className="text-sm text-white/70 font-medium mt-1">{stat.label}</p>
                 </motion.div>
               );
             })}
@@ -165,7 +165,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                 <React.Fragment key={groupIdx}>
                   {partners.length > 0 ? partners.map((partner, idx) => (
                     <div key={partner.id} className="flex items-center gap-16 animate-logo-float" style={{ animationDelay: `${(idx % 4) * 0.4}s` }}>
-                      <img src={partner.image || ''} alt={partner.title} className="h-10 md:h-14 object-contain brightness-90 hover:brightness-110 transition-all duration-500 hover:scale-110 hover:drop-shadow-[0_0_15px_rgba(37,51,141,0.5)]" />
+                      {partner.image ? <img src={partner.image} alt={partner.title} className="h-10 md:h-14 object-contain brightness-90 hover:brightness-110 transition-all duration-500 hover:scale-110 hover:drop-shadow-[0_0_15px_rgba(37,51,141,0.5)]" /> : <span className="text-sm font-bold text-slate-400">{partner.title}</span>}
                     </div>
                   )) : (
                     <div className="flex items-center gap-16 animate-logo-float"><span className="text-sm font-semibold text-slate-400">Loading partners...</span></div>
@@ -186,7 +186,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                 className={`flex items-center justify-center animate-logo-float ${idx === 6 ? 'col-span-2 sm:col-span-3' : ''}`}
                 style={{ animationDelay: `${(idx % 4) * 0.3}s` }}
               >
-                <img src={partner.image || ''} alt={partner.title} className="h-8 md:h-10 object-contain brightness-90 hover:brightness-110 transition-all duration-500 hover:scale-110 hover:drop-shadow-[0_0_12px_rgba(37,51,141,0.4)]" />
+                {partner.image ? <img src={partner.image} alt={partner.title} className="h-8 md:h-10 object-contain brightness-90 hover:brightness-110 transition-all duration-500 hover:scale-110 hover:drop-shadow-[0_0_12px_rgba(37,51,141,0.4)]" /> : <span className="text-sm font-bold text-slate-400">{partner.title}</span>}
               </motion.div>
             )) : (
               <span className="text-sm font-semibold text-slate-400 col-span-2 sm:col-span-3 text-center">Loading partners...</span>
@@ -306,15 +306,15 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               <div className="px-6 pb-6 pt-1 flex items-center gap-2">
                 <button
                   onClick={() => onEnrollInProgram(prog.id)}
-                  className="btn-ripple flex-1 bg-[#25338d]/10 text-[#25338d] hover:bg-[#25338d] hover:text-slate-900 font-sans font-semibold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  className="btn-ripple flex-1 bg-gradient-to-r from-brand-red to-brand-red-dark text-white hover:shadow-lg hover:shadow-brand-red/25 font-sans font-semibold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>Reserve Enrollment Slot</span>
+                  <span>Enroll Now</span>
                 </button>
                 <button
                   onClick={() => onSetSelectedProgramSpec(prog)}
-                  className="p-3 text-brand-muted hover:bg-[#faf8ff] hover:text-slate-900 rounded-xl border border-brand-border-light transition-colors"
-                  title="Curriculum Details"
+                  className="p-3 text-slate-400 hover:text-brand-red hover:bg-brand-red/5 rounded-xl border border-slate-200 transition-colors"
+                  title="View Curriculum Details"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -428,8 +428,8 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               className="group relative rounded-xl overflow-hidden border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all aspect-[4/3]"
             >
               <img src={photo.src} alt={photo.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                <span className="text-slate-900 font-sans font-bold text-xs">{photo.label}</span>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+                <span className="text-white font-sans font-bold text-xs">{photo.label}</span>
               </div>
             </motion.div>
           ))}

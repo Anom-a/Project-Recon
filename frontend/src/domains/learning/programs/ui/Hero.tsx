@@ -158,7 +158,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
             {/* Badge */}
             <motion.div
               {...stagger(0.15)}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 border border-slate-200 text-white rounded-full"
+              className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-full"
               id="hero-tag"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -284,7 +284,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
                   id="btn-discover-programs"
                 >
                   <span className="relative z-[1] flex items-center gap-2">
-                    Explore Competitions
+                    Explore Programs
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
