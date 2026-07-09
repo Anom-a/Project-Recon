@@ -65,6 +65,7 @@ export default function DemoSlider({ slides, onCta }: DemoSliderProps) {
                 </div>
                 {/* Video Panel */}
                 <div className="w-full md:w-1/2 relative aspect-video md:aspect-auto md:min-h-[450px] bg-white overflow-hidden">
+                  {slide.video ? (
                   <video
                     src={slide.video}
                     autoPlay
@@ -73,6 +74,9 @@ export default function DemoSlider({ slides, onCta }: DemoSliderProps) {
                     playsInline
                     className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity duration-500"
                   />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400 text-sm">Video unavailable</div>
+                  )}
                   {/* Gradient edge for seamless blend */}
                   <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-slate-900 to-transparent pointer-events-none" />
                 </div>

@@ -383,9 +383,9 @@ export default function AboutTab() {
           </div>
           <div className="flex flex-wrap justify-center gap-12 items-center opacity-70 hover:opacity-100 transition-opacity">
             {partners.length > 0 ? (
-              partners.map(partner => (
-                <img key={partner.id} src={partner.image || ''} alt={partner.title} className="h-16 object-contain" />
-              ))
+              partners.map(partner =>
+                  partner.image ? <img key={partner.id} src={partner.image} alt={partner.title} className="h-16 object-contain" /> : null
+                )
             ) : (
               <>
                 <img src="https://ethiorobotics.org/images/partners/minstry%20of%20inovation%20and%20technology.png" alt="Ministry of Innovation" className="h-16 object-contain" />

@@ -29,7 +29,7 @@ export default function Updates({ onCampRegisterAction }: UpdatesProps) {
 
   useEffect(() => {
     cmsPublicApi.getNews()
-      .then(res => setNews(res.results.filter(n => n.is_active)))
+      .then(res => setNews((res.results ?? []).filter(n => n.is_active)))
       .catch(console.error);
   }, []);
 
