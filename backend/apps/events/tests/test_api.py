@@ -6,11 +6,14 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 
 from apps.accounts.models import Branch
+from apps.accounts.permissions.roles import Roles
 from apps.accounts.services import user_service
+from apps.accounts.services.user_service import _create_user_with_role
 from apps.events.constants import EventStatus, MatchSideType, MatchStatus, Visibility, EventType
-from apps.events.models import Event, Match, Tournament, TournamentCategory, TournamentTeam
+from apps.events.models import Event, Match, Tournament, TournamentCategory, TournamentTeam, Workshop
 from apps.events.services.match_service import (
     assign_team_to_side,
+    complete_match,
     create_match,
     record_scores,
 )
@@ -59,6 +62,10 @@ class EventApiTestCase(APITestCase):
 
     def _create_tournament_event(self, **overrides):
         data = {**self.valid_event_data, "event_type": EventType.TOURNAMENT, **overrides}
+        return Event.objects.create(**data)
+
+    def _create_workshop_event(self, **overrides):
+        data = {**self.valid_event_data, "event_type": EventType.WORKSHOP, **overrides}
         return Event.objects.create(**data)
 
 
@@ -618,3 +625,274 @@ class AdminMatchApiTest(EventApiTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
+
+
+class AdminRankingApiTest(EventApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.tournament_event = self._create_tournament_event(
+            title="Ranking Tournament",
+        )
+        self.category = TournamentCategory.objects.create(name="VEX IQ", code="VEX_IQ")
+        self.tournament = Tournament.objects.create(
+            event=self.tournament_event,
+            category=self.category,
+        )
+        self.team_a = TournamentTeam.objects.create(
+            tournament=self.tournament, team_name="Alpha"
+        )
+        self.team_b = TournamentTeam.objects.create(
+            tournament=self.tournament, team_name="Beta"
+        )
+        self.team_c = TournamentTeam.objects.create(
+            tournament=self.tournament, team_name="Gamma"
+        )
+
+    def _complete_match(self, score_a, score_b):
+        match = create_match({
+            "tournament": self.tournament,
+            "round": "Qualification",
+            "scheduled_at": timezone.now(),
+        })
+        assign_team_to_side(match, MatchSideType.SIDE_A, self.team_a)
+        assign_team_to_side(match, MatchSideType.SIDE_B, self.team_b)
+        record_scores(match, score_a, score_b)
+        return complete_match(match)
+
+    def test_standings_as_super_admin(self):
+        self._auth(self.super_admin)
+        self._complete_match(10, 5)
+        response = self.client.get(
+            f"{self.base_url}/admin/tournaments/{self.tournament.id}/standings/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        # Alpha won: 10 pts, Beta lost: 5 pts
+        self.assertEqual(response.data[0]["team_name"], "Alpha")
+        self.assertEqual(response.data[0]["points"], 10)
+        self.assertEqual(response.data[0]["rank"], 1)
+
+    def test_standings_as_branch_manager(self):
+        self._auth(self.branch_manager)
+        self._complete_match(10, 5)
+        response = self.client.get(
+            f"{self.base_url}/admin/tournaments/{self.tournament.id}/standings/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_standings_as_student_forbidden(self):
+        self._auth(self.student)
+        response = self.client.get(
+            f"{self.base_url}/admin/tournaments/{self.tournament.id}/standings/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_standings_top_n(self):
+        self._auth(self.super_admin)
+        self._complete_match(10, 5)
+        response = self.client.get(
+            f"{self.base_url}/admin/tournaments/{self.tournament.id}/standings/?top=2"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_winner_as_super_admin(self):
+        self._auth(self.super_admin)
+        self._complete_match(10, 5)
+        response = self.client.get(
+            f"{self.base_url}/admin/tournaments/{self.tournament.id}/winner/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["team_name"], "Alpha")
+
+    def test_winner_no_matches_returns_null(self):
+        self._auth(self.super_admin)
+        response = self.client.get(
+            f"{self.base_url}/admin/tournaments/{self.tournament.id}/winner/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data)
+
+    def test_winner_as_student_forbidden(self):
+        self._auth(self.student)
+        response = self.client.get(
+            f"{self.base_url}/admin/tournaments/{self.tournament.id}/winner/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class AdminWorkshopApiTest(EventApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.workshop_event = self._create_workshop_event(
+            title="Test Workshop",
+        )
+        self.instructor = _create_user_with_role(
+            "instructor@test.com", "Jane", "Doe", "StrongP@ssw0rd!2026",
+            status="ACTIVE", is_email_verified=True, role=Roles.INSTRUCTOR, branch=self.branch,
+        )
+        self.valid_workshop_data = {
+            "event": str(self.workshop_event.id),
+            "instructor": str(self.instructor.id),
+            "duration_minutes": 120,
+            "level": "BEGINNER",
+            "price": 50.00,
+        }
+
+    def test_create_workshop_as_super_admin(self):
+        self._auth(self.super_admin)
+        response = self.client.post(
+            f"{self.base_url}/admin/workshops/",
+            self.valid_workshop_data,
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["duration_minutes"], 120)
+        self.assertEqual(response.data["level"], "BEGINNER")
+
+    def test_create_workshop_as_branch_manager(self):
+        self._auth(self.branch_manager)
+        response = self.client.post(
+            f"{self.base_url}/admin/workshops/",
+            self.valid_workshop_data,
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_workshop_as_instructor_forbidden(self):
+        self._auth(self.instructor)
+        response = self.client.post(
+            f"{self.base_url}/admin/workshops/",
+            self.valid_workshop_data,
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_workshop_as_student_forbidden(self):
+        self._auth(self.student)
+        response = self.client.post(
+            f"{self.base_url}/admin/workshops/",
+            self.valid_workshop_data,
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_workshops_as_super_admin(self):
+        self._auth(self.super_admin)
+        Workshop.objects.create(
+            event=self.workshop_event,
+            instructor=self.instructor,
+            duration_minutes=120,
+            level="BEGINNER",
+        )
+        response = self.client.get(f"{self.base_url}/admin/workshops/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_list_workshops_as_instructor(self):
+        self._auth(self.instructor)
+        Workshop.objects.create(
+            event=self.workshop_event,
+            instructor=self.instructor,
+            duration_minutes=120,
+            level="BEGINNER",
+        )
+        response = self.client.get(f"{self.base_url}/admin/workshops/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_list_workshops_instructor_only_sees_own(self):
+        other_instructor = _create_user_with_role(
+            "other@test.com", "Other", "Inst", "StrongP@ssw0rd!2026",
+            status="ACTIVE", is_email_verified=True, role=Roles.INSTRUCTOR, branch=self.branch,
+        )
+        other_event = self._create_workshop_event(title="Other Workshop")
+        Workshop.objects.create(
+            event=self.workshop_event,
+            instructor=self.instructor,
+            duration_minutes=120,
+            level="BEGINNER",
+        )
+        Workshop.objects.create(
+            event=other_event,
+            instructor=other_instructor,
+            duration_minutes=60,
+            level="ADVANCED",
+        )
+        self._auth(self.instructor)
+        response = self.client.get(f"{self.base_url}/admin/workshops/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_get_workshop_detail_as_super_admin(self):
+        self._auth(self.super_admin)
+        workshop = Workshop.objects.create(
+            event=self.workshop_event,
+            instructor=self.instructor,
+            duration_minutes=120,
+            level="BEGINNER",
+        )
+        response = self.client.get(
+            f"{self.base_url}/admin/workshops/{workshop.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["duration_minutes"], 120)
+
+    def test_update_workshop_as_super_admin(self):
+        self._auth(self.super_admin)
+        workshop = Workshop.objects.create(
+            event=self.workshop_event,
+            instructor=self.instructor,
+            duration_minutes=120,
+            level="BEGINNER",
+        )
+        response = self.client.patch(
+            f"{self.base_url}/admin/workshops/{workshop.id}/",
+            {"duration_minutes": 180},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["duration_minutes"], 180)
+
+    def test_delete_workshop_as_super_admin(self):
+        self._auth(self.super_admin)
+        workshop = Workshop.objects.create(
+            event=self.workshop_event,
+            instructor=self.instructor,
+            duration_minutes=120,
+            level="BEGINNER",
+        )
+        response = self.client.delete(
+            f"{self.base_url}/admin/workshops/{workshop.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_instructor_can_view_own_workshop(self):
+        self._auth(self.instructor)
+        workshop = Workshop.objects.create(
+            event=self.workshop_event,
+            instructor=self.instructor,
+            duration_minutes=120,
+            level="BEGINNER",
+        )
+        response = self.client.get(
+            f"{self.base_url}/admin/workshops/{workshop.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_instructor_cannot_view_other_workshop(self):
+        other_instructor = _create_user_with_role(
+            "other2@test.com", "Other2", "Inst", "StrongP@ssw0rd!2026",
+            status="ACTIVE", is_email_verified=True, role=Roles.INSTRUCTOR, branch=self.branch,
+        )
+        self._auth(self.instructor)
+        workshop = Workshop.objects.create(
+            event=self.workshop_event,
+            instructor=other_instructor,
+            duration_minutes=120,
+            level="BEGINNER",
+        )
+        response = self.client.get(
+            f"{self.base_url}/admin/workshops/{workshop.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

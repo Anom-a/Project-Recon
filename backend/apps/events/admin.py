@@ -8,6 +8,7 @@ from apps.events.models import (
     Tournament,
     TournamentCategory,
     TournamentTeam,
+    Workshop,
 )
 
 
@@ -77,3 +78,11 @@ class MatchParticipantAdmin(admin.ModelAdmin):
     list_display = ("tournament_team", "match_side", "created_at")
     search_fields = ("tournament_team__team_name",)
     readonly_fields = ("id", "created_at")
+
+
+@admin.register(Workshop)
+class WorkshopAdmin(admin.ModelAdmin):
+    list_display = ("event", "instructor", "level", "duration_minutes", "price", "created_at")
+    list_filter = ("level",)
+    search_fields = ("event__title", "instructor__email")
+    readonly_fields = ("id", "created_at", "updated_at")

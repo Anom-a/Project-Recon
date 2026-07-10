@@ -3,6 +3,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 
 from apps.events.constants import MatchSideType, MatchStatus
 from apps.events.models import Match, MatchParticipant, MatchSide, Tournament
+from apps.events.services.ranking_service import update_tournament_statistics
 from apps.events.services.validators import MatchValidator
 from apps.shared.audit.services import log_action
 
@@ -127,10 +128,12 @@ def delete_match(match: Match, actor=None) -> None:
         ValidationError: If tournament is closed.
     """
     MatchValidator.validate_tournament_not_closed(match.tournament)
+    tournament = match.tournament
 
     with transaction.atomic():
         log_action(actor, "DELETE_MATCH", match, match.id)
         match.delete()
+        update_tournament_statistics(tournament)
 
 
 def assign_team_to_side(match: Match, side_type: str, team, actor=None) -> MatchParticipant:
@@ -248,6 +251,7 @@ def record_scores(match: Match, side_a_score: int, side_b_score: int, actor=None
         side_b.save(update_fields=["score"])
 
         log_action(actor, "RECORD_SCORES", match, match.id)
+        update_tournament_statistics(match.tournament)
         return match
 
 
@@ -286,4 +290,5 @@ def complete_match(match: Match, actor=None) -> Match:
         match.winning_side = winning_side
         match.save(update_fields=["status", "completed_at", "winning_side"])
         log_action(actor, "COMPLETE_MATCH", match, match.id)
+        update_tournament_statistics(match.tournament)
         return match

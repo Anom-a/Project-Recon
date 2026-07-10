@@ -35,6 +35,14 @@ from .match import (
     AdminMatchCompleteView,
     AdminTournamentMatchListView,
 )
+from .ranking import (
+    AdminTournamentStandingsView,
+    AdminTournamentWinnerView,
+)
+from .workshop import (
+    AdminWorkshopListCreateView,
+    AdminWorkshopRetrieveUpdateDestroyView,
+)
 
 __all__ = [
     "PublicEventListView",
@@ -64,4 +72,8 @@ __all__ = [
     "AdminMatchRecordScoresView",
     "AdminMatchCompleteView",
     "AdminTournamentMatchListView",
+    "AdminTournamentStandingsView",
+    "AdminTournamentWinnerView",
+    "AdminWorkshopListCreateView",
+    "AdminWorkshopRetrieveUpdateDestroyView",
 ]

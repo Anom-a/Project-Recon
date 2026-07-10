@@ -2,8 +2,10 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
+from apps.accounts.models import User
+
 from apps.events.constants import EventStatus, MatchSideType, MatchStatus, Visibility, EventType, RegistrationMode
-from apps.events.models import Event, Match, MatchParticipant, Tournament, TournamentCategory, TournamentTeam
+from apps.events.models import Event, Match, MatchParticipant, Tournament, TournamentCategory, TournamentTeam, Workshop
 from apps.events.services.event_service import (
     create_event,
     get_event_or_404,
@@ -48,6 +50,18 @@ from apps.events.services.match_service import (
     record_scores,
     remove_team_from_side,
     update_match,
+)
+from apps.events.services.ranking_service import (
+    get_standings,
+    get_tournament_winner,
+    update_tournament_statistics,
+)
+from apps.events.services.workshop_service import (
+    create_workshop,
+    delete_workshop,
+    get_workshop_or_404,
+    list_workshops,
+    update_workshop,
 )
 
 
@@ -676,3 +690,272 @@ class MatchServiceTest(TestCase):
         complete_match(match)
         with self.assertRaises(ValidationError):
             complete_match(match)
+
+
+class RankingServiceTest(TestCase):
+    def setUp(self):
+        self.valid_data = {
+            "title": "Ranking Tournament",
+            "description": "desc",
+            "location": "loc",
+            "event_type": EventType.TOURNAMENT,
+            "start_datetime": timezone.now() + timezone.timedelta(days=1),
+            "end_datetime": timezone.now() + timezone.timedelta(days=2),
+            "visibility": Visibility.PUBLIC,
+            "status": EventStatus.DRAFT,
+        }
+        self.event = create_event(self.valid_data)
+        self.category = TournamentCategory.objects.create(name="VEX IQ", code="VEX_IQ")
+        self.tournament = Tournament.objects.create(
+            event=self.event,
+            category=self.category,
+        )
+        self.team_a = create_team({
+            "tournament": self.tournament.id,
+            "team_name": "Team Alpha",
+        })
+        self.team_b = create_team({
+            "tournament": self.tournament.id,
+            "team_name": "Team Beta",
+        })
+        self.team_c = create_team({
+            "tournament": self.tournament.id,
+            "team_name": "Team Gamma",
+        })
+        self.match_data = {
+            "tournament": self.tournament.id,
+            "round": "Qualification",
+            "scheduled_at": timezone.now(),
+        }
+
+    def _complete_match(self, side_a_teams, side_b_teams, score_a, score_b):
+        """Helper to create and complete a match with given teams and scores."""
+        match = create_match({**self.match_data})
+        for team in side_a_teams:
+            assign_team_to_side(match, MatchSideType.SIDE_A, team)
+        for team in side_b_teams:
+            assign_team_to_side(match, MatchSideType.SIDE_B, team)
+        record_scores(match, score_a, score_b)
+        return complete_match(match)
+
+    def test_statistics_after_win(self):
+        self._complete_match([self.team_a], [self.team_b], 10, 5)
+        self.team_a.refresh_from_db()
+        self.team_b.refresh_from_db()
+        self.assertEqual(self.team_a.wins, 1)
+        self.assertEqual(self.team_a.losses, 0)
+        self.assertEqual(self.team_a.points, 10)
+        self.assertEqual(self.team_b.wins, 0)
+        self.assertEqual(self.team_b.losses, 1)
+        self.assertEqual(self.team_b.points, 5)
+
+    def test_statistics_after_loss(self):
+        self._complete_match([self.team_a], [self.team_b], 3, 8)
+        self.team_a.refresh_from_db()
+        self.team_b.refresh_from_db()
+        self.assertEqual(self.team_a.wins, 0)
+        self.assertEqual(self.team_a.losses, 1)
+        self.assertEqual(self.team_a.points, 3)
+        self.assertEqual(self.team_b.wins, 1)
+        self.assertEqual(self.team_b.losses, 0)
+        self.assertEqual(self.team_b.points, 8)
+
+    def test_statistics_after_draw(self):
+        self._complete_match([self.team_a], [self.team_b], 5, 5)
+        self.team_a.refresh_from_db()
+        self.team_b.refresh_from_db()
+        self.assertEqual(self.team_a.draws, 1)
+        self.assertEqual(self.team_a.points, 5)
+        self.assertEqual(self.team_b.draws, 1)
+        self.assertEqual(self.team_b.points, 5)
+
+    def test_statistics_multiple_matches(self):
+        self._complete_match([self.team_a], [self.team_b], 10, 5)
+        self._complete_match([self.team_a], [self.team_c], 7, 3)
+        self.team_a.refresh_from_db()
+        self.assertEqual(self.team_a.wins, 2)
+        self.assertEqual(self.team_a.points, 17)
+
+    def test_statistics_alliance_2v1(self):
+        """Both teams on the winning side get credit."""
+        self._complete_match([self.team_a, self.team_b], [self.team_c], 10, 4)
+        self.team_a.refresh_from_db()
+        self.team_b.refresh_from_db()
+        self.team_c.refresh_from_db()
+        self.assertEqual(self.team_a.wins, 1)
+        self.assertEqual(self.team_a.points, 10)
+        self.assertEqual(self.team_b.wins, 1)
+        self.assertEqual(self.team_b.points, 10)
+        self.assertEqual(self.team_c.losses, 1)
+        self.assertEqual(self.team_c.points, 4)
+
+    def test_get_standings_ordering(self):
+        self._complete_match([self.team_a], [self.team_b], 10, 5)
+        self._complete_match([self.team_a], [self.team_c], 7, 3)
+        self._complete_match([self.team_b], [self.team_c], 6, 6)
+        standings = list(get_standings(self.tournament.id))
+        # team_a: 17 pts, team_b: 11 pts (5+6), team_c: 9 pts (3+6)
+        self.assertEqual(standings[0].id, self.team_a.id)
+        self.assertEqual(standings[1].id, self.team_b.id)
+        self.assertEqual(standings[2].id, self.team_c.id)
+
+    def test_get_standings_top_n(self):
+        self._complete_match([self.team_a], [self.team_b], 10, 5)
+        self._complete_match([self.team_a], [self.team_c], 7, 3)
+        standings = list(get_standings(self.tournament.id, top_n=2))
+        self.assertEqual(len(standings), 2)
+
+    def test_get_tournament_winner(self):
+        self._complete_match([self.team_a], [self.team_b], 10, 5)
+        self._complete_match([self.team_a], [self.team_c], 7, 3)
+        winner = get_tournament_winner(self.tournament.id)
+        self.assertEqual(winner.id, self.team_a.id)
+
+    def test_get_tournament_winner_no_matches(self):
+        winner = get_tournament_winner(self.tournament.id)
+        self.assertIsNone(winner)
+
+    def test_statistics_idempotent(self):
+        self._complete_match([self.team_a], [self.team_b], 10, 5)
+        update_tournament_statistics(self.tournament)
+        self.team_a.refresh_from_db()
+        self.assertEqual(self.team_a.wins, 1)
+        self.assertEqual(self.team_a.points, 10)
+
+    def test_statistics_reset_on_recalculation(self):
+        self._complete_match([self.team_a], [self.team_b], 10, 5)
+        # Complete another match where team_b wins
+        match2 = create_match({**self.match_data})
+        assign_team_to_side(match2, MatchSideType.SIDE_A, self.team_b)
+        assign_team_to_side(match2, MatchSideType.SIDE_B, self.team_a)
+        record_scores(match2, 8, 3)
+        complete_match(match2)
+        self.team_a.refresh_from_db()
+        self.team_b.refresh_from_db()
+        # team_a: 10 pts (won first), 3 pts (lost second) = 13, 1W 1L
+        # team_b: 5 pts (lost first), 8 pts (won second) = 13, 1W 1L
+        self.assertEqual(self.team_a.points, 13)
+        self.assertEqual(self.team_a.wins, 1)
+        self.assertEqual(self.team_a.losses, 1)
+        self.assertEqual(self.team_b.points, 13)
+        self.assertEqual(self.team_b.wins, 1)
+        self.assertEqual(self.team_b.losses, 1)
+
+    def test_statistics_unaffected_team(self):
+        """Team not in any completed match should have 0 stats."""
+        self._complete_match([self.team_a], [self.team_b], 10, 5)
+        self.team_c.refresh_from_db()
+        self.assertEqual(self.team_c.wins, 0)
+        self.assertEqual(self.team_c.losses, 0)
+        self.assertEqual(self.team_c.draws, 0)
+        self.assertEqual(self.team_c.points, 0)
+
+
+class WorkshopServiceTest(TestCase):
+    def setUp(self):
+        self.valid_data = {
+            "title": "Test Workshop",
+            "description": "Workshop description",
+            "location": "Room A",
+            "event_type": EventType.WORKSHOP,
+            "start_datetime": timezone.now() + timezone.timedelta(days=1),
+            "end_datetime": timezone.now() + timezone.timedelta(days=2),
+            "visibility": Visibility.PUBLIC,
+            "status": EventStatus.DRAFT,
+        }
+        self.event = create_event(self.valid_data)
+        self.instructor = User.objects.create_user(
+            email="instructor@test.com",
+            password="Pass1234!",
+            first_name="John",
+            last_name="Doe",
+        )
+        self.workshop_data = {
+            "event": self.event.id,
+            "instructor": self.instructor.id,
+            "duration_minutes": 120,
+            "level": "BEGINNER",
+            "price": 50.00,
+        }
+
+    def test_create_workshop(self):
+        workshop = create_workshop({**self.workshop_data})
+        self.assertEqual(workshop.duration_minutes, 120)
+        self.assertEqual(workshop.level, "BEGINNER")
+        self.assertEqual(workshop.event.id, self.event.id)
+        self.assertEqual(workshop.instructor.id, self.instructor.id)
+
+    def test_create_workshop_wrong_event_type(self):
+        general_event = create_event({
+            **self.valid_data,
+            "title": "General",
+            "event_type": EventType.GENERAL,
+        })
+        with self.assertRaises(ValidationError):
+            create_workshop({**self.workshop_data, "event": general_event.id})
+
+    def test_create_workshop_missing_event(self):
+        with self.assertRaises(ValidationError):
+            create_workshop({"instructor": self.instructor.id, "duration_minutes": 60, "level": "BEGINNER"})
+
+    def test_create_workshop_missing_instructor(self):
+        with self.assertRaises(ValidationError):
+            create_workshop({"event": self.event.id, "duration_minutes": 60, "level": "BEGINNER"})
+
+    def test_create_workshop_invalid_duration(self):
+        with self.assertRaises(ValidationError):
+            create_workshop({**self.workshop_data, "duration_minutes": 0})
+
+    def test_get_workshop_or_404_found(self):
+        workshop = create_workshop(self.workshop_data)
+        found = get_workshop_or_404(workshop.id)
+        self.assertEqual(found.id, workshop.id)
+
+    def test_get_workshop_or_404_not_found(self):
+        with self.assertRaises(NotFound):
+            get_workshop_or_404("00000000-0000-0000-0000-000000000000")
+
+    def test_list_workshops(self):
+        create_workshop(self.workshop_data)
+        self.assertEqual(list_workshops().count(), 1)
+
+    def test_list_workshops_filtered_by_instructor(self):
+        create_workshop(self.workshop_data)
+        other_instructor = User.objects.create_user(
+            email="other@test.com", password="Pass1234!"
+        )
+        other_event = create_event({
+            **self.valid_data, "title": "Other Workshop",
+        })
+        create_workshop({
+            "event": other_event.id,
+            "instructor": other_instructor.id,
+            "duration_minutes": 60,
+            "level": "ADVANCED",
+        })
+        self.assertEqual(list_workshops(user=self.instructor).count(), 1)
+        self.assertEqual(list_workshops(user=other_instructor).count(), 1)
+
+    def test_update_workshop(self):
+        workshop = create_workshop(self.workshop_data)
+        updated = update_workshop(workshop, {"duration_minutes": 180})
+        self.assertEqual(updated.duration_minutes, 180)
+
+    def test_update_workshop_cannot_change_event(self):
+        workshop = create_workshop(self.workshop_data)
+        with self.assertRaises(ValidationError):
+            update_workshop(workshop, {"event": self.event.id})
+
+    def test_update_workshop_instructor(self):
+        workshop = create_workshop(self.workshop_data)
+        new_instructor = User.objects.create_user(
+            email="newinst@test.com", password="Pass1234!"
+        )
+        updated = update_workshop(workshop, {"instructor": new_instructor.id})
+        self.assertEqual(updated.instructor.id, new_instructor.id)
+
+    def test_delete_workshop(self):
+        workshop = create_workshop(self.workshop_data)
+        delete_workshop(workshop)
+        with self.assertRaises(NotFound):
+            get_workshop_or_404(workshop.id)

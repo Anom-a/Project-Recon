@@ -3,6 +3,8 @@ from .tournament import TournamentSerializer, TournamentAdminSerializer
 from .tournament_category import TournamentCategorySerializer
 from .tournament_team import TournamentTeamAdminSerializer
 from .match import MatchAdminSerializer
+from .ranking import TeamStandingSerializer
+from .workshop import WorkshopAdminSerializer
 
 __all__ = [
     "EventSerializer",
@@ -12,4 +14,6 @@ __all__ = [
     "TournamentCategorySerializer",
     "TournamentTeamAdminSerializer",
     "MatchAdminSerializer",
+    "TeamStandingSerializer",
+    "WorkshopAdminSerializer",
 ]

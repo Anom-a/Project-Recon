@@ -28,6 +28,10 @@ from apps.events.api.views import (
     AdminMatchRecordScoresView,
     AdminMatchCompleteView,
     AdminTournamentMatchListView,
+    AdminTournamentStandingsView,
+    AdminTournamentWinnerView,
+    AdminWorkshopListCreateView,
+    AdminWorkshopRetrieveUpdateDestroyView,
 )
 
 urlpatterns = [
@@ -135,5 +139,23 @@ urlpatterns = [
         "admin/tournaments/<uuid:pk>/matches/",
         AdminTournamentMatchListView.as_view(),
         name="events-admin-tournament-matches-list",
+    ),
+    # Workshops
+    path("admin/workshops/", AdminWorkshopListCreateView.as_view(), name="events-admin-workshop-list"),
+    path(
+        "admin/workshops/<uuid:pk>/",
+        AdminWorkshopRetrieveUpdateDestroyView.as_view(),
+        name="events-admin-workshop-detail",
+    ),
+    # Rankings
+    path(
+        "admin/tournaments/<uuid:pk>/standings/",
+        AdminTournamentStandingsView.as_view(),
+        name="events-admin-tournament-standings",
+    ),
+    path(
+        "admin/tournaments/<uuid:pk>/winner/",
+        AdminTournamentWinnerView.as_view(),
+        name="events-admin-tournament-winner",
     ),
 ]
