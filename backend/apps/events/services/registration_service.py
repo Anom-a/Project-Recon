@@ -26,7 +26,7 @@ def get_registration_or_404(pk):
         raise NotFound("Registration not found.")
 
 
-def list_registrations(event_id=None, status=None, student_id=None):
+def list_registrations(event_id=None, status=None, student_id=None, branch_ids=None):
     """
     Return registrations, optionally filtered.
 
@@ -34,6 +34,7 @@ def list_registrations(event_id=None, status=None, student_id=None):
         event_id: Optional event UUID to filter by.
         status: Optional registration status to filter by.
         student_id: Optional student UUID to filter by.
+        branch_ids: Optional set/list of branch UUIDs to scope by.
 
     Returns:
         QuerySet of EventRegistration objects.
@@ -47,6 +48,8 @@ def list_registrations(event_id=None, status=None, student_id=None):
         qs = qs.filter(registration_status=status)
     if student_id:
         qs = qs.filter(student_id=student_id)
+    if branch_ids:
+        qs = qs.filter(event__branch_id__in=branch_ids)
     return qs
 
 

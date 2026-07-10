@@ -3,6 +3,11 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions.roles import (
+    get_active_branch_ids,
+    user_is_branch_manager,
+    user_is_secretary,
+)
 from apps.events.api.permissions import IsEventStaff
 from apps.events.api.serializers import MatchAdminSerializer
 from apps.events.services.match_service import (
@@ -26,7 +31,11 @@ class AdminMatchListCreateView(generics.ListCreateAPIView):
     @extend_schema(tags=["Events - Admin - Matches"])
     def get_queryset(self):
         tournament_id = self.request.query_params.get("tournament")
-        return list_matches(tournament_id=tournament_id)
+        user = self.request.user
+        branch_ids = None
+        if user_is_branch_manager(user) or user_is_secretary(user):
+            branch_ids = get_active_branch_ids(user)
+        return list_matches(tournament_id=tournament_id, branch_ids=branch_ids)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -45,7 +54,9 @@ class AdminMatchRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
 
     @extend_schema(tags=["Events - Admin - Matches"])
     def get_object(self):
-        return get_match_or_404(self.kwargs["pk"])
+        obj = get_match_or_404(self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def update(self, request, *args, **kwargs):
         kwargs["partial"] = True
@@ -79,6 +90,7 @@ class AdminMatchAssignTeamView(APIView):
     )
     def post(self, request, pk):
         match = get_match_or_404(pk)
+        self.check_object_permissions(request, match)
         side = request.data.get("side")
         team_id = request.data.get("tournament_team")
 
@@ -113,6 +125,7 @@ class AdminMatchRemoveTeamView(APIView):
     )
     def post(self, request, pk):
         match = get_match_or_404(pk)
+        self.check_object_permissions(request, match)
         side = request.data.get("side")
         team_id = request.data.get("tournament_team")
 
@@ -144,6 +157,7 @@ class AdminMatchRecordScoresView(APIView):
     )
     def post(self, request, pk):
         match = get_match_or_404(pk)
+        self.check_object_permissions(request, match)
         side_a_score = request.data.get("side_a_score")
         side_b_score = request.data.get("side_b_score")
 
@@ -163,6 +177,7 @@ class AdminMatchCompleteView(APIView):
     @extend_schema(tags=["Events - Admin - Matches"])
     def post(self, request, pk):
         match = get_match_or_404(pk)
+        self.check_object_permissions(request, match)
         match = complete_match(match, actor=request.user)
         return Response(MatchAdminSerializer(match).data)
 
@@ -174,4 +189,5 @@ class AdminTournamentMatchListView(generics.ListAPIView):
     @extend_schema(tags=["Events - Admin - Matches"])
     def get_queryset(self):
         tournament = get_tournament_or_404(self.kwargs["pk"])
+        self.check_object_permissions(self.request, tournament)
         return list_matches(tournament_id=tournament.id)

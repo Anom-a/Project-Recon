@@ -2,6 +2,11 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.response import Response
 
+from apps.accounts.permissions.roles import (
+    get_active_branch_ids,
+    user_is_branch_manager,
+    user_is_secretary,
+)
 from apps.events.api.permissions import IsEventStaff
 from apps.events.api.serializers import TournamentAdminSerializer
 from apps.events.services.tournament_service import (
@@ -21,7 +26,11 @@ class AdminTournamentListCreateView(generics.ListCreateAPIView):
 
     @extend_schema(tags=["Events - Admin - Tournaments"])
     def get_queryset(self):
-        return list_tournaments()
+        user = self.request.user
+        branch_ids = None
+        if user_is_branch_manager(user) or user_is_secretary(user):
+            branch_ids = get_active_branch_ids(user)
+        return list_tournaments(branch_ids=branch_ids)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -40,7 +49,9 @@ class AdminTournamentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPI
 
     @extend_schema(tags=["Events - Admin - Tournaments"])
     def get_object(self):
-        return get_tournament_or_404(self.kwargs["pk"])
+        obj = get_tournament_or_404(self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def update(self, request, *args, **kwargs):
         kwargs["partial"] = True
@@ -64,6 +75,7 @@ class AdminTournamentCloseView(generics.GenericAPIView):
     @extend_schema(tags=["Events - Admin - Tournaments"])
     def post(self, request, *args, **kwargs):
         tournament = get_tournament_or_404(self.kwargs["pk"])
+        self.check_object_permissions(request, tournament)
         tournament = close_tournament(tournament, actor=request.user)
         return Response(TournamentAdminSerializer(tournament).data)
 
@@ -76,5 +88,6 @@ class AdminTournamentReopenView(generics.GenericAPIView):
     @extend_schema(tags=["Events - Admin - Tournaments"])
     def post(self, request, *args, **kwargs):
         tournament = get_tournament_or_404(self.kwargs["pk"])
+        self.check_object_permissions(request, tournament)
         tournament = reopen_tournament(tournament, actor=request.user)
         return Response(TournamentAdminSerializer(tournament).data)

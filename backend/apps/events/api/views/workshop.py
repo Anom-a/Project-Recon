@@ -3,11 +3,11 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 
 from apps.accounts.permissions.roles import (
+    get_active_branch_ids,
     user_is_branch_manager,
-    user_is_super_admin,
+    user_is_secretary,
 )
 from apps.events.api.permissions import (
-    IsEventStaff,
     IsEventStaffOrInstructor,
 )
 from apps.events.api.serializers import WorkshopAdminSerializer
@@ -26,16 +26,13 @@ class AdminWorkshopListCreateView(generics.ListCreateAPIView):
 
     @extend_schema(tags=["Events - Admin - Workshops"])
     def get_queryset(self):
-        return list_workshops(user=self.request.user)
+        user = self.request.user
+        branch_ids = None
+        if user_is_branch_manager(user) or user_is_secretary(user):
+            branch_ids = get_active_branch_ids(user)
+        return list_workshops(user=user, branch_ids=branch_ids)
 
     def create(self, request, *args, **kwargs):
-        if not (
-            user_is_super_admin(request.user) or user_is_branch_manager(request.user)
-        ):
-            return Response(
-                {"detail": "You do not have permission to create a workshop."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         workshop = create_workshop(serializer.validated_data, actor=request.user)
@@ -66,12 +63,5 @@ class AdminWorkshopRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVi
 
     def destroy(self, request, *args, **kwargs):
         workshop = self.get_object()
-        if not (
-            user_is_super_admin(request.user) or user_is_branch_manager(request.user)
-        ):
-            return Response(
-                {"detail": "You do not have permission to delete a workshop."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
         delete_workshop(workshop, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)

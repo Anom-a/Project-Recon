@@ -2,6 +2,11 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.response import Response
 
+from apps.accounts.permissions.roles import (
+    get_active_branch_ids,
+    user_is_branch_manager,
+    user_is_secretary,
+)
 from apps.events.api.permissions import IsEventStaff
 from apps.events.api.serializers import TournamentTeamAdminSerializer
 from apps.events.services.tournament_service import get_tournament_or_404
@@ -21,7 +26,11 @@ class AdminTeamListCreateView(generics.ListCreateAPIView):
     @extend_schema(tags=["Events - Admin - Tournament Teams"])
     def get_queryset(self):
         tournament_id = self.request.query_params.get("tournament")
-        return list_teams(tournament_id=tournament_id)
+        user = self.request.user
+        branch_ids = None
+        if user_is_branch_manager(user) or user_is_secretary(user):
+            branch_ids = get_active_branch_ids(user)
+        return list_teams(tournament_id=tournament_id, branch_ids=branch_ids)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -40,7 +49,9 @@ class AdminTeamRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     @extend_schema(tags=["Events - Admin - Tournament Teams"])
     def get_object(self):
-        return get_team_or_404(self.kwargs["pk"])
+        obj = get_team_or_404(self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def update(self, request, *args, **kwargs):
         kwargs["partial"] = True
@@ -63,4 +74,5 @@ class AdminTournamentTeamListView(generics.ListAPIView):
     @extend_schema(tags=["Events - Admin - Tournament Teams"])
     def get_queryset(self):
         tournament = get_tournament_or_404(self.kwargs["pk"])
+        self.check_object_permissions(self.request, tournament)
         return list_teams(tournament_id=tournament.id)

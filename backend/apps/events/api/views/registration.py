@@ -4,7 +4,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.academic.models import Student
-from apps.events.api.permissions import IsEventStaff
+from apps.accounts.permissions.roles import (
+    get_active_branch_ids,
+    user_is_branch_manager,
+    user_is_secretary,
+)
+from apps.events.api.permissions import IsEventRegistrationStaff, IsEventStaff
 from apps.events.api.serializers import (
     MyRegistrationSerializer,
     PublicRegistrationSerializer,
@@ -96,62 +101,72 @@ class MyRegistrationCancelView(generics.CreateAPIView):
 
 
 class AdminRegistrationListView(generics.ListAPIView):
-    permission_classes = [IsEventStaff]
+    permission_classes = [IsEventRegistrationStaff]
     serializer_class = RegistrationAdminSerializer
 
     @extend_schema(tags=["Events - Admin - Registrations"])
     def get_queryset(self):
         event_id = self.request.query_params.get("event")
         status_filter = self.request.query_params.get("status")
-        return list_registrations(event_id=event_id, status=status_filter)
+        user = self.request.user
+        branch_ids = None
+        if user_is_branch_manager(user) or user_is_secretary(user):
+            branch_ids = get_active_branch_ids(user)
+        return list_registrations(event_id=event_id, status=status_filter, branch_ids=branch_ids)
 
 
 class AdminRegistrationDetailView(generics.RetrieveAPIView):
-    permission_classes = [IsEventStaff]
+    permission_classes = [IsEventRegistrationStaff]
     serializer_class = RegistrationAdminSerializer
     lookup_url_kwarg = "pk"
 
     @extend_schema(tags=["Events - Admin - Registrations"])
     def get_object(self):
-        return get_registration_or_404(self.kwargs["pk"])
+        obj = get_registration_or_404(self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
 
 class AdminRegistrationApproveView(generics.CreateAPIView):
-    permission_classes = [IsEventStaff]
+    permission_classes = [IsEventRegistrationStaff]
 
     @extend_schema(tags=["Events - Admin - Registrations"])
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
+        self.check_object_permissions(request, registration)
         registration = approve_registration(registration, actor=request.user)
         return Response(RegistrationAdminSerializer(registration).data)
 
 
 class AdminRegistrationRejectView(generics.CreateAPIView):
-    permission_classes = [IsEventStaff]
+    permission_classes = [IsEventRegistrationStaff]
 
     @extend_schema(tags=["Events - Admin - Registrations"])
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
+        self.check_object_permissions(request, registration)
         registration = reject_registration(registration, actor=request.user)
         return Response(RegistrationAdminSerializer(registration).data)
 
 
 class AdminRegistrationCancelView(generics.CreateAPIView):
-    permission_classes = [IsEventStaff]
+    permission_classes = [IsEventRegistrationStaff]
 
     @extend_schema(tags=["Events - Admin - Registrations"])
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
+        self.check_object_permissions(request, registration)
         registration = cancel_registration(registration, actor=request.user)
         return Response(RegistrationAdminSerializer(registration).data)
 
 
 class AdminRegistrationConvertTeamView(generics.CreateAPIView):
-    permission_classes = [IsEventStaff]
+    permission_classes = [IsEventRegistrationStaff]
 
     @extend_schema(tags=["Events - Admin - Registrations"])
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
+        self.check_object_permissions(request, registration)
         team_name = request.data.get("team_name")
         if not team_name:
             return Response(

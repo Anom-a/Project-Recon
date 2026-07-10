@@ -3,7 +3,7 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from apps.events.api.permissions import IsEventStaff
+from apps.events.api.permissions import IsEventRegistrationStaff, IsEventStaff
 from apps.events.api.serializers import (
     CashPaymentSerializer,
     EventPaymentSerializer,
@@ -19,11 +19,12 @@ from apps.events.services.registration_service import get_registration_or_404
 
 
 class AdminCashPaymentView(generics.CreateAPIView):
-    permission_classes = [IsEventStaff]
+    permission_classes = [IsEventRegistrationStaff]
 
     @extend_schema(tags=["Events - Admin - Payments"])
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
+        self.check_object_permissions(request, registration)
         serializer = CashPaymentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payment = record_cash_payment(
@@ -44,6 +45,7 @@ class AdminOnlinePaymentInitializeView(generics.CreateAPIView):
     @extend_schema(tags=["Events - Admin - Payments"])
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
+        self.check_object_permissions(request, registration)
         serializer = OnlinePaymentInitializeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

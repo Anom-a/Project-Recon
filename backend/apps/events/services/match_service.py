@@ -28,12 +28,13 @@ def get_match_or_404(pk):
         raise NotFound("Match not found.")
 
 
-def list_matches(tournament_id=None):
+def list_matches(tournament_id=None, branch_ids=None):
     """
-    Return matches, optionally filtered by tournament.
+    Return matches, optionally filtered by tournament or branch.
 
     Args:
         tournament_id: Optional tournament UUID to filter by.
+        branch_ids: Optional set/list of branch UUIDs to scope by.
 
     Returns:
         QuerySet of Match objects with related tournament and sides.
@@ -45,6 +46,8 @@ def list_matches(tournament_id=None):
     ).all()
     if tournament_id:
         qs = qs.filter(tournament_id=tournament_id)
+    if branch_ids:
+        qs = qs.filter(tournament__event__branch_id__in=branch_ids)
     return qs
 
 

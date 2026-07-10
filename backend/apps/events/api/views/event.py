@@ -3,6 +3,11 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from apps.accounts.permissions.roles import (
+    get_active_branch_ids,
+    user_is_branch_manager,
+    user_is_secretary,
+)
 from apps.events.api.permissions import IsEventStaff
 from apps.events.api.serializers import EventSerializer, EventAdminSerializer
 from apps.events.services.event_service import (
@@ -76,7 +81,11 @@ class AdminEventListCreateView(generics.ListCreateAPIView):
 
     @extend_schema(tags=["Events - Admin"])
     def get_queryset(self):
-        return list_events()
+        user = self.request.user
+        branch_ids = None
+        if user_is_branch_manager(user) or user_is_secretary(user):
+            branch_ids = get_active_branch_ids(user)
+        return list_events(branch_ids=branch_ids)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -95,7 +104,9 @@ class AdminEventRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
 
     @extend_schema(tags=["Events - Admin"])
     def get_object(self):
-        return get_event_or_404(self.kwargs["pk"])
+        obj = get_event_or_404(self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def update(self, request, *args, **kwargs):
         kwargs["partial"] = True
@@ -119,6 +130,7 @@ class AdminEventPublishView(generics.GenericAPIView):
     @extend_schema(tags=["Events - Admin"])
     def post(self, request, *args, **kwargs):
         event = get_event_or_404(self.kwargs["pk"])
+        self.check_object_permissions(request, event)
         event = publish_event(event, actor=request.user)
         return Response(EventAdminSerializer(event).data)
 
@@ -131,6 +143,7 @@ class AdminEventUnpublishView(generics.GenericAPIView):
     @extend_schema(tags=["Events - Admin"])
     def post(self, request, *args, **kwargs):
         event = get_event_or_404(self.kwargs["pk"])
+        self.check_object_permissions(request, event)
         event = unpublish_event(event, actor=request.user)
         return Response(EventAdminSerializer(event).data)
 
@@ -143,6 +156,7 @@ class AdminEventActivateView(generics.GenericAPIView):
     @extend_schema(tags=["Events - Admin"])
     def post(self, request, *args, **kwargs):
         event = get_event_or_404(self.kwargs["pk"])
+        self.check_object_permissions(request, event)
         event = activate_event(event, actor=request.user)
         return Response(EventAdminSerializer(event).data)
 
@@ -155,5 +169,6 @@ class AdminEventDeactivateView(generics.GenericAPIView):
     @extend_schema(tags=["Events - Admin"])
     def post(self, request, *args, **kwargs):
         event = get_event_or_404(self.kwargs["pk"])
+        self.check_object_permissions(request, event)
         event = deactivate_event(event, actor=request.user)
         return Response(EventAdminSerializer(event).data)

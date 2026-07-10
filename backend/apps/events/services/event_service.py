@@ -26,14 +26,20 @@ def get_event_or_404(pk):
         raise NotFound("Event not found.")
 
 
-def list_events():
+def list_events(branch_ids=None):
     """
-    Return all events ordered by creation date descending.
+    Return events ordered by creation date descending, optionally scoped by branch.
+
+    Args:
+        branch_ids: Optional set/list of branch UUIDs to filter by.
 
     Returns:
-        QuerySet of all Event objects.
+        QuerySet of Event objects.
     """
-    return Event.objects.all()
+    qs = Event.objects.all()
+    if branch_ids:
+        qs = qs.filter(branch_id__in=branch_ids)
+    return qs
 
 
 def create_event(data: dict, actor=None) -> Event:

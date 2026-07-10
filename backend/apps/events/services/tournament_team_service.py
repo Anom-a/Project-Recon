@@ -24,12 +24,13 @@ def get_team_or_404(pk):
         raise NotFound("Tournament team not found.")
 
 
-def list_teams(tournament_id=None):
+def list_teams(tournament_id=None, branch_ids=None):
     """
-    Return teams, optionally filtered by tournament.
+    Return teams, optionally filtered by tournament or branch.
 
     Args:
         tournament_id: Optional tournament UUID to filter by.
+        branch_ids: Optional set/list of branch UUIDs to scope by.
 
     Returns:
         QuerySet of TournamentTeam objects.
@@ -37,6 +38,8 @@ def list_teams(tournament_id=None):
     qs = TournamentTeam.objects.select_related("tournament__event").all()
     if tournament_id:
         qs = qs.filter(tournament_id=tournament_id)
+    if branch_ids:
+        qs = qs.filter(tournament__event__branch_id__in=branch_ids)
     return qs
 
 

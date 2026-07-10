@@ -23,14 +23,20 @@ def get_tournament_or_404(pk):
         raise NotFound("Tournament not found.")
 
 
-def list_tournaments():
+def list_tournaments(branch_ids=None):
     """
-    Return all tournaments ordered by creation date descending.
+    Return tournaments ordered by creation date descending, optionally scoped by branch.
+
+    Args:
+        branch_ids: Optional set/list of branch UUIDs to filter by.
 
     Returns:
         QuerySet of Tournament objects with related event.
     """
-    return Tournament.objects.select_related("event").all()
+    qs = Tournament.objects.select_related("event").all()
+    if branch_ids:
+        qs = qs.filter(event__branch_id__in=branch_ids)
+    return qs
 
 
 def create_tournament(data: dict, actor=None) -> Tournament:

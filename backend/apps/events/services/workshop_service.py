@@ -25,12 +25,13 @@ def get_workshop_or_404(pk):
         raise NotFound("Workshop not found.")
 
 
-def list_workshops(user=None):
+def list_workshops(user=None, branch_ids=None):
     """
-    Return workshops, optionally filtered by instructor for non-admin users.
+    Return workshops, optionally filtered by instructor or branch.
 
     Args:
         user: Optional User to filter by (instructors see only their own).
+        branch_ids: Optional set/list of branch UUIDs to scope by.
 
     Returns:
         QuerySet of Workshop objects.
@@ -43,6 +44,9 @@ def list_workshops(user=None):
         user_is_super_admin(user) or user_is_branch_manager(user)
     ):
         qs = qs.filter(instructor=user)
+
+    if branch_ids:
+        qs = qs.filter(event__branch_id__in=branch_ids)
 
     return qs
 
