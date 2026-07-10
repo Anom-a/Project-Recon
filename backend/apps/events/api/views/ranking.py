@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,6 +17,8 @@ class AdminTournamentStandingsView(APIView):
 
     @extend_schema(
         tags=["Events - Admin - Rankings"],
+        summary="Get tournament standings",
+        description="Retrieve ranked teams for a tournament with optional top N limit.",
         parameters=[
             {
                 "name": "top",
@@ -44,10 +46,12 @@ class AdminTournamentStandingsView(APIView):
         return Response(serializer.data)
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Rankings"], summary="Get tournament winner", description="Retrieve the top-ranked team (winner) of a tournament."),
+)
 class AdminTournamentWinnerView(APIView):
     permission_classes = [IsEventStaff]
 
-    @extend_schema(tags=["Events - Admin - Rankings"])
     def get(self, request, pk):
         tournament = get_tournament_or_404(pk)
         winner = get_tournament_winner(tournament.id)

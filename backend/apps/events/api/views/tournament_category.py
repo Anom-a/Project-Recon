@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.response import Response
 
@@ -13,11 +13,14 @@ from apps.events.services.tournament_category_service import (
 )
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Tournament Categories"], summary="List categories", description="Retrieve all tournament categories."),
+    post=extend_schema(tags=["Events - Admin - Tournament Categories"], summary="Create a category", description="Create a new tournament category."),
+)
 class AdminTournamentCategoryListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentCategorySerializer
 
-    @extend_schema(tags=["Events - Admin - Tournament Categories"])
     def get_queryset(self):
         return list_categories()
 
@@ -31,12 +34,17 @@ class AdminTournamentCategoryListCreateView(generics.ListCreateAPIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Tournament Categories"], summary="Get category details", description="Retrieve a single tournament category by ID."),
+    put=extend_schema(tags=["Events - Admin - Tournament Categories"], summary="Update a category", description="Fully update a tournament category."),
+    patch=extend_schema(tags=["Events - Admin - Tournament Categories"], summary="Partially update a category", description="Partially update a tournament category."),
+    delete=extend_schema(tags=["Events - Admin - Tournament Categories"], summary="Delete a category", description="Delete a tournament category."),
+)
 class AdminTournamentCategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentCategorySerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin - Tournament Categories"])
     def get_object(self):
         return get_category_or_404(self.kwargs["pk"])
 

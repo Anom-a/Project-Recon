@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -24,11 +24,19 @@ from apps.events.services.match_service import (
 from apps.events.services.tournament_service import get_tournament_or_404
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Events - Admin - Matches"],
+        summary="List matches",
+        description="Retrieve matches, optionally filtered by tournament.",
+        parameters=[OpenApiParameter(name="tournament", description="Filter by tournament ID", required=False, type=str)],
+    ),
+    post=extend_schema(tags=["Events - Admin - Matches"], summary="Create a match", description="Create a new match for a tournament."),
+)
 class AdminMatchListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = MatchAdminSerializer
 
-    @extend_schema(tags=["Events - Admin - Matches"])
     def get_queryset(self):
         tournament_id = self.request.query_params.get("tournament")
         user = self.request.user
@@ -47,12 +55,17 @@ class AdminMatchListCreateView(generics.ListCreateAPIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Matches"], summary="Get match details", description="Retrieve a single match by ID."),
+    put=extend_schema(tags=["Events - Admin - Matches"], summary="Update a match", description="Fully update a match."),
+    patch=extend_schema(tags=["Events - Admin - Matches"], summary="Partially update a match", description="Partially update a match."),
+    delete=extend_schema(tags=["Events - Admin - Matches"], summary="Delete a match", description="Delete a match."),
+)
 class AdminMatchRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = MatchAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin - Matches"])
     def get_object(self):
         obj = get_match_or_404(self.kwargs["pk"])
         self.check_object_permissions(self.request, obj)
@@ -77,6 +90,8 @@ class AdminMatchAssignTeamView(APIView):
 
     @extend_schema(
         tags=["Events - Admin - Matches"],
+        summary="Assign team to match side",
+        description="Assign a tournament team to a side (SIDE_A or SIDE_B) in a match.",
         request={
             "application/json": {
                 "type": "object",
@@ -112,6 +127,8 @@ class AdminMatchRemoveTeamView(APIView):
 
     @extend_schema(
         tags=["Events - Admin - Matches"],
+        summary="Remove team from match side",
+        description="Remove a tournament team from a match side.",
         request={
             "application/json": {
                 "type": "object",
@@ -144,6 +161,8 @@ class AdminMatchRecordScoresView(APIView):
 
     @extend_schema(
         tags=["Events - Admin - Matches"],
+        summary="Record match scores",
+        description="Set scores for both sides of a match.",
         request={
             "application/json": {
                 "type": "object",
@@ -171,10 +190,12 @@ class AdminMatchRecordScoresView(APIView):
         return Response(MatchAdminSerializer(match).data)
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin - Matches"], summary="Complete a match", description="Finalize a match, calculate the winner, and trigger ranking updates."),
+)
 class AdminMatchCompleteView(APIView):
     permission_classes = [IsEventStaff]
 
-    @extend_schema(tags=["Events - Admin - Matches"])
     def post(self, request, pk):
         match = get_match_or_404(pk)
         self.check_object_permissions(request, match)
@@ -182,11 +203,13 @@ class AdminMatchCompleteView(APIView):
         return Response(MatchAdminSerializer(match).data)
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Matches"], summary="List matches for a tournament", description="Retrieve all matches belonging to a specific tournament."),
+)
 class AdminTournamentMatchListView(generics.ListAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = MatchAdminSerializer
 
-    @extend_schema(tags=["Events - Admin - Matches"])
     def get_queryset(self):
         tournament = get_tournament_or_404(self.kwargs["pk"])
         self.check_object_permissions(self.request, tournament)

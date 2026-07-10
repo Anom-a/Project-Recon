@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -18,10 +18,12 @@ from apps.events.services.event_payment_service import (
 from apps.events.services.registration_service import get_registration_or_404
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin - Payments"], summary="Record cash payment", description="Record a cash payment for a registration."),
+)
 class AdminCashPaymentView(generics.CreateAPIView):
     permission_classes = [IsEventRegistrationStaff]
 
-    @extend_schema(tags=["Events - Admin - Payments"])
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
         self.check_object_permissions(request, registration)
@@ -39,10 +41,12 @@ class AdminCashPaymentView(generics.CreateAPIView):
         )
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin - Payments"], summary="Initialize online payment", description="Initialize an online payment for a registration via the configured payment provider."),
+)
 class AdminOnlinePaymentInitializeView(generics.CreateAPIView):
     permission_classes = [IsEventStaff]
 
-    @extend_schema(tags=["Events - Admin - Payments"])
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
         self.check_object_permissions(request, registration)
@@ -72,10 +76,12 @@ class AdminOnlinePaymentInitializeView(generics.CreateAPIView):
         )
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Payments"], summary="Verify online payment", description="Verify the status of an online payment using its transaction reference."),
+)
 class OnlinePaymentVerifyView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
-    @extend_schema(tags=["Events - Payments"])
     def create(self, request, *args, **kwargs):
         serializer = OnlinePaymentVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -85,10 +91,12 @@ class OnlinePaymentVerifyView(generics.CreateAPIView):
         return Response(EventPaymentSerializer(payment).data)
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Payments"], summary="Payment webhook", description="Webhook endpoint for payment provider callbacks."),
+)
 class OnlinePaymentWebhookView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
-    @extend_schema(tags=["Events - Payments"])
     def create(self, request, *args, **kwargs):
         reference = (
             request.data.get("tx_ref")

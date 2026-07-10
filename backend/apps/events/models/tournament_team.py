@@ -40,7 +40,7 @@ class TournamentTeam(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=["tournament"]),
+            models.Index(fields=["tournament", "points", "wins"]),
         ]
 
     def __str__(self):

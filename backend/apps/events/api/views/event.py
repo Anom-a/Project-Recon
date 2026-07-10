@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -38,6 +38,18 @@ class EventFilter(django_filters.FilterSet):
     event_type = django_filters.ChoiceFilter(choices=EventType.choices)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Events - Public"],
+        summary="List public events",
+        description="Retrieve a paginated list of published, active, public events with optional filtering by event_type, search, and ordering.",
+        parameters=[
+            OpenApiParameter(name="event_type", description="Filter by event type", required=False, type=str),
+            OpenApiParameter(name="search", description="Search in title, description, location", required=False, type=str),
+            OpenApiParameter(name="ordering", description="Order by start_datetime, end_datetime, or title", required=False, type=str),
+        ],
+    ),
+)
 class PublicEventListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = EventSerializer
@@ -48,41 +60,49 @@ class PublicEventListView(generics.ListAPIView):
     ordering_fields = ["start_datetime", "end_datetime", "title"]
     ordering = ["start_datetime"]
 
-    @extend_schema(tags=["Events - Public"])
     def get_queryset(self):
         return PublicEventsQuery.execute()
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="Get event details", description="Retrieve a single published event by ID."),
+)
 class PublicEventDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = EventSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Public"])
     def get_object(self):
         return get_event_or_404(self.kwargs["pk"])
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="List live events", description="Retrieve events currently happening (started but not ended)."),
+)
 class LiveEventListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = EventSerializer
     pagination_class = StandardResultsSetPagination
 
-    @extend_schema(tags=["Events - Public"])
     def get_queryset(self):
         return LiveEventsQuery.execute()
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="List upcoming events", description="Retrieve future events that have not started yet."),
+)
 class UpcomingEventListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = EventSerializer
     pagination_class = StandardResultsSetPagination
 
-    @extend_schema(tags=["Events - Public"])
     def get_queryset(self):
         return UpcomingEventsQuery.execute()
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="List past events", description="Retrieve events that have already ended."),
+)
 class PastEventListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = EventSerializer
@@ -91,16 +111,18 @@ class PastEventListView(generics.ListAPIView):
     ordering_fields = ["start_datetime", "end_datetime", "title"]
     ordering = ["-end_datetime"]
 
-    @extend_schema(tags=["Events - Public"])
     def get_queryset(self):
         return PastEventsQuery.execute()
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin"], summary="List all events", description="Retrieve all events scoped to the user's branches."),
+    post=extend_schema(tags=["Events - Admin"], summary="Create an event", description="Create a new event with branch, title, dates, and configuration."),
+)
 class AdminEventListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = EventAdminSerializer
 
-    @extend_schema(tags=["Events - Admin"])
     def get_queryset(self):
         user = self.request.user
         branch_ids = None
@@ -118,12 +140,17 @@ class AdminEventListCreateView(generics.ListCreateAPIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin"], summary="Get event details", description="Retrieve a single event by ID."),
+    put=extend_schema(tags=["Events - Admin"], summary="Update an event", description="Fully update an event."),
+    patch=extend_schema(tags=["Events - Admin"], summary="Partially update an event", description="Partially update an event."),
+    delete=extend_schema(tags=["Events - Admin"], summary="Delete an event", description="Delete an event."),
+)
 class AdminEventRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin"])
     def get_object(self):
         obj = get_event_or_404(self.kwargs["pk"])
         self.check_object_permissions(self.request, obj)
@@ -143,12 +170,14 @@ class AdminEventRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin"], summary="Publish an event", description="Change event status from DRAFT to PUBLISHED."),
+)
 class AdminEventPublishView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin"])
     def post(self, request, *args, **kwargs):
         event = get_event_or_404(self.kwargs["pk"])
         self.check_object_permissions(request, event)
@@ -156,12 +185,14 @@ class AdminEventPublishView(generics.GenericAPIView):
         return Response(EventAdminSerializer(event).data)
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin"], summary="Unpublish an event", description="Change event status from PUBLISHED to DRAFT."),
+)
 class AdminEventUnpublishView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin"])
     def post(self, request, *args, **kwargs):
         event = get_event_or_404(self.kwargs["pk"])
         self.check_object_permissions(request, event)
@@ -169,12 +200,14 @@ class AdminEventUnpublishView(generics.GenericAPIView):
         return Response(EventAdminSerializer(event).data)
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin"], summary="Activate an event", description="Set is_active=True for an event."),
+)
 class AdminEventActivateView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin"])
     def post(self, request, *args, **kwargs):
         event = get_event_or_404(self.kwargs["pk"])
         self.check_object_permissions(request, event)
@@ -182,12 +215,14 @@ class AdminEventActivateView(generics.GenericAPIView):
         return Response(EventAdminSerializer(event).data)
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin"], summary="Deactivate an event", description="Set is_active=False for an event."),
+)
 class AdminEventDeactivateView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin"])
     def post(self, request, *args, **kwargs):
         event = get_event_or_404(self.kwargs["pk"])
         self.check_object_permissions(request, event)

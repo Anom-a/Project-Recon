@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 from rest_framework import status
 
+from apps.accounts.constants import AccountStatus
 from apps.accounts.models import Branch
 from apps.accounts.permissions.roles import Roles
 from apps.accounts.services import user_service
@@ -1684,3 +1685,319 @@ class PublicEventPaginationFilterTest(EventApiTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["results"][0]["title"], "Later Event")
+
+
+class TournamentCategoryApiTest(EventApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.category_data = {"name": "Solo", "code": "SOLO", "description": "Single player"}
+
+    def test_create_category_as_super_admin(self):
+        self._auth(self.super_admin)
+        response = self.client.post(
+            f"{self.base_url}/admin/tournament-categories/",
+            self.category_data,
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "Solo")
+
+    def test_create_category_as_branch_manager(self):
+        self._auth(self.branch_manager)
+        response = self.client.post(
+            f"{self.base_url}/admin/tournament-categories/",
+            self.category_data,
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_category_as_student_forbidden(self):
+        self._auth(self.student)
+        response = self.client.post(
+            f"{self.base_url}/admin/tournament-categories/",
+            self.category_data,
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_categories(self):
+        self._auth(self.super_admin)
+        response = self.client.get(f"{self.base_url}/admin/tournament-categories/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_get_category_detail(self):
+        self._auth(self.super_admin)
+        cat = self._create_category()
+        response = self.client.get(
+            f"{self.base_url}/admin/tournament-categories/{cat.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], cat.name)
+
+    def test_update_category(self):
+        self._auth(self.super_admin)
+        cat = self._create_category()
+        response = self.client.patch(
+            f"{self.base_url}/admin/tournament-categories/{cat.id}/",
+            {"description": "Updated description"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["description"], "Updated description")
+
+    def test_delete_category(self):
+        self._auth(self.super_admin)
+        cat = self._create_category()
+        response = self.client.delete(
+            f"{self.base_url}/admin/tournament-categories/{cat.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def _create_category(self):
+        from apps.events.models import TournamentCategory
+        return TournamentCategory.objects.create(name="Team", code="TEAM")
+
+
+class SecretaryRoleApiTest(EventApiTestCase):
+    def setUp(self):
+        super().setUp()
+        from apps.accounts.permissions.roles import Roles
+        self.secretary = user_service._create_user_with_role(
+            "secretary@test.com", "Secretary", "User", self.password,
+            status=AccountStatus.PENDING,
+            is_email_verified=False,
+            role=Roles.SECRETARY,
+            branch=self.branch,
+        )
+        user_service.activate_user(self.secretary)
+
+        event = self._create_event(
+            title="Reg Event", status=EventStatus.PUBLISHED,
+            registration_enabled=True, registration_mode=RegistrationMode.PUBLIC,
+        )
+        self.registration = EventRegistration.objects.create(
+            event=event,
+            public_full_name="John Doe",
+            public_email="john@test.com",
+            public_phone="1234567890",
+        )
+
+    def test_secretary_can_list_registrations(self):
+        self._auth(self.secretary)
+        response = self.client.get(f"{self.base_url}/admin/registrations/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_secretary_can_approve_registration(self):
+        self._auth(self.secretary)
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{self.registration.id}/approve/",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.registration.refresh_from_db()
+        self.assertEqual(self.registration.registration_status, RegistrationStatus.APPROVED)
+
+    def test_secretary_can_reject_registration(self):
+        self._auth(self.secretary)
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{self.registration.id}/reject/",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.registration.refresh_from_db()
+        self.assertEqual(self.registration.registration_status, RegistrationStatus.REJECTED)
+
+    def test_secretary_can_cancel_registration(self):
+        self._auth(self.secretary)
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{self.registration.id}/cancel/",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.registration.refresh_from_db()
+        self.assertEqual(self.registration.registration_status, RegistrationStatus.CANCELLED)
+
+    def test_secretary_can_record_cash_payment(self):
+        self._auth(self.secretary)
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{self.registration.id}/pay/cash/",
+            {"amount": "50.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_secretary_cannot_create_event(self):
+        self._auth(self.secretary)
+        response = self.client.post(
+            f"{self.base_url}/admin/events/",
+            self.valid_event_data,
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class NegativeEdgeCaseApiTest(EventApiTestCase):
+    def test_invalid_uuid_on_event_detail(self):
+        response = self.client.get(f"{self.base_url}/events/invalid-uuid/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_invalid_uuid_on_tournament_detail(self):
+        response = self.client.get(f"{self.base_url}/events/tournaments/invalid-uuid/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_invalid_uuid_on_workshop_detail(self):
+        response = self.client.get(f"{self.base_url}/events/workshops/invalid-uuid/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_admin_event_empty_body(self):
+        self._auth(self.super_admin)
+        response = self.client.post(
+            f"{self.base_url}/admin/events/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_admin_tournament_missing_fields(self):
+        self._auth(self.super_admin)
+        response = self.client.post(
+            f"{self.base_url}/admin/tournaments/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_public_event_list_filter_nonexistent_event_type(self):
+        response = self.client.get(f"{self.base_url}/events/?event_type=NONEXISTENT")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_register_empty_body(self):
+        event = self._create_event(
+            status=EventStatus.PUBLISHED, registration_enabled=True,
+            registration_mode=RegistrationMode.PUBLIC,
+        )
+        response = self.client.post(
+            f"{self.base_url}/events/{event.id}/register/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_standings_invalid_top_param(self):
+        event = self._create_tournament_event(status=EventStatus.PUBLISHED)
+        category = TournamentCategory.objects.create(name="Solo", code="SOLO")
+        tournament = Tournament.objects.create(event=event, category=category)
+        response = self.client.get(
+            f"{self.base_url}/events/tournaments/{tournament.id}/standings/?top=invalid"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_non_existent_registration_id_on_admin(self):
+        self._auth(self.super_admin)
+        fake_uuid = uuid.uuid4()
+        response = self.client.get(
+            f"{self.base_url}/admin/registrations/{fake_uuid}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_cash_payment_invalid_uuid(self):
+        self._auth(self.super_admin)
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/invalid-uuid/pay/cash/",
+            {"amount": "50.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class IntegrationApiTest(EventApiTestCase):
+    def test_full_tournament_workflow(self):
+        """Create tournament -> teams -> matches -> scores -> complete -> verify standings."""
+        self._auth(self.super_admin)
+
+        event_response = self.client.post(
+            f"{self.base_url}/admin/events/",
+            {**self.valid_event_data, "event_type": EventType.TOURNAMENT},
+            format="json",
+        )
+        self.assertEqual(event_response.status_code, status.HTTP_201_CREATED)
+        event_id = event_response.data["id"]
+
+        category = TournamentCategory.objects.create(name="Team", code="TEAM")
+        tournament_response = self.client.post(
+            f"{self.base_url}/admin/tournaments/",
+            {"event": event_id, "category": str(category.id)},
+            format="json",
+        )
+        self.assertEqual(tournament_response.status_code, status.HTTP_201_CREATED)
+        tournament_id = tournament_response.data["id"]
+
+        team_a_resp = self.client.post(
+            f"{self.base_url}/admin/tournament-teams/",
+            {"tournament": tournament_id, "team_name": "Alpha"},
+            format="json",
+        )
+        self.assertEqual(team_a_resp.status_code, status.HTTP_201_CREATED)
+        team_a_id = team_a_resp.data["id"]
+
+        team_b_resp = self.client.post(
+            f"{self.base_url}/admin/tournament-teams/",
+            {"tournament": tournament_id, "team_name": "Beta"},
+            format="json",
+        )
+        self.assertEqual(team_b_resp.status_code, status.HTTP_201_CREATED)
+        team_b_id = team_b_resp.data["id"]
+
+        match_resp = self.client.post(
+            f"{self.base_url}/admin/matches/",
+            {
+                "tournament": tournament_id,
+                "round": "Final",
+                "scheduled_at": (timezone.now() + timezone.timedelta(hours=2)).isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(match_resp.status_code, status.HTTP_201_CREATED)
+        match_id = match_resp.data["id"]
+
+        assign_a = self.client.post(
+            f"{self.base_url}/admin/matches/{match_id}/assign-team/",
+            {"side": "SIDE_A", "tournament_team": team_a_id},
+            format="json",
+        )
+        self.assertEqual(assign_a.status_code, status.HTTP_201_CREATED)
+
+        assign_b = self.client.post(
+            f"{self.base_url}/admin/matches/{match_id}/assign-team/",
+            {"side": "SIDE_B", "tournament_team": team_b_id},
+            format="json",
+        )
+        self.assertEqual(assign_b.status_code, status.HTTP_201_CREATED)
+
+        scores_resp = self.client.post(
+            f"{self.base_url}/admin/matches/{match_id}/record-scores/",
+            {"side_a_score": 10, "side_b_score": 5},
+            format="json",
+        )
+        self.assertEqual(scores_resp.status_code, status.HTTP_200_OK)
+
+        complete_resp = self.client.post(
+            f"{self.base_url}/admin/matches/{match_id}/complete/",
+        )
+        self.assertEqual(complete_resp.status_code, status.HTTP_200_OK)
+
+        standings_resp = self.client.get(
+            f"{self.base_url}/admin/tournaments/{tournament_id}/standings/"
+        )
+        self.assertEqual(standings_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(standings_resp.data), 2)
+        self.assertEqual(standings_resp.data[0]["team_name"], "Alpha")
+
+        winner_resp = self.client.get(
+            f"{self.base_url}/admin/tournaments/{tournament_id}/winner/"
+        )
+        self.assertEqual(winner_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(winner_resp.data["team_name"], "Alpha")
+
+        matches_resp = self.client.get(
+            f"{self.base_url}/admin/tournaments/{tournament_id}/matches/"
+        )
+        self.assertEqual(matches_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(matches_resp.data), 1)

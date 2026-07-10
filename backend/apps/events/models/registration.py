@@ -59,7 +59,6 @@ class EventRegistration(models.Model):
         indexes = [
             models.Index(fields=["event", "registration_status"]),
             models.Index(fields=["event", "payment_status"]),
-            models.Index(fields=["event", "public_email"]),
         ]
 
     def __str__(self):

@@ -71,6 +71,7 @@ from apps.events.services.registration_service import (
     approve_registration,
     cancel_registration,
     convert_registration_to_team,
+    get_my_registrations,
     get_registration_or_404,
     list_registrations,
     register_for_event,
@@ -1220,6 +1221,17 @@ class RegistrationServiceTest(TestCase):
         convert_registration_to_team(registration, "Robo Warriors")
         with self.assertRaises(ValidationError):
             convert_registration_to_team(registration, "Robo Warriors 2")
+
+    def test_get_my_registrations(self):
+        registration = register_for_event(self.event.id, {"student": str(self.student.id)})
+        registrations = list(get_my_registrations(self.student.id))
+        self.assertGreater(len(registrations), 0)
+        self.assertIn(registration, registrations)
+
+    def test_get_my_registrations_no_results(self):
+        from uuid import uuid4
+        result = list(get_my_registrations(uuid4()))
+        self.assertEqual(len(result), 0)
 
 
 class EventPaymentServiceTest(TestCase):

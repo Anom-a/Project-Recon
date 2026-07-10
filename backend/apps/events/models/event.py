@@ -67,6 +67,7 @@ class Event(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["status", "visibility"]),
+            models.Index(fields=["status", "visibility", "is_active"]),
             models.Index(fields=["branch", "start_datetime"]),
             models.Index(fields=["branch", "status"]),
         ]

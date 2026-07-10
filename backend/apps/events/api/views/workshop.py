@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -22,6 +22,9 @@ from apps.events.services.workshop_service import (
 )
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="List public workshops", description="Retrieve all published, active workshops."),
+)
 class PublicWorkshopListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = WorkshopSerializer
@@ -33,6 +36,9 @@ class PublicWorkshopListView(generics.ListAPIView):
         ).select_related("event", "instructor").order_by("-created_at")
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="Get workshop details", description="Retrieve a single workshop by ID."),
+)
 class PublicWorkshopDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = WorkshopSerializer
@@ -42,11 +48,14 @@ class PublicWorkshopDetailView(generics.RetrieveAPIView):
         return get_workshop_or_404(self.kwargs["pk"])
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Workshops"], summary="List workshops", description="Retrieve all workshops scoped to user's branches or assigned instructor."),
+    post=extend_schema(tags=["Events - Admin - Workshops"], summary="Create a workshop", description="Create a new workshop linked to an event."),
+)
 class AdminWorkshopListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaffOrInstructor]
     serializer_class = WorkshopAdminSerializer
 
-    @extend_schema(tags=["Events - Admin - Workshops"])
     def get_queryset(self):
         user = self.request.user
         branch_ids = None
@@ -64,12 +73,17 @@ class AdminWorkshopListCreateView(generics.ListCreateAPIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Workshops"], summary="Get workshop details", description="Retrieve a single workshop by ID."),
+    put=extend_schema(tags=["Events - Admin - Workshops"], summary="Update a workshop", description="Fully update a workshop."),
+    patch=extend_schema(tags=["Events - Admin - Workshops"], summary="Partially update a workshop", description="Partially update a workshop."),
+    delete=extend_schema(tags=["Events - Admin - Workshops"], summary="Delete a workshop", description="Delete a workshop."),
+)
 class AdminWorkshopRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaffOrInstructor]
     serializer_class = WorkshopAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin - Workshops"])
     def get_object(self):
         workshop = get_workshop_or_404(self.kwargs["pk"])
         self.check_object_permissions(self.request, workshop)

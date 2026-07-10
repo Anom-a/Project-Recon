@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import generics, status
 from rest_framework.response import Response
 
@@ -19,11 +19,19 @@ from apps.events.services.tournament_team_service import (
 )
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Events - Admin - Tournament Teams"],
+        summary="List teams",
+        description="Retrieve tournament teams, optionally filtered by tournament.",
+        parameters=[OpenApiParameter(name="tournament", description="Filter by tournament ID", required=False, type=str)],
+    ),
+    post=extend_schema(tags=["Events - Admin - Tournament Teams"], summary="Create a team", description="Create a new tournament team."),
+)
 class AdminTeamListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentTeamAdminSerializer
 
-    @extend_schema(tags=["Events - Admin - Tournament Teams"])
     def get_queryset(self):
         tournament_id = self.request.query_params.get("tournament")
         user = self.request.user
@@ -42,12 +50,17 @@ class AdminTeamListCreateView(generics.ListCreateAPIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Tournament Teams"], summary="Get team details", description="Retrieve a single tournament team by ID."),
+    put=extend_schema(tags=["Events - Admin - Tournament Teams"], summary="Update a team", description="Fully update a tournament team."),
+    patch=extend_schema(tags=["Events - Admin - Tournament Teams"], summary="Partially update a team", description="Partially update a tournament team."),
+    delete=extend_schema(tags=["Events - Admin - Tournament Teams"], summary="Delete a team", description="Delete a tournament team."),
+)
 class AdminTeamRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentTeamAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin - Tournament Teams"])
     def get_object(self):
         obj = get_team_or_404(self.kwargs["pk"])
         self.check_object_permissions(self.request, obj)
@@ -67,11 +80,13 @@ class AdminTeamRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Tournament Teams"], summary="List teams for a tournament", description="Retrieve all teams belonging to a specific tournament."),
+)
 class AdminTournamentTeamListView(generics.ListAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentTeamAdminSerializer
 
-    @extend_schema(tags=["Events - Admin - Tournament Teams"])
     def get_queryset(self):
         tournament = get_tournament_or_404(self.kwargs["pk"])
         self.check_object_permissions(self.request, tournament)

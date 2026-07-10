@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.events.models import EventRegistration
+from apps.events.models import EventRegistration, Tournament
 
 
 class PublicRegistrationSerializer(serializers.Serializer):
@@ -55,10 +55,8 @@ class RegistrationAdminSerializer(serializers.ModelSerializer):
         return None
 
     def get_tournament(self, obj):
-        from apps.events.models import Tournament
         try:
-            tournament = Tournament.objects.get(event=obj.event)
-            return str(tournament.id)
+            return str(obj.event.tournament.id)
         except Tournament.DoesNotExist:
             return None
 

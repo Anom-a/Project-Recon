@@ -26,10 +26,7 @@ class MatchParticipant(models.Model):
                 name="uq_match_side_team",
             )
         ]
-        indexes = [
-            models.Index(fields=["tournament_team"]),
-            models.Index(fields=["match_side"]),
-        ]
+        indexes = []
 
     def __str__(self):
         return f"{self.tournament_team.team_name} in {self.match_side.side}"

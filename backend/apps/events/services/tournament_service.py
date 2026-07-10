@@ -18,7 +18,7 @@ def get_tournament_or_404(pk):
         Tournament instance.
     """
     try:
-        return Tournament.objects.select_related("event").get(id=pk)
+        return Tournament.objects.select_related("event", "category").get(id=pk)
     except Tournament.DoesNotExist:
         raise NotFound("Tournament not found.")
 
@@ -33,7 +33,7 @@ def list_tournaments(branch_ids=None):
     Returns:
         QuerySet of Tournament objects with related event.
     """
-    qs = Tournament.objects.select_related("event").all()
+    qs = Tournament.objects.select_related("event", "category").all()
     if branch_ids:
         qs = qs.filter(event__branch_id__in=branch_ids)
     return qs

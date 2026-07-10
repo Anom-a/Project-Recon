@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -29,6 +29,9 @@ from apps.events.services.match_service import list_matches
 from apps.events.services.ranking_service import get_standings, get_tournament_winner
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="List public tournaments", description="Retrieve all published, active tournaments."),
+)
 class PublicTournamentListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = TournamentSerializer
@@ -40,6 +43,9 @@ class PublicTournamentListView(generics.ListAPIView):
         ).select_related("event", "category").order_by("-created_at")
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="Get tournament details", description="Retrieve a single tournament by ID."),
+)
 class PublicTournamentDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = TournamentSerializer
@@ -52,7 +58,14 @@ class PublicTournamentDetailView(generics.RetrieveAPIView):
 class PublicTournamentStandingsView(generics.GenericAPIView):
     permission_classes = [AllowAny]
 
-    @extend_schema(tags=["Events - Public"])
+    @extend_schema(
+        tags=["Events - Public"],
+        summary="Get tournament standings",
+        description="Retrieve ranked teams for a tournament. Use ?top=N to limit results.",
+        parameters=[
+            OpenApiParameter(name="top", description="Limit to top N teams", required=False, type=int),
+        ],
+    )
     def get(self, request, pk):
         tournament = get_tournament_or_404(pk)
         top_n = request.query_params.get("top")
@@ -69,7 +82,7 @@ class PublicTournamentStandingsView(generics.GenericAPIView):
 class PublicTournamentWinnerView(generics.GenericAPIView):
     permission_classes = [AllowAny]
 
-    @extend_schema(tags=["Events - Public"])
+    @extend_schema(tags=["Events - Public"], summary="Get tournament winner", description="Retrieve the top-ranked team (winner) of a tournament, or null if no completed matches exist.")
     def get(self, request, pk):
         tournament = get_tournament_or_404(pk)
         winner = get_tournament_winner(tournament.id)
@@ -78,21 +91,26 @@ class PublicTournamentWinnerView(generics.GenericAPIView):
         return Response(TeamStandingSerializer(winner).data)
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Public"], summary="List tournament matches", description="Retrieve all matches for a tournament."),
+)
 class PublicTournamentMatchListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = MatchAdminSerializer
 
-    @extend_schema(tags=["Events - Public"])
     def get_queryset(self):
         tournament = get_tournament_or_404(self.kwargs["pk"])
         return list_matches(tournament_id=tournament.id)
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Tournaments"], summary="List tournaments", description="Retrieve all tournaments scoped to user's branches."),
+    post=extend_schema(tags=["Events - Admin - Tournaments"], summary="Create a tournament", description="Create a new tournament linked to an event."),
+)
 class AdminTournamentListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentAdminSerializer
 
-    @extend_schema(tags=["Events - Admin - Tournaments"])
     def get_queryset(self):
         user = self.request.user
         branch_ids = None
@@ -110,12 +128,17 @@ class AdminTournamentListCreateView(generics.ListCreateAPIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(tags=["Events - Admin - Tournaments"], summary="Get tournament details", description="Retrieve a single tournament by ID."),
+    put=extend_schema(tags=["Events - Admin - Tournaments"], summary="Update a tournament", description="Fully update a tournament."),
+    patch=extend_schema(tags=["Events - Admin - Tournaments"], summary="Partially update a tournament", description="Partially update a tournament."),
+    delete=extend_schema(tags=["Events - Admin - Tournaments"], summary="Delete a tournament", description="Delete a tournament."),
+)
 class AdminTournamentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin - Tournaments"])
     def get_object(self):
         obj = get_tournament_or_404(self.kwargs["pk"])
         self.check_object_permissions(self.request, obj)
@@ -135,12 +158,14 @@ class AdminTournamentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPI
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin - Tournaments"], summary="Close a tournament", description="Close a tournament to prevent further modifications."),
+)
 class AdminTournamentCloseView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin - Tournaments"])
     def post(self, request, *args, **kwargs):
         tournament = get_tournament_or_404(self.kwargs["pk"])
         self.check_object_permissions(request, tournament)
@@ -148,12 +173,14 @@ class AdminTournamentCloseView(generics.GenericAPIView):
         return Response(TournamentAdminSerializer(tournament).data)
 
 
+@extend_schema_view(
+    post=extend_schema(tags=["Events - Admin - Tournaments"], summary="Reopen a tournament", description="Reopen a closed tournament."),
+)
 class AdminTournamentReopenView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
     serializer_class = TournamentAdminSerializer
     lookup_url_kwarg = "pk"
 
-    @extend_schema(tags=["Events - Admin - Tournaments"])
     def post(self, request, *args, **kwargs):
         tournament = get_tournament_or_404(self.kwargs["pk"])
         self.check_object_permissions(request, tournament)

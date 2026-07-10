@@ -20,7 +20,7 @@ def get_registration_or_404(pk):
     """
     try:
         return EventRegistration.objects.select_related(
-            "event", "student__user"
+            "event", "student__user", "event__tournament"
         ).get(id=pk)
     except EventRegistration.DoesNotExist:
         raise NotFound("Registration not found.")
@@ -40,7 +40,7 @@ def list_registrations(event_id=None, status=None, student_id=None, branch_ids=N
         QuerySet of EventRegistration objects.
     """
     qs = EventRegistration.objects.select_related(
-        "event", "student__user"
+        "event", "student__user", "event__tournament"
     ).all()
     if event_id:
         qs = qs.filter(event_id=event_id)
