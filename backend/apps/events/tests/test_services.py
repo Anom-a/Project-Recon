@@ -1,3 +1,7 @@
+from uuid import uuid4
+
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
@@ -5,7 +9,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from apps.accounts.models import User
 
 from apps.events.constants import EventStatus, MatchSideType, MatchStatus, Visibility, EventType, RegistrationMode
-from apps.events.models import Event, Match, MatchParticipant, Tournament, TournamentCategory, TournamentTeam, Workshop
+from apps.events.models import Event, EventRegistration, Match, MatchParticipant, Tournament, TournamentCategory, TournamentTeam, Workshop
 from apps.events.services.event_service import (
     create_event,
     get_event_or_404,
@@ -74,6 +78,14 @@ from apps.events.services.registration_service import (
 )
 from apps.events.services.tournament_service import (
     create_tournament,
+)
+from apps.events.services.event_payment_service import (
+    get_payment_or_404,
+    get_payment_by_reference,
+    list_payments,
+    record_cash_payment,
+    initialize_online_payment,
+    verify_online_payment,
 )
 from apps.academic.models import Student
 
@@ -1208,3 +1220,180 @@ class RegistrationServiceTest(TestCase):
         convert_registration_to_team(registration, "Robo Warriors")
         with self.assertRaises(ValidationError):
             convert_registration_to_team(registration, "Robo Warriors 2")
+
+
+class EventPaymentServiceTest(TestCase):
+    def setUp(self):
+        from apps.events.constants import RegistrationMode
+        from apps.accounts.models import Branch
+
+        self.branch = Branch.objects.create(name="Test Branch", code="TB01")
+        self.valid_data = {
+            "title": "Test Event",
+            "description": "Description",
+            "location": "Location",
+            "event_type": EventType.GENERAL,
+            "start_datetime": timezone.now() + timezone.timedelta(days=1),
+            "end_datetime": timezone.now() + timezone.timedelta(days=2),
+            "visibility": Visibility.PUBLIC,
+            "status": EventStatus.PUBLISHED,
+            "is_active": True,
+            "registration_enabled": True,
+            "registration_mode": RegistrationMode.PUBLIC,
+        }
+        self.event = create_event(self.valid_data)
+        self.registration = EventRegistration.objects.create(
+            event=self.event,
+            public_full_name="John Public",
+            public_email="john@example.com",
+            public_phone="+1234567890",
+            registration_status="PENDING",
+        )
+
+    def test_record_cash_payment(self):
+        payment = record_cash_payment(self.registration, 100.00)
+        self.assertEqual(payment.amount, 100.00)
+        self.assertEqual(payment.payment_method, "CASH")
+        self.assertEqual(payment.status, "PAID")
+        self.assertIsNotNone(payment.payment_date)
+        self.registration.refresh_from_db()
+        self.assertEqual(self.registration.payment_status, "PAID")
+
+    def test_record_cash_payment_duplicate(self):
+        record_cash_payment(self.registration, 100.00)
+        with self.assertRaises(ValidationError):
+            record_cash_payment(self.registration, 100.00)
+
+    def test_record_cash_payment_negative_amount(self):
+        with self.assertRaises(ValidationError):
+            record_cash_payment(self.registration, -10)
+
+    def test_record_cash_payment_zero_amount(self):
+        with self.assertRaises(ValidationError):
+            record_cash_payment(self.registration, 0)
+
+    def test_get_payment_or_404_found(self):
+        payment = record_cash_payment(self.registration, 100.00)
+        found = get_payment_or_404(payment.id)
+        self.assertEqual(found.id, payment.id)
+
+    def test_get_payment_or_404_not_found(self):
+        with self.assertRaises(NotFound):
+            get_payment_or_404("00000000-0000-0000-0000-000000000000")
+
+    def test_get_payment_by_reference(self):
+        payment = record_cash_payment(self.registration, 100.00)
+        payment.transaction_reference = "REF-123"
+        payment.save(update_fields=["transaction_reference"])
+        found = get_payment_by_reference("REF-123")
+        self.assertEqual(found.id, payment.id)
+
+    def test_get_payment_by_reference_not_found(self):
+        with self.assertRaises(NotFound):
+            get_payment_by_reference("NONEXISTENT")
+
+    def test_list_payments(self):
+        record_cash_payment(self.registration, 100.00)
+        self.assertEqual(list_payments().count(), 1)
+
+    def test_list_payments_filtered_by_registration(self):
+        registration2 = EventRegistration.objects.create(
+            event=self.event,
+            public_full_name="Jane Public",
+            public_email="jane@example.com",
+            public_phone="+9876543210",
+            registration_status="PENDING",
+        )
+        record_cash_payment(self.registration, 100.00)
+        record_cash_payment(registration2, 200.00)
+        self.assertEqual(
+            list_payments(registration_id=self.registration.id).count(), 1
+        )
+
+    @patch("apps.events.services.event_payment_service.shared_initialize_payment")
+    def test_initialize_online_payment(self, mock_init):
+        mock_init.return_value = {
+            "provider": "chapa",
+            "status": "success",
+            "reference": "EVENT-test-ref",
+            "checkout_url": "https://checkout.chapa.co/pay/test123",
+            "amount": 150.00,
+            "currency": "ETB",
+            "raw": {},
+        }
+        payment, checkout_url = initialize_online_payment(
+            self.registration,
+            150.00,
+            callback_url="https://example.com/callback",
+            customer={"email": "customer@test.com", "first_name": "John"},
+        )
+        self.assertEqual(payment.amount, 150.00)
+        self.assertEqual(payment.payment_method, "ONLINE")
+        self.assertEqual(payment.status, "PENDING")
+        self.assertIsNotNone(payment.transaction_reference)
+        self.assertTrue(payment.transaction_reference.startswith("EVENT-"))
+        self.assertIsNotNone(checkout_url)
+
+    @patch("apps.events.services.event_payment_service.shared_initialize_payment")
+    def test_initialize_online_payment_duplicate(self, mock_init):
+        mock_init.return_value = {
+            "provider": "chapa",
+            "status": "success",
+            "reference": "EVENT-test-ref",
+            "checkout_url": "https://checkout.chapa.co/pay/test123",
+            "amount": 150.00,
+            "currency": "ETB",
+            "raw": {},
+        }
+        initialize_online_payment(
+            self.registration, 150.00,
+            callback_url="https://example.com/callback",
+            customer={"email": "test@test.com"},
+        )
+        with self.assertRaises(ValidationError):
+            initialize_online_payment(
+                self.registration, 150.00,
+                callback_url="https://example.com/callback",
+                customer={"email": "test@test.com"},
+            )
+
+    @patch("apps.events.services.event_payment_service.shared_initialize_payment")
+    @patch("apps.events.services.event_payment_service.shared_verify_payment")
+    def test_verify_online_payment_success(self, mock_verify, mock_init):
+        valid_ref = f"EVENT-{self.registration.id.hex[:8]}-{uuid4().hex[:12]}"
+        mock_init.return_value = {
+            "provider": "chapa",
+            "status": "success",
+            "reference": valid_ref,
+            "checkout_url": "https://checkout.chapa.co/pay/test123",
+            "amount": 150.00,
+            "currency": "ETB",
+            "raw": {},
+        }
+        mock_verify.return_value = {
+            "provider": "chapa",
+            "status": "success",
+            "reference": valid_ref,
+            "amount": 150.00,
+            "currency": "ETB",
+            "raw": {},
+        }
+        payment, _ = initialize_online_payment(
+            self.registration, 150.00,
+            callback_url="https://example.com/callback",
+            customer={"email": "test@test.com"},
+        )
+        reference = payment.transaction_reference
+        verified = verify_online_payment(reference=reference)
+        self.assertEqual(verified.status, "PAID")
+        self.assertIsNotNone(verified.payment_date)
+        self.registration.refresh_from_db()
+        self.assertEqual(self.registration.payment_status, "PAID")
+
+    def test_verify_online_payment_invalid_reference(self):
+        with self.assertRaises(ValidationError):
+            verify_online_payment(reference="INVALID-REF")
+
+    def test_verify_online_payment_nonexistent_reference(self):
+        with self.assertRaises(NotFound):
+            verify_online_payment(reference="EVENT-00000000-000000000000")

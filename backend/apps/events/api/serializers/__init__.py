@@ -11,6 +11,12 @@ from .registration import (
     RegistrationAdminSerializer,
     MyRegistrationSerializer,
 )
+from .payment import (
+    CashPaymentSerializer,
+    EventPaymentSerializer,
+    OnlinePaymentInitializeSerializer,
+    OnlinePaymentVerifySerializer,
+)
 
 __all__ = [
     "EventSerializer",
@@ -26,4 +32,8 @@ __all__ = [
     "StudentRegistrationSerializer",
     "RegistrationAdminSerializer",
     "MyRegistrationSerializer",
+    "EventPaymentSerializer",
+    "CashPaymentSerializer",
+    "OnlinePaymentInitializeSerializer",
+    "OnlinePaymentVerifySerializer",
 ]

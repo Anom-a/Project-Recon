@@ -1149,3 +1149,264 @@ class RegistrationApiTest(EventApiTestCase):
         self._auth(self.student)
         response = self.client.get(f"{self.base_url}/admin/registrations/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class EventPaymentApiTest(EventApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.student_obj = Student.objects.create(
+            user=self.student, branch=self.branch,
+            date_joined=timezone.now().date(),
+        )
+
+    def _make_registerable_event(self, **overrides):
+        data = {
+            "title": "Test Payment Event",
+            "description": "Event for testing payments",
+            "location": "Test Location",
+            "start_datetime": timezone.now() + timezone.timedelta(days=1),
+            "end_datetime": timezone.now() + timezone.timedelta(days=2),
+            "registration_enabled": True,
+            "registration_mode": RegistrationMode.STUDENT,
+            "status": EventStatus.PUBLISHED,
+        }
+        data.update(overrides)
+        event = Event.objects.create(**data)
+        return event
+
+    def _create_registration_for_admin(self, event):
+        reg = EventRegistration.objects.create(
+            event=event,
+            public_full_name="John Public",
+            public_email="john@example.com",
+            public_phone="+1234567890",
+            registration_status=RegistrationStatus.PENDING,
+        )
+        return str(reg.id)
+
+    def _create_approved_registration(self):
+        event = self._make_registerable_event()
+        reg_id = self._create_registration_for_admin(event)
+        reg = EventRegistration.objects.get(id=reg_id)
+        reg.registration_status = RegistrationStatus.APPROVED
+        reg.save(update_fields=["registration_status"])
+        return reg
+
+    # --- Cash Payment ---
+
+    def test_cash_payment_super_admin(self):
+        self._auth(self.super_admin)
+        reg = self._create_approved_registration()
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{reg.id}/pay/cash/",
+            {"amount": 100.00},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["amount"], "100.00")
+        self.assertEqual(response.data["payment_method"], "CASH")
+        self.assertEqual(response.data["status"], "PAID")
+        reg.refresh_from_db()
+        self.assertEqual(reg.payment_status, "PAID")
+
+    def test_cash_payment_branch_manager(self):
+        self._auth(self.branch_manager)
+        reg = self._create_approved_registration()
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{reg.id}/pay/cash/",
+            {"amount": 50.00},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["amount"], "50.00")
+
+    def test_cash_payment_student_forbidden(self):
+        self._auth(self.student)
+        reg = self._create_approved_registration()
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{reg.id}/pay/cash/",
+            {"amount": 50.00},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cash_payment_negative_amount(self):
+        self._auth(self.super_admin)
+        reg = self._create_approved_registration()
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{reg.id}/pay/cash/",
+            {"amount": -10},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cash_payment_zero_amount(self):
+        self._auth(self.super_admin)
+        reg = self._create_approved_registration()
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{reg.id}/pay/cash/",
+            {"amount": 0},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cash_payment_registration_not_found(self):
+        self._auth(self.super_admin)
+        fake_id = uuid.uuid4()
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{fake_id}/pay/cash/",
+            {"amount": 50.00},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # --- Online Payment Initialization ---
+
+    @override_settings(CHAPA_SECRET_KEY="test-secret-key")
+    def test_initialize_online_payment_super_admin(self):
+        from unittest.mock import patch
+
+        self._auth(self.super_admin)
+        reg = self._create_approved_registration()
+        valid_ref = f"EVENT-{reg.id.hex[:8]}-{uuid.uuid4().hex[:12]}"
+        with patch(
+            "apps.events.services.event_payment_service.shared_initialize_payment"
+        ) as mock_init:
+            mock_init.return_value = {
+                "provider": "chapa",
+                "status": "success",
+                "reference": valid_ref,
+                "checkout_url": "https://checkout.chapa.co/pay/test",
+                "amount": 200.00,
+                "currency": "ETB",
+                "raw": {},
+            }
+            response = self.client.post(
+                f"{self.base_url}/admin/registrations/{reg.id}/pay/initialize/",
+                {
+                    "amount": 200.00,
+                    "callback_url": "https://example.com/callback",
+                },
+                format="json",
+            )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("checkout_url", response.data)
+        self.assertEqual(response.data["payment"]["amount"], "200.00")
+
+    def test_initialize_online_payment_student_forbidden(self):
+        self._auth(self.student)
+        reg = self._create_approved_registration()
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{reg.id}/pay/initialize/",
+            {
+                "amount": 200.00,
+                "callback_url": "https://example.com/callback",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_initialize_online_payment_missing_callback(self):
+        self._auth(self.super_admin)
+        reg = self._create_approved_registration()
+        response = self.client.post(
+            f"{self.base_url}/admin/registrations/{reg.id}/pay/initialize/",
+            {"amount": 200.00},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # --- Verify Online Payment ---
+
+    @override_settings(CHAPA_SECRET_KEY="test-secret-key")
+    def test_verify_online_payment_success(self):
+        from unittest.mock import patch
+
+        self._auth(self.super_admin)
+        reg = self._create_approved_registration()
+        valid_ref = f"EVENT-{reg.id.hex[:8]}-{uuid.uuid4().hex[:12]}"
+        with patch(
+            "apps.events.services.event_payment_service.shared_initialize_payment"
+        ) as mock_init, patch(
+            "apps.events.services.event_payment_service.shared_verify_payment"
+        ) as mock_verify:
+            mock_init.return_value = {
+                "provider": "chapa",
+                "status": "success",
+                "reference": valid_ref,
+                "checkout_url": "https://checkout.chapa.co/pay/test",
+                "amount": 200.00,
+                "currency": "ETB",
+                "raw": {},
+            }
+            self.client.post(
+                f"{self.base_url}/admin/registrations/{reg.id}/pay/initialize/",
+                {
+                    "amount": 200.00,
+                    "callback_url": "https://example.com/callback",
+                },
+                format="json",
+            )
+            mock_verify.return_value = {
+                "provider": "chapa",
+                "status": "success",
+                "reference": valid_ref,
+                "amount": 200.00,
+                "currency": "ETB",
+                "raw": {},
+            }
+            response = self.client.post(
+                f"{self.base_url}/payments/online/verify/",
+                {"reference": valid_ref},
+                format="json",
+            )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "PAID")
+
+    def test_verify_online_payment_invalid_reference(self):
+        response = self.client.post(
+            f"{self.base_url}/payments/online/verify/",
+            {"reference": "BAD-REF"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_verify_online_payment_missing_reference(self):
+        response = self.client.post(
+            f"{self.base_url}/payments/online/verify/",
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # --- Webhook ---
+
+    @override_settings(CHAPA_SECRET_KEY="test-secret-key")
+    def test_webhook_success(self):
+        from unittest.mock import patch
+
+        with patch(
+            "apps.events.services.event_payment_service.shared_verify_payment"
+        ) as mock_verify:
+            mock_verify.return_value = {
+                "provider": "chapa",
+                "status": "success",
+                "reference": "EVENT-ref",
+                "amount": 100.00,
+                "currency": "ETB",
+                "raw": {},
+            }
+            response = self.client.post(
+                f"{self.base_url}/payments/online/webhook/",
+                {"tx_ref": "EVENT-ref"},
+                format="json",
+            )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "ok")
+
+    def test_webhook_empty_body(self):
+        response = self.client.post(
+            f"{self.base_url}/payments/online/webhook/",
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "ok")

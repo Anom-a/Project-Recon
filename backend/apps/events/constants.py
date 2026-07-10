@@ -57,3 +57,13 @@ class PaymentStatus(models.TextChoices):
     FAILED = "FAILED", "Failed"
     CANCELLED = "CANCELLED", "Cancelled"
     REFUNDED = "REFUNDED", "Refunded"
+
+
+class PaymentMethod(models.TextChoices):
+    CASH = "CASH", "Cash"
+    ONLINE = "ONLINE", "Online"
+
+
+class PaymentProvider(models.TextChoices):
+    CHAPA = "CHAPA", "Chapa"
+    STRIPE = "STRIPE", "Stripe"

@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from apps.events.models import (
     Event,
+    EventPayment,
     EventRegistration,
     Match,
     MatchParticipant,
@@ -89,9 +90,24 @@ class WorkshopAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at", "updated_at")
 
 
+class EventPaymentInline(admin.StackedInline):
+    model = EventPayment
+    extra = 0
+    readonly_fields = ("id", "created_at", "updated_at")
+
+
 @admin.register(EventRegistration)
 class EventRegistrationAdmin(admin.ModelAdmin):
     list_display = ("event", "student", "public_email", "registration_status", "payment_status", "registered_at")
     list_filter = ("registration_status", "payment_status")
     search_fields = ("event__title", "public_email", "student__user__email")
+    readonly_fields = ("id", "created_at", "updated_at")
+    inlines = [EventPaymentInline]
+
+
+@admin.register(EventPayment)
+class EventPaymentAdmin(admin.ModelAdmin):
+    list_display = ("registration", "amount", "payment_method", "status", "payment_date", "created_at")
+    list_filter = ("status", "payment_method")
+    search_fields = ("transaction_reference", "registration__event__title")
     readonly_fields = ("id", "created_at", "updated_at")
