@@ -115,7 +115,7 @@ export default function Overview() {
                       <p className="text-sm font-semibold text-slate-900">{p.student_name || 'Student'}</p>
                       <p className="text-[10px] text-slate-500">{p.payment_date?.slice(0, 10) || '—'} · {p.payment_method}</p>
                     </div>
-                    <span className="text-sm font-bold text-emerald-600">{Number(p.amount).toLocaleString()} ETB</span>
+                    <span className="text-sm font-bold text-emerald-600">{Number(p.amount).toLocaleString()} Birr</span>
                   </div>
                 ))}
               </div>

@@ -64,7 +64,7 @@ export default function AnalyticsDashboard() {
   const topMetrics = [
     {
       label: 'Total Revenue',
-      value: `${totalRevenue.toLocaleString()} ETB`,
+      value: `${totalRevenue.toLocaleString()} Birr`,
       change: monthlyRevenue.length >= 2
         ? `${((monthlyRevenue[monthlyRevenue.length - 1]?.amount || 0) / (monthlyRevenue[0]?.amount || 1) * 100 - 100).toFixed(1)}%`
         : 'N/A',
@@ -138,7 +138,7 @@ export default function AnalyticsDashboard() {
                 className="flex-1 flex flex-col items-center gap-2">
                 <div className="w-full bg-gradient-to-t from-[#2563EB] to-blue-400 rounded-t-lg relative group cursor-pointer" style={{ height: '100%' }}>
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-mono font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    {(m.amount / 1000).toFixed(1)}K ETB
+                    {(m.amount / 1000).toFixed(1)}K Birr
                   </div>
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono">{m.month}</span>
@@ -214,7 +214,7 @@ export default function AnalyticsDashboard() {
                     className="border-b border-slate-50 hover:bg-slate-50/50">
                     <td className="px-4 py-3 text-sm font-medium text-slate-800">{tx.student}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">{tx.type}</td>
-                    <td className="px-4 py-3 font-mono font-bold text-sm text-slate-900">{tx.amount.toLocaleString()} ETB</td>
+                    <td className="px-4 py-3 font-mono font-bold text-sm text-slate-900">{tx.amount.toLocaleString()} Birr</td>
                     <td className="px-4 py-3 text-xs text-slate-400">{tx.date}</td>
                     <td className="px-4 py-3"><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${tx.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{tx.status}</span></td>
                   </motion.tr>

@@ -273,7 +273,7 @@ function CreateEvent() {
         <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Category</label><input value={category} onChange={e => setCategory(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="e.g. VEX V5" /></div>
         <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Date *</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" /></div>
         <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Max Teams</label><input type="number" value={maxTeams} onChange={e => setMaxTeams(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="e.g. 40" /></div>
-        <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Registration Fee (ETB)</label><input type="number" value={fee} onChange={e => setFee(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="0 for free" /></div>
+        <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Registration Fee (Birr)</label><input type="number" value={fee} onChange={e => setFee(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="0 for free" /></div>
         <div className="md:col-span-2"><label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Location</label><input value={location} onChange={e => setLocation(e.target.value)} className="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="e.g. Bole Prep Hall" /></div>
       </div>
       <button onClick={handleSubmit} disabled={saving}
@@ -337,7 +337,7 @@ function AllEvents() {
             <h4 className="font-bold text-sm text-slate-900 mb-2">{e.event_title || e.event || 'Untitled'}</h4>
             <div className="text-[10px] text-slate-500 space-y-1">
               <p className="flex items-center gap-1.5"><Users className="w-3 h-3" />{e.max_teams || '—'} max teams</p>
-              {e.prize_pool && <p className="flex items-center gap-1.5"><DollarSign className="w-3 h-3" />{e.prize_pool} ETB</p>}
+              {e.prize_pool && <p className="flex items-center gap-1.5"><DollarSign className="w-3 h-3" />{e.prize_pool} Birr</p>}
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={() => handleToggleClose(e.id, e.is_closed)} disabled={togglingId === e.id}

@@ -16,7 +16,7 @@ export interface StudentRegistrationRequest {
 
 export async function registerApi(data: StudentRegistrationRequest): Promise<void> {
   const courseLines = data.selectedCourses
-    .map(course => `- ${course.name} (${course.format}) - ${course.price.toLocaleString()} ETB`)
+    .map(course => `- ${course.name} (${course.format}) - ${course.price.toLocaleString()} Birr`)
     .join('\n');
 
   await http.post('/cms/contact-requests/', {
@@ -31,7 +31,7 @@ export async function registerApi(data: StudentRegistrationRequest): Promise<voi
       `Grade: ${data.grade}`,
       data.school ? `School: ${data.school}` : null,
       `Payment method: ${data.paymentMethod}`,
-      `Total: ${data.total.toLocaleString()} ETB`,
+      `Total: ${data.total.toLocaleString()} Birr`,
       '',
       'Selected courses:',
       courseLines,

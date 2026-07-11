@@ -221,7 +221,7 @@ export default function AdminOverviewDashboard() {
       detail: `${enrollments.length} total`,
     },
     {
-      label: 'Revenue', value: `${totalRevenue.toLocaleString()} ETB`, icon: DollarSign,
+      label: 'Revenue', value: `${totalRevenue.toLocaleString()} Birr`, icon: DollarSign,
       color: 'text-emerald-600', bg: 'bg-emerald-50',
       detail: `${paidPayments.length} paid payments`,
     },
@@ -309,7 +309,7 @@ export default function AdminOverviewDashboard() {
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs text-slate-500">Total Revenue</span>
-                  <span className="text-lg font-bold text-slate-900">{totalRevenue.toLocaleString()} ETB</span>
+                  <span className="text-lg font-bold text-slate-900">{totalRevenue.toLocaleString()} Birr</span>
                 </div>
               </div>
             </>

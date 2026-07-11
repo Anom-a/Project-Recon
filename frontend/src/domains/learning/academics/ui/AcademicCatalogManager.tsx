@@ -299,7 +299,7 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
                   <option value="MONTH">Month</option>
                 </select>
               </FormField>
-              <FormField label="Fee (ETB)">
+              <FormField label="Fee (Birr)">
                 <input value={subProgramForm.fee} onChange={e => setSubProgramForm(p => ({ ...p, fee: e.target.value }))}
                   placeholder="5000" className="form-input" />
               </FormField>
@@ -366,7 +366,7 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
                           <div key={sp.id} className="flex items-center gap-2 pl-6 py-1.5 text-xs text-slate-600 border-l-2 border-brand-red/20">
                             <span className="w-1.5 h-1.5 rounded-full bg-brand-red/30 shrink-0" />
                             <span className="font-medium">{sp.name}</span>
-                            <span className="text-slate-400">{Number(sp.fee).toLocaleString()} ETB</span>
+                            <span className="text-slate-400">{Number(sp.fee).toLocaleString()} Birr</span>
                             {sp.duration && <span className="text-slate-400">({sp.duration} {sp.duration_unit?.toLowerCase()})</span>}
                           </div>
                         ))
@@ -421,7 +421,7 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
                       <p className="text-xs text-slate-400 truncate">{parentProgram?.name || '—'}</p>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
-                      {Number(sp.fee) > 0 && <span className="font-bold text-slate-700">{Number(sp.fee).toLocaleString()} ETB</span>}
+                      {Number(sp.fee) > 0 && <span className="font-bold text-slate-700">{Number(sp.fee).toLocaleString()} Birr</span>}
                       {sp.duration && <span className="text-slate-400">| {sp.duration}{sp.duration_unit?.charAt(0)?.toLowerCase()}</span>}
                     </div>
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sp.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>

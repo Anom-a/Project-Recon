@@ -303,7 +303,7 @@ export default function StudentRegistration() {
                             </span>
                           </div>
                           <p className="text-sm font-bold text-slate-800 truncate mt-1">{enr.name}</p>
-                          <p className="text-xs text-slate-500 truncate">{enr.courses} &middot; {enr.total.toLocaleString()} ETB</p>
+                          <p className="text-xs text-slate-500 truncate">{enr.courses} &middot; {enr.total.toLocaleString()} Birr</p>
                         </div>
                         <div className="text-[10px] text-slate-400 shrink-0 ml-2 text-right">
                           <Clock className="w-3 h-3 inline mr-1" />
@@ -525,7 +525,7 @@ export default function StudentRegistration() {
                                     }`}
                                   >
                                     <span className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${isSelectedClass ? 'text-brand-red' : 'text-slate-500'}`}>Group</span>
-                                    <span className={`font-black text-sm ${isSelectedClass ? 'text-brand-red' : 'text-slate-700'}`}>{course.priceClass.toLocaleString()} ETB</span>
+                                    <span className={`font-black text-sm ${isSelectedClass ? 'text-brand-red' : 'text-slate-700'}`}>{course.priceClass.toLocaleString()} Birr</span>
                                   </button>
                                   {(programs.length === 0 || (programs.find(p => p.slug === category.id || p.id === category.id)?.supports_individual ?? true)) && (
                                     <button
@@ -537,7 +537,7 @@ export default function StudentRegistration() {
                                       }`}
                                     >
                                       <span className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${isSelectedPrivate ? 'text-brand-red' : 'text-slate-500'}`}>Private</span>
-                                      <span className={`font-black text-sm ${isSelectedPrivate ? 'text-brand-red' : 'text-slate-700'}`}>{course.pricePrivate.toLocaleString()} ETB</span>
+                                      <span className={`font-black text-sm ${isSelectedPrivate ? 'text-brand-red' : 'text-slate-700'}`}>{course.pricePrivate.toLocaleString()} Birr</span>
                                     </button>
                                   )}
                                 </div>
@@ -582,7 +582,7 @@ export default function StudentRegistration() {
                                 <span className="font-bold text-slate-900 leading-tight mb-1">{course.name}</span>
                                 <span className="text-[10px] font-black tracking-wider text-brand-red uppercase bg-brand-red/10 w-fit px-1.5 py-0.5 rounded">{format}</span>
                               </div>
-                              <span className="font-black text-slate-900 whitespace-nowrap">{price.toLocaleString()} ETB</span>
+                              <span className="font-black text-slate-900 whitespace-nowrap">{price.toLocaleString()} Birr</span>
                             </div>
                           );
                         })
@@ -590,11 +590,11 @@ export default function StudentRegistration() {
                     </div>
 
                     <div className="flex flex-col gap-2 text-sm pt-5 border-t border-slate-100">
-                      <div className="flex justify-between text-slate-600"><span className="font-medium">Subtotal</span><span className="font-black">{subtotal.toLocaleString()} ETB</span></div>
-                      <div className="flex justify-between text-slate-600"><span className="font-medium">Registration Fee</span><span className="font-black">{registrationFee.toLocaleString()} ETB</span></div>
+                      <div className="flex justify-between text-slate-600"><span className="font-medium">Subtotal</span><span className="font-black">{subtotal.toLocaleString()} Birr</span></div>
+                      <div className="flex justify-between text-slate-600"><span className="font-medium">Registration Fee</span><span className="font-black">{registrationFee.toLocaleString()} Birr</span></div>
                       <div className="flex justify-between text-slate-900 mt-3 pt-4 border-t border-slate-100">
                         <span className="font-black text-base">Total Due</span>
-                        <span className="font-black text-2xl text-brand-red">{grandTotal.toLocaleString()} ETB</span>
+                        <span className="font-black text-2xl text-brand-red">{grandTotal.toLocaleString()} Birr</span>
                       </div>
                     </div>
 
@@ -638,7 +638,7 @@ export default function StudentRegistration() {
                         ) : (
                           <>
                             <Lock className="w-4 h-4" />
-                            PAY {grandTotal.toLocaleString()} ETB
+                            PAY {grandTotal.toLocaleString()} Birr
                           </>
                         )}
                       </button>

@@ -72,7 +72,7 @@ export default function CartDrawer({
                   <input placeholder="Address" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm" required />
                   <div className="pt-2">
                     <button type="submit" className="w-full bg-brand-red text-white font-bold py-3 rounded-xl hover:bg-brand-red-dark transition-colors">
-                      Place Order — ETB {total.toLocaleString()}
+                      Place Order — Birr {total.toLocaleString()}
                     </button>
                   </div>
                 </form>
@@ -89,7 +89,7 @@ export default function CartDrawer({
                       <img src={item.product.image} alt={item.product.name} className="w-14 h-14 object-cover rounded-lg" />
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-sm text-slate-900 truncate">{item.product.name}</h4>
-                        <p className="text-xs font-bold text-brand-blue mt-0.5">ETB {item.product.price.toLocaleString()}</p>
+                        <p className="text-xs font-bold text-brand-blue mt-0.5">Birr {item.product.price.toLocaleString()}</p>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className="flex items-center bg-white border border-slate-200 rounded-lg">
@@ -108,7 +108,7 @@ export default function CartDrawer({
               <div className="p-5 border-t border-slate-200 bg-slate-50/50">
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-semibold text-sm text-slate-700">Total</span>
-                  <span className="font-bold text-lg text-brand-blue">ETB {total.toLocaleString()}</span>
+                  <span className="font-bold text-lg text-brand-blue">Birr {total.toLocaleString()}</span>
                 </div>
                 <button onClick={() => onSetCheckoutStep('shipping')}
                   className="w-full bg-gradient-to-r from-brand-red to-brand-red-dark text-white font-bold py-3 rounded-xl hover:shadow-lg transition-all">

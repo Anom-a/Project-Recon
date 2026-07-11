@@ -112,7 +112,7 @@ export default function PaymentsPanel() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'All Transactions', value: payments.length, icon: DollarSign, color: 'text-brand-blue', bg: 'bg-brand-blue/5' },
-          { label: 'Total Collected', value: `${payments.filter(p => p.status === 'PAID').reduce((s, p) => s + Number(p.amount), 0).toLocaleString()} ETB`, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Total Collected', value: `${payments.filter(p => p.status === 'PAID').reduce((s, p) => s + Number(p.amount), 0).toLocaleString()} Birr`, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Paid', value: paidCount, icon: CreditCard, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Pending', value: pendingCount, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((s, i) => {
@@ -196,7 +196,7 @@ export default function PaymentsPanel() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs font-bold text-slate-900">{Number(p.amount).toLocaleString()} <span className="text-[10px] text-slate-400">ETB</span></span>
+                    <span className="text-xs font-bold text-slate-900">{Number(p.amount).toLocaleString()} <span className="text-[10px] text-slate-400">Birr</span></span>
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
                     <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
@@ -244,7 +244,7 @@ export default function PaymentsPanel() {
                   {selectedPayment.sub_program_name && <div className="flex justify-between"><span className="text-slate-500">Program</span><span className="font-semibold text-slate-900">{selectedPayment.sub_program_name}</span></div>}
                   {selectedPayment.class_name && <div className="flex justify-between"><span className="text-slate-500">Class</span><span className="font-semibold text-slate-900">{selectedPayment.class_name}</span></div>}
                   <div className="border-t border-brand-border pt-3" />
-                  <div className="flex justify-between"><span className="text-slate-500">Amount</span><span className="font-bold text-emerald-600 text-base">{Number(selectedPayment.amount).toLocaleString()} ETB</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Amount</span><span className="font-bold text-emerald-600 text-base">{Number(selectedPayment.amount).toLocaleString()} Birr</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">Method</span>
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700">
                       {selectedPayment.payment_method === 'CASH' ? <Banknote className="w-3.5 h-3.5" /> : <CreditCard className="w-3.5 h-3.5" />}
@@ -306,9 +306,9 @@ export default function PaymentsPanel() {
                     })()}
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 mb-1.5 block">Amount (ETB)</label>
+                    <label className="text-[11px] font-bold text-slate-600 mb-1.5 block">Amount (Birr)</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">ETB</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">Birr</span>
                       <input value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
                         className="w-full pl-10 pr-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10"
                         placeholder="e.g. 2500" type="number" min="0" />

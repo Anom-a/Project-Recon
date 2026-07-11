@@ -205,7 +205,7 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
         {[
           { label: 'Students', value: String(students.length), icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
           { label: 'Programs', value: String(programs.length), icon: Award, color: 'text-purple-500', bg: 'bg-purple-50' },
-          { label: 'Revenue', value: payments.reduce((s, p) => s + (p.status === 'PAID' ? Number(p.amount) : 0), 0).toLocaleString() + ' ETB', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Revenue', value: payments.reduce((s, p) => s + (p.status === 'PAID' ? Number(p.amount) : 0), 0).toLocaleString() + ' Birr', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
           { label: 'Active Enrollments', value: String(enrollments.filter(e => e.status === 'ACTIVE').length), icon: Calendar, color: 'text-amber-500', bg: 'bg-amber-50' },
         ].map((m, i) => {
           const MIcon = m.icon;
@@ -593,7 +593,7 @@ function RegistrationSection() {
           { label: 'Total Registrations', value: registrations.length, icon: UserPlus, color: 'text-sky-600', bg: 'bg-sky-50' },
           { label: 'Confirmed', value: confirmedCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Pending', value: pendingCount, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Revenue', value: `${(totalRevenue / 1000).toFixed(1)}K ETB`, icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Revenue', value: `${(totalRevenue / 1000).toFixed(1)}K Birr`, icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((stat, i) => {
           const SIcon = stat.icon;
           return (
@@ -663,7 +663,7 @@ function RegistrationSection() {
                   </td>
                   <td className="px-3 py-2.5 text-sm text-slate-600">{r.class_name || r.sub_program_name || 'Class'}</td>
                   <td className="px-3 py-2.5 text-sm text-slate-500">{r.branch_name || '—'}</td>
-                  <td className="px-3 py-2.5 text-sm font-bold text-slate-700">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} ETB` : '—'}</td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-slate-700">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} Birr` : '—'}</td>
                   <td className="px-3 py-2.5 text-sm text-slate-500">{r.enrolled_at?.slice(0, 10) || '—'}</td>
                   <td className="px-3 py-2.5">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${paymentByEnrollment[r.id]?.status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>

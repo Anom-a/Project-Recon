@@ -148,7 +148,7 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-2"><Tag className="w-3 h-3" /><span>{p.category}</span></div>
                 </div>
                 <div className="flex flex-col mt-auto pt-3 border-t border-slate-100 gap-3">
-                  <span className="font-black text-brand-red text-lg">{p.price.toLocaleString()} ETB</span>
+                  <span className="font-black text-brand-red text-lg">{p.price.toLocaleString()} Birr</span>
                   <button onClick={() => handleAdd(p)}
                     className={`w-full py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
                       addedFeedback === p.id
@@ -186,7 +186,7 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
                 <img src={item.product.image} className="w-12 h-12 object-contain rounded-lg bg-slate-100 border border-slate-200 p-1" />
                 <div className="flex-1 overflow-hidden">
                   <p className="font-bold text-xs text-slate-900 line-clamp-1">{item.product.name}</p>
-                  <p className="text-brand-red font-black text-xs">{(item.product.price * item.quantity).toLocaleString()} ETB</p>
+                  <p className="text-brand-red font-black text-xs">{(item.product.price * item.quantity).toLocaleString()} Birr</p>
                 </div>
                 <div className="flex items-center gap-0.5 bg-slate-100 border border-slate-200 rounded-lg">
                   <button onClick={() => onUpdateQuantity(item.product.id, -1)} className="p-1 text-slate-500 hover:text-slate-900"><Minus className="w-3 h-3" /></button>
@@ -198,11 +198,11 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
             ))}
           </div>
           <div className="flex flex-col gap-1.5 text-sm pt-4 border-t border-slate-100">
-            <div className="flex justify-between text-slate-500"><span className="font-medium">Subtotal</span><span className="font-black text-slate-900">{cartTotal.toLocaleString()} ETB</span></div>
-            <div className="flex justify-between text-slate-500"><span className="font-medium">Tax (1.56%)</span><span className="font-black text-slate-900">{tax.toFixed(0).toLocaleString()} ETB</span></div>
+            <div className="flex justify-between text-slate-500"><span className="font-medium">Subtotal</span><span className="font-black text-slate-900">{cartTotal.toLocaleString()} Birr</span></div>
+            <div className="flex justify-between text-slate-500"><span className="font-medium">Tax (1.56%)</span><span className="font-black text-slate-900">{tax.toFixed(0).toLocaleString()} Birr</span></div>
             <div className="flex justify-between mt-2 pt-3 border-t border-slate-200">
               <span className="font-black text-slate-900">Total</span>
-              <span className="font-black text-xl text-brand-red">{grandTotal.toFixed(0).toLocaleString()} ETB</span>
+              <span className="font-black text-xl text-brand-red">{grandTotal.toFixed(0).toLocaleString()} Birr</span>
             </div>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
             }`}
           >
             {checkoutState === 'success' ? <><CheckCircle2 className="w-4 h-4" />Paid!</>
-              : <><Lock className="w-4 h-4" />Pay {cart.length ? `${grandTotal.toFixed(0).toLocaleString()} ETB` : ''}</>}
+              : <><Lock className="w-4 h-4" />Pay {cart.length ? `${grandTotal.toFixed(0).toLocaleString()} Birr` : ''}</>}
           </button>
         </div>
       </aside>
@@ -266,7 +266,7 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-brand-blue to-brand-red flex items-center justify-center">
                       <ShieldCheck className="w-5 h-5 text-slate-900" /></div>
                     <div><h3 className="font-black text-lg text-slate-900">Chappa</h3>
-                    <p className="text-xs text-slate-500">{grandTotal.toFixed(0).toLocaleString()} ETB</p></div>
+                    <p className="text-xs text-slate-500">{grandTotal.toFixed(0).toLocaleString()} Birr</p></div>
                   </div>
                   <div className="mb-5 flex gap-2">
                     {(['telebirr', 'cbe'] as const).map(m => (
@@ -295,7 +295,7 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
                     <ShieldCheck className="w-8 h-8 text-brand-red" /></div>
                   <h3 className="font-black text-xl text-slate-900 mb-2">Authorize Payment</h3>
                   <p className="text-sm text-slate-500 mb-8 max-w-[280px] mx-auto leading-relaxed font-medium">
-                    Check your phone for a prompt on {chappaMethod === 'telebirr' ? 'Telebirr' : 'CBE Birr'} for <span className="font-black text-slate-900">{grandTotal.toFixed(0).toLocaleString()} ETB</span>.
+                    Check your phone for a prompt on {chappaMethod === 'telebirr' ? 'Telebirr' : 'CBE Birr'} for <span className="font-black text-slate-900">{grandTotal.toFixed(0).toLocaleString()} Birr</span>.
                   </p>
                   <button onClick={processPayment} className="w-full bg-gradient-to-r from-brand-red to-brand-red-dark text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-red/25">I Authorized</button>
                   <button onClick={() => setCheckoutState('chappa_phone')} className="text-xs font-bold text-slate-400 hover:text-slate-900 mt-3">Change phone</button>
@@ -306,7 +306,7 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
                     <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center">
                       <span className="text-[9px] text-white font-black tracking-widest">STRIPE</span></div>
                     <div><h3 className="font-black text-lg text-slate-900">Card Payment</h3>
-                    <p className="text-xs text-slate-500">{grandTotal.toFixed(0).toLocaleString()} ETB</p></div>
+                    <p className="text-xs text-slate-500">{grandTotal.toFixed(0).toLocaleString()} Birr</p></div>
                   </div>
                   <div className="space-y-4">
                     <div>
@@ -327,7 +327,7 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
                       </div>
                     </div>
                     <button onClick={processPayment} className="w-full bg-gradient-to-r from-brand-red to-brand-red-dark text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-brand-red/25 mt-4">
-                      Pay {grandTotal.toFixed(0).toLocaleString()} ETB</button>
+                      Pay {grandTotal.toFixed(0).toLocaleString()} Birr</button>
                   </div>
                 </div>
               )}
@@ -366,7 +366,7 @@ export default function StoreTab({ cart, onAddToCart, onUpdateQuantity, onRemove
                   ))}
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                  <span className="font-black text-2xl text-brand-red">{selectedProduct.price.toLocaleString()} ETB</span>
+                  <span className="font-black text-2xl text-brand-red">{selectedProduct.price.toLocaleString()} Birr</span>
                   <button onClick={() => { handleAdd(selectedProduct); setSelectedProduct(null); }}
                     className="bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-brand-red/25 hover:shadow-xl hover:shadow-brand-red/40 active:scale-95 transition-all">
                     <ShoppingCart className="w-4 h-4" />Add to Cart</button>

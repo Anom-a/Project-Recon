@@ -232,7 +232,7 @@ export default function TournamentDetailPage({ tournamentId, onBack, currentUser
                     <div><span className="text-slate-500">Deadline:</span> <span className="font-bold text-slate-800">{new Date(tournament.registrationDeadline).toLocaleDateString()}</span></div>
                   )}
                   {tournament.paymentRequired && tournament.registrationFee && (
-                    <div><span className="text-slate-500">Fee:</span> <span className="font-bold text-amber-600">{tournament.registrationFee} ETB</span></div>
+                    <div><span className="text-slate-500">Fee:</span> <span className="font-bold text-amber-600">{tournament.registrationFee} Birr</span></div>
                   )}
                 </div>
               </div>

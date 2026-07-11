@@ -567,7 +567,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
                         {event.paymentRequired && event.registrationFee && (
                           <span className="flex items-center gap-1 text-amber-600 font-bold">
                             <DollarSign className="w-3 h-3" />
-                            {event.registrationFee} ETB
+                            {event.registrationFee} Birr
                           </span>
                         )}
                         {event.registrationDeadline && (
@@ -625,7 +625,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
                         >
                           <Shield className="w-3.5 h-3.5" />
                           {event.registrationMode === 'PUBLIC' ? 'Register' : 'Register'}
-                          {event.paymentRequired && event.registrationFee && ` · ${event.registrationFee} ETB`}
+                          {event.paymentRequired && event.registrationFee && ` · ${event.registrationFee} Birr`}
                         </button>
                       )}
                     </div>
@@ -660,7 +660,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
                   return (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-amber-600 shrink-0" />
-                      <p className="text-[11px] font-bold text-amber-700">Fee: {ev.registrationFee} ETB</p>
+                      <p className="text-[11px] font-bold text-amber-700">Fee: {ev.registrationFee} Birr</p>
                     </div>
                   );
                 }
@@ -961,7 +961,7 @@ function EventDetailModal({ event, onClose, currentUser, isRegistered, onRegiste
             {event.paymentRequired && event.registrationFee && (
               <div className="bg-amber-50 rounded-xl p-3 col-span-2 flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-amber-600" />
-                <p className="text-xs font-bold text-amber-700">Registration Fee: {event.registrationFee} ETB</p>
+                <p className="text-xs font-bold text-amber-700">Registration Fee: {event.registrationFee} Birr</p>
               </div>
             )}
           </div>

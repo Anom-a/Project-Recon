@@ -39,7 +39,7 @@ export default function ActivityFeed() {
         feed.push({
           icon: s.icon, bg: s.bg, color: s.color,
           bold: p.student_name || 'Student',
-          text: `${p.status === 'PAID' ? 'completed' : 'initiated'} payment of ${Number(p.amount).toLocaleString()} ETB`,
+          text: `${p.status === 'PAID' ? 'completed' : 'initiated'} payment of ${Number(p.amount).toLocaleString()} Birr`,
           time: p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'recent',
         });
       });

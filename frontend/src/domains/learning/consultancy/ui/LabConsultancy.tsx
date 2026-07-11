@@ -82,7 +82,7 @@ export default function LabConsultancy() {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Budget Range</label>
                   <select value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#25338d]">
-                    <option value="">Select...</option><option>Under 100,000 ETB</option><option>100,000 - 200,000 ETB</option><option>200,000 - 500,000 ETB</option><option>500,000+ ETB</option>
+                    <option value="">Select...</option><option>Under 100,000 Birr</option><option>100,000 - 200,000 Birr</option><option>200,000 - 500,000 Birr</option><option>500,000+ Birr</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1.5">

@@ -55,7 +55,7 @@ export default function AdminRegistrationsPanel() {
                 <td className="px-4 py-3 text-slate-600">{r.class_name || r.sub_program_name || 'Class'}</td>
                 <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{r.enrolled_at?.slice(0, 10) || '—'}</td>
                 <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusClass(r.status)}`}>{r.status.replace('_', ' ')}</span></td>
-                <td className="px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} ETB` : '—'}</td>
+                <td className="px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} Birr` : '—'}</td>
                 <td className="px-4 py-3"><div className="flex gap-1"><button className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5"><Eye className="w-3.5 h-3.5" /></button><button className="p-1.5 rounded-lg text-slate-400 hover:text-brand-red hover:bg-brand-red/5"><Edit3 className="w-3.5 h-3.5" /></button></div></td>
               </tr>
             ))}

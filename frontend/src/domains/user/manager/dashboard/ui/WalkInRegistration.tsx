@@ -72,7 +72,7 @@ export default function WalkInRegistration() {
     return sum;
   }, 0);
 
-  const registrationFee = 500; // ETB
+  const registrationFee = 500; // Birr
   const grandTotal = subtotal > 0 ? subtotal + registrationFee : 0;
 
   const handleNextStep = (e: React.FormEvent) => {
@@ -108,7 +108,7 @@ export default function WalkInRegistration() {
           </div>
           <h2 className="font-display font-extrabold text-2xl text-slate-900 mb-2">Walk-In Registered!</h2>
           <p className="text-slate-600 font-sans mb-8">
-            {formData.name} has been successfully registered. The total amount of <strong className="font-bold text-slate-900">{grandTotal.toLocaleString()} ETB</strong> should be collected at the desk.
+            {formData.name} has been successfully registered. The total amount of <strong className="font-bold text-slate-900">{grandTotal.toLocaleString()} Birr</strong> should be collected at the desk.
           </p>
           <button onClick={resetForm} className="bg-[#2563EB] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#004ac6] transition-colors w-full flex items-center justify-center gap-2">
             <UserCheck className="w-4 h-4" /> Register Another Student
@@ -275,7 +275,7 @@ export default function WalkInRegistration() {
                                     className={`flex flex-col items-center justify-center px-4 py-2 rounded-xl border-2 transition-all ${isSelectedClass ? 'border-[#2563EB] bg-[#2563EB]/10' : 'border-slate-200 hover:border-[#2563EB]/40 bg-white'}`}
                                   >
                                     <span className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${isSelectedClass ? 'text-[#2563EB]' : 'text-slate-500'}`}>Group</span>
-                                    <span className={`font-display font-bold text-sm ${isSelectedClass ? 'text-[#2563EB]' : 'text-slate-900'}`}>{course.priceClass.toLocaleString()} ETB</span>
+                                    <span className={`font-display font-bold text-sm ${isSelectedClass ? 'text-[#2563EB]' : 'text-slate-900'}`}>{course.priceClass.toLocaleString()} Birr</span>
                                   </button>
                                   {(programs.length === 0 || (programs.find(p => p.slug === category.id || p.id === category.id)?.supports_individual ?? true)) && (
                                     <button
@@ -283,7 +283,7 @@ export default function WalkInRegistration() {
                                       className={`flex flex-col items-center justify-center px-4 py-2 rounded-xl border-2 transition-all ${isSelectedPrivate ? 'border-[#2563EB] bg-[#2563EB]/10' : 'border-slate-200 hover:border-[#2563EB]/40 bg-white'}`}
                                     >
                                       <span className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${isSelectedPrivate ? 'text-[#2563EB]' : 'text-slate-500'}`}>Private</span>
-                                      <span className={`font-display font-bold text-sm ${isSelectedPrivate ? 'text-[#2563EB]' : 'text-slate-900'}`}>{course.pricePrivate.toLocaleString()} ETB</span>
+                                      <span className={`font-display font-bold text-sm ${isSelectedPrivate ? 'text-[#2563EB]' : 'text-slate-900'}`}>{course.pricePrivate.toLocaleString()} Birr</span>
                                     </button>
                                   )}
                                 </div>
@@ -323,7 +323,7 @@ export default function WalkInRegistration() {
                                 <span className="font-bold text-slate-800 leading-tight mb-1">{course.name}</span>
                                 <span className="text-[10px] font-bold tracking-wider text-[#2563EB] uppercase bg-blue-100/50 w-fit px-1.5 py-0.5 rounded">{format}</span>
                               </div>
-                              <span className="font-mono font-bold text-slate-900 whitespace-nowrap">{price.toLocaleString()} ETB</span>
+                              <span className="font-mono font-bold text-slate-900 whitespace-nowrap">{price.toLocaleString()} Birr</span>
                             </div>
                           );
                         })
@@ -331,11 +331,11 @@ export default function WalkInRegistration() {
                     </div>
                     
                     <div className="flex flex-col gap-2 text-sm pt-5 border-t border-slate-200">
-                      <div className="flex justify-between text-slate-500"><span className="font-medium">Subtotal</span><span className="font-mono font-bold">{subtotal.toLocaleString()} ETB</span></div>
-                      <div className="flex justify-between text-slate-500"><span className="font-medium">Registration Fee</span><span className="font-mono font-bold">{registrationFee.toLocaleString()} ETB</span></div>
+                      <div className="flex justify-between text-slate-500"><span className="font-medium">Subtotal</span><span className="font-mono font-bold">{subtotal.toLocaleString()} Birr</span></div>
+                      <div className="flex justify-between text-slate-500"><span className="font-medium">Registration Fee</span><span className="font-mono font-bold">{registrationFee.toLocaleString()} Birr</span></div>
                       <div className="flex justify-between text-slate-900 mt-3 pt-4 border-t border-slate-200">
                         <span className="font-bold text-base">Total Due (Cash/POS)</span>
-                        <span className="font-mono font-extrabold text-2xl text-[#2563EB]">{grandTotal.toLocaleString()} ETB</span>
+                        <span className="font-mono font-extrabold text-2xl text-[#2563EB]">{grandTotal.toLocaleString()} Birr</span>
                       </div>
                     </div>
 

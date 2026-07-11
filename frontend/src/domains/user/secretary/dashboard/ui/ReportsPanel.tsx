@@ -91,7 +91,7 @@ export default function ReportsPanel() {
     {
       key: 'payments', label: 'Payment Report', icon: DollarSign,
       stats: [
-        { label: 'Total Collected', value: `${totalPaid.toLocaleString()} ETB`, color: 'text-emerald-600' },
+        { label: 'Total Collected', value: `${totalPaid.toLocaleString()} Birr`, color: 'text-emerald-600' },
         { label: 'Transactions', value: payments.length, color: 'text-brand-blue' },
         { label: 'Cash', value: cashPayments.length, color: 'text-amber-600' },
         { label: 'Paid', value: payments.filter(p => p.status === 'PAID').length, color: 'text-emerald-600' },

@@ -37,7 +37,7 @@ export default function PaymentTracker() {
           </div>
           <div>
             <p className="text-xs font-bold text-emerald-600 uppercase">Total Revenue</p>
-            <p className="font-display font-bold text-2xl text-slate-900">{totalRevenue.toLocaleString()} ETB</p>
+            <p className="font-display font-bold text-2xl text-slate-900">{totalRevenue.toLocaleString()} Birr</p>
             <p className="text-[11px] text-slate-500 mt-0.5">{paid.length} paid transactions</p>
           </div>
         </div>
@@ -47,7 +47,7 @@ export default function PaymentTracker() {
           </div>
           <div>
             <p className="text-xs font-bold text-[#2563EB] uppercase">Cash Payments</p>
-            <p className="font-display font-bold text-2xl text-slate-900">{totalCash.toLocaleString()} ETB</p>
+            <p className="font-display font-bold text-2xl text-slate-900">{totalCash.toLocaleString()} Birr</p>
             <p className="text-[11px] text-slate-500 mt-0.5">{cashPayments.length} cash transactions</p>
           </div>
         </div>

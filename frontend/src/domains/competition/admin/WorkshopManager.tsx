@@ -95,7 +95,7 @@ export default function WorkshopManager() {
               <div className="flex flex-col gap-1.5">
                 {w.instructor_name && <div className="flex items-center gap-2 text-[11px] text-slate-500"><User className="w-3.5 h-3.5" /><span>{w.instructor_name}</span></div>}
                 <div className="flex items-center gap-2 text-[11px] text-slate-500"><Clock className="w-3.5 h-3.5" /><span>{w.duration_minutes} minutes</span></div>
-                {w.price && <div className="flex items-center gap-2 text-[11px] text-slate-500"><DollarSign className="w-3.5 h-3.5" /><span>{w.price} ETB</span></div>}
+                {w.price && <div className="flex items-center gap-2 text-[11px] text-slate-500"><DollarSign className="w-3.5 h-3.5" /><span>{w.price} Birr</span></div>}
               </div>
             </motion.div>
           ))}
@@ -125,7 +125,7 @@ export default function WorkshopManager() {
                       <option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option>
                     </select></div>
                 </div>
-                <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Price (ETB)</label>
+                <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Price (Birr)</label>
                   <input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="Free" className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
               </div>
               <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-brand-border">

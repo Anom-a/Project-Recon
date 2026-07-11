@@ -109,7 +109,7 @@ export default function OnlineStoreHub() {
       <div className="grid grid-cols-4 gap-2">
         {[
           { label: 'Total Products', value: totalItems.toString(), icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Inventory Value', value: totalValue.toLocaleString() + ' ETB', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Inventory Value', value: totalValue.toLocaleString() + ' Birr', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Low Stock', value: lowStock.toString(), icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Out of Stock', value: outOfStock.toString(), icon: X, color: 'text-red-600', bg: 'bg-red-50' },
         ].map((s, i) => {
@@ -161,7 +161,7 @@ export default function OnlineStoreHub() {
                   </td>
                   <td className="px-2 py-2 text-[10px] font-mono text-slate-400">{item.sku}</td>
                   <td className="px-2 py-2 text-[11px] text-slate-500">{item.category}</td>
-                  <td className="px-2 py-2 text-sm font-bold text-slate-900">{item.price} ETB</td>
+                  <td className="px-2 py-2 text-sm font-bold text-slate-900">{item.price} Birr</td>
                   <td className="px-2 py-2">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                       item.stock > 10 ? 'bg-emerald-50 text-emerald-600' : item.stock > 0 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
@@ -199,7 +199,7 @@ export default function OnlineStoreHub() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Price (ETB)</label>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Price (Birr)</label>
                   <input value={editPrice} onChange={e => setEditPrice(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-brand-red/30 focus:bg-white"
                   />
