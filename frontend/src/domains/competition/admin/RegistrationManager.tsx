@@ -12,10 +12,15 @@ export default function RegistrationManager() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selected, setSelected] = useState<BackendEventRegistration | null>(null);
   const [cashAmount, setCashAmount] = useState('');
+  const [teamName, setTeamName] = useState('');
+  const [showTeamNameModal, setShowTeamNameModal] = useState(false);
+  const [pendingConvertId, setPendingConvertId] = useState<string | null>(null);
 
-  const load = () => {
+  const load = (status?: string) => {
     setLoading(true);
-    eventsApi.adminGetRegistrations()
+    const params: Record<string, string> = {};
+    if (status && status !== 'all') params.status = status;
+    eventsApi.adminGetRegistrations(params)
       .then(r => setRegistrations(Array.isArray(r) ? r : []))
       .catch(err => setError(err.message)).finally(() => setLoading(false));
   };
@@ -24,16 +29,36 @@ export default function RegistrationManager() {
 
   const handleAction = async (id: string, action: 'approve' | 'reject' | 'cancel' | 'convert') => {
     try {
-      const actions = {
+      if (action === 'convert') {
+        setPendingConvertId(id);
+        setTeamName('');
+        setShowTeamNameModal(true);
+        return;
+      }
+      const actions: Record<string, () => Promise<any>> = {
         approve: () => eventsApi.adminApproveRegistration(id),
         reject: () => eventsApi.adminRejectRegistration(id),
         cancel: () => eventsApi.adminCancelRegistration(id),
-        convert: () => eventsApi.adminConvertRegistrationToTeam(id),
       };
       await actions[action]();
       load();
       if (selected?.id === id) {
         const updated = await eventsApi.adminGetRegistration(id);
+        setSelected(updated);
+      }
+    } catch (err: any) { setError(err.message); }
+  };
+
+  const handleConvertWithTeamName = async () => {
+    if (!pendingConvertId || !teamName.trim()) return;
+    try {
+      await eventsApi.adminConvertRegistrationToTeam(pendingConvertId, teamName.trim());
+      setShowTeamNameModal(false);
+      setPendingConvertId(null);
+      setTeamName('');
+      load();
+      if (selected?.id === pendingConvertId) {
+        const updated = await eventsApi.adminGetRegistration(pendingConvertId);
         setSelected(updated);
       }
     } catch (err: any) { setError(err.message); }
@@ -83,7 +108,7 @@ export default function RegistrationManager() {
         <div><h3 className="font-black text-lg text-slate-900">Registrations</h3><p className="text-xs text-slate-500 mt-1">{registrations.length} total</p></div>
         <div className="flex items-center gap-2">
           <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="w-48 pl-9 pr-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red" /></div>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red">
+          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); load(e.target.value); }} className="px-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red">
             <option value="all">All</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="CANCELLED">Cancelled</option>
           </select>
         </div>
@@ -187,8 +212,30 @@ export default function RegistrationManager() {
                 )}
 
                 {selected.registration_status === 'APPROVED' && (
-                  <button onClick={() => handleAction(selected.id, 'convert')} className="px-4 py-2 bg-purple-500 text-white text-xs font-bold rounded-xl hover:bg-purple-600 flex items-center justify-center gap-1.5"><Send className="w-3.5 h-3.5" /> Convert to Team</button>
+                  <button onClick={() => { setPendingConvertId(selected.id); setTeamName(''); setShowTeamNameModal(true); }} className="px-4 py-2 bg-purple-500 text-white text-xs font-bold rounded-xl hover:bg-purple-600 flex items-center justify-center gap-1.5"><Send className="w-3.5 h-3.5" /> Convert to Team</button>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showTeamNameModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowTeamNameModal(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 md:p-8 z-10">
+              <h3 className="font-black text-lg text-slate-900 mb-2">Convert to Team</h3>
+              <p className="text-xs text-slate-500 mb-4">Enter a name for the tournament team.</p>
+              <input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="Team name" autoFocus
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-red mb-4" />
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowTeamNameModal(false)} className="flex-1 px-4 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200">Cancel</button>
+                <button onClick={handleConvertWithTeamName} disabled={!teamName.trim()}
+                  className="flex-1 px-4 py-2 bg-purple-500 text-white text-xs font-bold rounded-xl hover:bg-purple-600 disabled:opacity-50 flex items-center justify-center gap-1.5">
+                  <Send className="w-3.5 h-3.5" /> Convert
+                </button>
               </div>
             </motion.div>
           </div>

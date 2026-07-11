@@ -277,7 +277,7 @@ export default function CompetitionHub({ currentUser }: CompetitionHubProps) {
 
 // ── Tournaments ──
 function TournamentsView({
-  filtered, selected, selectedMatches, isRegistered, selectedTournament, sc, statusFilter, onSelect, onRegister,
+  filtered, selected, selectedMatches, isRegistered, selectedTournament, sc, statusFilter, onSelect, onRegister, currentUser,
 }: {
   filtered: Tournament[];
   selected: Tournament | undefined;
@@ -288,6 +288,7 @@ function TournamentsView({
   statusFilter: string;
   onSelect: (id: string | null) => void;
   onRegister: (id: string) => void;
+  currentUser?: UserProfile | null;
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -429,6 +430,13 @@ function TournamentsView({
                       <div className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 py-4 px-6 rounded-xl font-black text-sm flex items-center justify-center gap-2 uppercase tracking-wider">
                         <CheckCircle2 className="w-5 h-5" />Team Registered Successfully
                       </div>
+                    ) : !currentUser ? (
+                      <a href="/login"
+                        className="group relative w-full bg-gradient-to-r from-brand-red to-brand-red-dark text-white py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-brand-red/25 hover:shadow-xl hover:shadow-brand-red/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all overflow-hidden"
+                      >
+                        <User className="w-5 h-5" />Sign In to Register
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                      </a>
                     ) : (
                       <button onClick={() => onRegister(selected.id)}
                         className="group relative w-full bg-gradient-to-r from-brand-red to-brand-red-dark text-white py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-brand-red/25 hover:shadow-xl hover:shadow-brand-red/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all overflow-hidden"

@@ -37,11 +37,12 @@ interface Props {
   onLogout: () => void;
 }
 
-type SectionId = 'overview' | 'analytics' | 'academic-catalog' | 'classes' | 'staff-attendance' | 'sponsors' | 'store' | 'events' | 'tournaments' | 'tournament-teams' | 'matches' | 'workshops' | 'participants' | 'announcements' | 'communications' | 'payments' | 'walkin' | 'reports' | 'schools' | 'registrations' | 'certificates' | 'account';
+type SectionId = 'overview' | 'analytics' | 'academic-catalog' | 'classes' | 'staff-attendance' | 'sponsors' | 'store' | 'events' | 'tournaments' | 'tournament-teams' | 'matches' | 'workshops' | 'participants' | 'announcements' | 'communications' | 'payments' | 'walkin' | 'reports' | 'schools' | 'enrollments' | 'event-registrations' | 'certificates' | 'account';
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: Activity, group: 'main' },
-  { id: 'registrations', label: 'Registrations', icon: UserPlus, group: 'main' },
+  { id: 'enrollments', label: 'Academic Enrollments', icon: UserPlus, group: 'main' },
+  { id: 'event-registrations', label: 'Event Registrations', icon: UserPlus, group: 'main' },
   { id: 'certificates', label: 'Certificates', icon: Award, group: 'main' },
   { id: 'academic-catalog', label: 'Academic Catalog', icon: BookOpen, group: 'main' },
   { id: 'classes', label: 'Classes', icon: BookOpen, group: 'main' },
@@ -101,7 +102,8 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'staff-attendance': return <StaffAttendanceManager />;
       case 'sponsors': return <SponsorManagement />;
       case 'schools': return <SchoolManagement />;
-      case 'registrations': return <RegistrationSection />;
+      case 'enrollments': return <RegistrationSection />;
+      case 'event-registrations': return <RegistrationManager />;
       case 'store': return <OnlineStoreHub />;
       case 'events': return <EventsManagement onNavigate={setActiveSection} />;
       case 'tournaments': return <TournamentManager />;
@@ -170,7 +172,8 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
 
   const quickActions: { id: SectionId; label: string; desc: string; icon: React.ElementType; color: string }[] = [
     { id: 'academic-catalog', label: 'Academic Catalog', desc: 'Programs & classes', icon: BookOpen, color: 'from-blue-500 to-blue-600' },
-    { id: 'registrations', label: 'Registrations', desc: 'View all registrations', icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
+    { id: 'enrollments', label: 'Academic Enrollments', desc: 'View student enrollments', icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
+    { id: 'event-registrations', label: 'Event Registrations', desc: 'Manage event registrations', icon: UserPlus, color: 'from-purple-500 to-purple-600' },
     { id: 'payments', label: 'Payment Reports', desc: 'Track transactions', icon: DollarSign, color: 'from-cyan-500 to-cyan-600' },
     { id: 'reports', label: 'Download Reports', desc: 'PDF reports & data', icon: FileText, color: 'from-rose-500 to-rose-600' },
     { id: 'events', label: 'Events Calendar', desc: 'Manage all events', icon: Calendar, color: 'from-purple-500 to-purple-600' },
@@ -335,7 +338,7 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
           <div className="grid grid-cols-2 gap-2">
             {[
               { label: 'Academic Catalog', desc: 'Programs & classes', id: 'academic-catalog' as SectionId, icon: BookOpen, color: 'from-blue-500 to-blue-600' },
-              { label: 'Registrations', desc: 'Student enrollments', id: 'registrations' as SectionId, icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
+              { label: 'Academic Enrollments', desc: 'Student enrollments', id: 'enrollments' as SectionId, icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
               { label: 'Branches', desc: 'Branch management', id: 'schools' as SectionId, icon: Building, color: 'from-sky-500 to-cyan-600' },
               { label: 'Sponsors', desc: 'Partner management', id: 'sponsors' as SectionId, icon: Handshake, color: 'from-indigo-500 to-purple-600' },
               { label: 'Announcements', desc: 'Create & publish', id: 'announcements' as SectionId, icon: Bell, color: 'from-rose-500 to-pink-600' },

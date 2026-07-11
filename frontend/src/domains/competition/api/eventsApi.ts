@@ -251,7 +251,7 @@ export function getMyRegistrations() {
 }
 
 export function cancelMyRegistration(id: string) {
-  return http.patch<BackendEventRegistration>(`${BASE}/my-registrations/${id}/cancel/`, {});
+  return http.post<BackendEventRegistration>(`${BASE}/my-registrations/${id}/cancel/`, {});
 }
 
 /* ═══ ADMIN - EVENTS ═══ */
@@ -472,8 +472,8 @@ export function adminCancelRegistration(id: string) {
   return http.post<BackendEventRegistration>(`${BASE}/admin/registrations/${id}/cancel/`, {});
 }
 
-export function adminConvertRegistrationToTeam(id: string) {
-  return http.post<BackendTournamentTeam>(`${BASE}/admin/registrations/${id}/convert-to-team/`, {});
+export function adminConvertRegistrationToTeam(id: string, teamName?: string) {
+  return http.post<BackendTournamentTeam>(`${BASE}/admin/registrations/${id}/convert-to-team/`, { team_name: teamName || '' });
 }
 
 /* ═══ ADMIN - PAYMENTS ═══ */

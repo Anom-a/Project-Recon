@@ -32,8 +32,8 @@ function mapEventToTournament(e: eventsApi.BackendEvent): Tournament {
 function mapMatchToResult(m: eventsApi.BackendMatch): MatchResult {
   const sideA = m.sides?.find(s => s.side === 'SIDE_A');
   const sideB = m.sides?.find(s => s.side === 'SIDE_B');
-  const teamA = sideA?.participants?.[0]?.tournament_team_name || 'TBD';
-  const teamB = sideB?.participants?.[0]?.tournament_team_name || 'TBD';
+  const teamA = sideA?.participants?.[0]?.tournament_team_name || '—';
+  const teamB = sideB?.participants?.[0]?.tournament_team_name || '—';
   const now = new Date();
   const sched = new Date(m.scheduled_at);
   const isLive = m.status === 'LIVE';
@@ -73,8 +73,8 @@ function mapEventToWorkshop(e: eventsApi.BackendEvent): Workshop {
     detailedDescription: e.description,
     date: e.start_datetime.slice(0, 10),
     time: e.start_datetime.slice(11, 16),
-    duration: w ? `${w.duration_minutes} min` : 'TBD',
-    instructor: w?.instructor_name || 'TBD',
+    duration: w ? `${w.duration_minutes} min` : '—',
+    instructor: w?.instructor_name || '—',
     instructorRole: 'Instructor',
     instructorImage: '',
     location: e.location,
@@ -94,7 +94,8 @@ export async function getTournaments(params?: Record<string, string>): Promise<T
   try {
     const events = await eventsApi.getPublicEvents({ ...params, event_type: 'TOURNAMENT' });
     return events.map(mapEventToTournament);
-  } catch {
+  } catch (err) {
+    console.error('getTournaments failed:', err);
     return [];
   }
 }
@@ -103,7 +104,8 @@ export async function getTournamentById(id: string): Promise<Tournament | undefi
   try {
     const event = await eventsApi.getPublicEventDetail(id);
     return mapEventToTournament(event);
-  } catch {
+  } catch (err) {
+    console.error('getTournamentById failed:', err);
     return undefined;
   }
 }
@@ -113,7 +115,8 @@ export async function getMatches(tournamentId?: string): Promise<MatchResult[]> 
   try {
     const matches = await eventsApi.getPublicTournamentMatches(tournamentId);
     return (Array.isArray(matches) ? matches : []).map(mapMatchToResult);
-  } catch {
+  } catch (err) {
+    console.error('getMatches failed:', err);
     return [];
   }
 }
@@ -122,7 +125,8 @@ export async function getWorkshops(params?: Record<string, string>): Promise<Wor
   try {
     const events = await eventsApi.getPublicEvents({ ...params, event_type: 'WORKSHOP' });
     return events.map(mapEventToWorkshop);
-  } catch {
+  } catch (err) {
+    console.error('getWorkshops failed:', err);
     return [];
   }
 }
@@ -131,7 +135,8 @@ export async function getWorkshopById(id: string): Promise<Workshop | undefined>
   try {
     const event = await eventsApi.getPublicEventDetail(id);
     return mapEventToWorkshop(event);
-  } catch {
+  } catch (err) {
+    console.error('getWorkshopById failed:', err);
     return undefined;
   }
 }
@@ -140,7 +145,8 @@ export async function getPastTournaments(): Promise<Tournament[]> {
   try {
     const events = await eventsApi.getPastEvents();
     return events.filter(e => e.event_type === 'TOURNAMENT').map(mapEventToTournament);
-  } catch {
+  } catch (err) {
+    console.error('getPastTournaments failed:', err);
     return [];
   }
 }
@@ -149,7 +155,8 @@ export async function getPastWorkshops(): Promise<Workshop[]> {
   try {
     const events = await eventsApi.getPastEvents();
     return events.filter(e => e.event_type === 'WORKSHOP').map(mapEventToWorkshop);
-  } catch {
+  } catch (err) {
+    console.error('getPastWorkshops failed:', err);
     return [];
   }
 }
@@ -157,7 +164,8 @@ export async function getPastWorkshops(): Promise<Workshop[]> {
 export async function registerForTournament(tournamentId: string): Promise<void> {
   try {
     await eventsApi.registerForEvent(tournamentId, {});
-  } catch {
+  } catch (err) {
+    console.error('registerForTournament failed:', err);
     throw new Error('Registration failed');
   }
 }
@@ -165,7 +173,8 @@ export async function registerForTournament(tournamentId: string): Promise<void>
 export async function enrollInWorkshop(workshopId: string): Promise<void> {
   try {
     await eventsApi.registerForEvent(workshopId, {});
-  } catch {
+  } catch (err) {
+    console.error('enrollInWorkshop failed:', err);
     throw new Error('Enrollment failed');
   }
 }

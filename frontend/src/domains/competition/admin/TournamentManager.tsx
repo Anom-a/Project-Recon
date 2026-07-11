@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, X, Loader2, AlertCircle, Trophy, Users, DollarSign, Edit3, Trash2, Lock, Unlock, Eye, Tags, Save } from 'lucide-react';
 import * as eventsApi from '../api/eventsApi';
-import type { BackendTournament, BackendTournamentCategory } from '../api/eventsApi';
+import type { BackendTournament, BackendTournamentCategory, BackendEvent } from '../api/eventsApi';
 
 const defaultForm = {
   event: '', category: '', max_teams: '', prize_pool: '',
@@ -11,7 +11,7 @@ const defaultForm = {
 export default function TournamentManager() {
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [categories, setCategories] = useState<BackendTournamentCategory[]>([]);
-  const [events, setEvents] = useState<BackendTournament[]>([]);
+  const [events, setEvents] = useState<BackendEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
