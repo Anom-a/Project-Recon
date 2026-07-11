@@ -32,8 +32,8 @@ function mapEventToTournament(e: eventsApi.BackendEvent): Tournament {
 function mapMatchToResult(m: eventsApi.BackendMatch): MatchResult {
   const sideA = m.sides?.find(s => s.side === 'SIDE_A');
   const sideB = m.sides?.find(s => s.side === 'SIDE_B');
-  const teamA = sideA?.participants?.[0]?.tournament_team_name || '—';
-  const teamB = sideB?.participants?.[0]?.tournament_team_name || '—';
+  const teamA = sideA?.participants?.[0]?.tournament_team_name || 'TBD';
+  const teamB = sideB?.participants?.[0]?.tournament_team_name || 'TBD';
   const now = new Date();
   const sched = new Date(m.scheduled_at);
   const isLive = m.status === 'LIVE';
@@ -73,8 +73,8 @@ function mapEventToWorkshop(e: eventsApi.BackendEvent): Workshop {
     detailedDescription: e.description,
     date: e.start_datetime.slice(0, 10),
     time: e.start_datetime.slice(11, 16),
-    duration: w ? `${w.duration_minutes} min` : '—',
-    instructor: w?.instructor_name || '—',
+    duration: w ? `${w.duration_minutes} min` : 'TBD',
+    instructor: w?.instructor_name || 'TBD',
     instructorRole: 'Instructor',
     instructorImage: '',
     location: e.location,

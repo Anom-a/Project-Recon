@@ -124,8 +124,8 @@ export default function MatchManager() {
           {filtered.map((m, i) => {
             const sideA = m.sides?.find(s => s.side === 'SIDE_A');
             const sideB = m.sides?.find(s => s.side === 'SIDE_B');
-            const teamAName = sideA?.participants?.[0]?.tournament_team_name || '—';
-            const teamBName = sideB?.participants?.[0]?.tournament_team_name || '—';
+            const teamAName = sideA?.participants?.[0]?.tournament_team_name || 'TBD';
+            const teamBName = sideB?.participants?.[0]?.tournament_team_name || 'TBD';
             return (
               <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                 className="bg-white border border-brand-border rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer" onClick={() => setSelectedMatch(m)}>
@@ -144,7 +144,7 @@ export default function MatchManager() {
                   <span className="text-sm font-black text-slate-900">{sideA?.score ?? '-'} : {sideB?.score ?? '-'}</span>
                   <span className="text-xs font-semibold text-slate-700">{teamBName}</span>
                 </div>
-                <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-400"><Clock className="w-3 h-3" />{m.scheduled_at?.slice(0, 16) || '—'}</div>
+                <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-400"><Clock className="w-3 h-3" />{m.scheduled_at?.slice(0, 16) || 'TBD'}</div>
               </motion.div>
             );
           })}
@@ -203,7 +203,7 @@ export default function MatchManager() {
 
               <div className="flex items-center justify-between bg-slate-50 rounded-2xl px-6 py-4 mb-6">
                 {selectedMatch.sides?.map(side => {
-                  const teamName = side.participants?.[0]?.tournament_team_name || '—';
+                  const teamName = side.participants?.[0]?.tournament_team_name || 'TBD';
                   return (
                     <div key={side.id} className="flex-1 text-center">
                       <span className="text-xs font-bold text-slate-500 uppercase">{side.side === 'SIDE_A' ? 'Side A' : 'Side B'}</span>

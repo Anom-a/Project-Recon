@@ -460,8 +460,8 @@ function BracketsView() {
       <div className="flex gap-8 overflow-x-auto pb-4">
         {[
           { round: 'Quarter-Finals', matches: [{ team1: 'T-001', team2: 'T-006', score1: 2, score2: 0 }, { team1: 'T-002', team2: 'T-005', score1: 2, score2: 1 }, { team1: 'T-003', team2: 'T-004', score1: 0, score2: 2 }, { team1: 'T-001', team2: 'T-005', score1: 0, score2: 0 }] },
-          { round: 'Semi-Finals', matches: [{ team1: 'T-001', team2: 'T-004', score1: 0, score2: 0 }, { team1: 'T-002', team2: 'Winner QF-3', score1: 0, score2: 0 }] },
-          { round: 'Finals', matches: [{ team1: 'Winner SF-1', team2: 'Winner SF-2', score1: 0, score2: 0 }] },
+          { round: 'Semi-Finals', matches: [{ team1: 'T-001', team2: 'T-004', score1: 0, score2: 0 }, { team1: 'T-002', team2: 'TBD', score1: 0, score2: 0 }] },
+          { round: 'Finals', matches: [{ team1: 'TBD', team2: 'TBD', score1: 0, score2: 0 }] },
         ].map(r => (
           <div key={r.round} className="min-w-[200px]">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-3 text-center">{r.round}</p>
