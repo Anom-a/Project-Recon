@@ -6,10 +6,13 @@ import {
 } from 'lucide-react';
 import { getTournamentById, getMatches, getTournamentStandings, type StandingEntry } from '../../api/competitionApi';
 import { type Tournament, type MatchResult } from '@/src/shared/types';
+import TournamentCertificateManager from './TournamentCertificateManager';
+import type { UserProfile } from '@/src/shared/types';
 
 interface TournamentDetailPageProps {
   tournamentId: string;
   onBack: () => void;
+  currentUser?: UserProfile | null;
 }
 
 type DetailTab = 'overview' | 'teams' | 'matches' | 'rankings' | 'results' | 'certificates';
@@ -28,7 +31,7 @@ const MATCH_STATUS_STYLE: Record<string, string> = {
   CANCELLED: 'bg-slate-100 text-slate-500',
 };
 
-export default function TournamentDetailPage({ tournamentId, onBack }: TournamentDetailPageProps) {
+export default function TournamentDetailPage({ tournamentId, onBack, currentUser }: TournamentDetailPageProps) {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [standings, setStandings] = useState<StandingEntry[]>([]);
@@ -417,17 +420,12 @@ export default function TournamentDetailPage({ tournamentId, onBack }: Tournamen
 
         {/* Certificates */}
         {tab === 'certificates' && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center">
-            <ScrollText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="font-black text-lg text-slate-700 mb-2">Certificates</h3>
-            <p className="text-sm text-slate-400 max-w-md mx-auto">
-              Certificates will be available here once the tournament is completed and results are finalized.
-            </p>
-            <div className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-500">
-              <Award className="w-4 h-4" />
-              Coming Soon
-            </div>
-          </div>
+          <TournamentCertificateManager
+            tournamentId={tournamentId}
+            tournament={tournament}
+            standings={standings}
+            userRole={currentUser?.role || null}
+          />
         )}
       </motion.div>
     </div>

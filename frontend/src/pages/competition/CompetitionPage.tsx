@@ -104,7 +104,7 @@ export default function CompetitionPage({ currentUser }: CompetitionPageProps) {
             <MatchDetailsPage matchId={selectedMatchId} onBack={() => navTo('matches')} />
           )}
           {view === 'tournament-detail' && selectedTournamentId && (
-            <TournamentDetailPage tournamentId={selectedTournamentId} onBack={() => navTo('hub')} />
+            <TournamentDetailPage tournamentId={selectedTournamentId} onBack={() => navTo('hub')} currentUser={currentUser} />
           )}
           {activeTab === 'registrations' && isStaff && <RegistrationDashboard />}
         </div>
