@@ -2122,7 +2122,7 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       case 'audit': return <SystemLogs />;
       case 'account': return <AdminAccount currentUser={currentUser} />;
       case 'registrations': return <AdminRegistrations />;
-      case 'events': return <EventManager />;
+      case 'events': return <EventManager onNavigate={(section) => setActiveSection(section as SectionId)} />;
       case 'tournaments': return <TournamentManager />;
       case 'tournament-teams': return <TeamManager />;
       case 'matches': return <MatchManager />;

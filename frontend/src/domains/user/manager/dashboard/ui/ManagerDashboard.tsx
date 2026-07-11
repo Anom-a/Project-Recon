@@ -103,7 +103,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'schools': return <SchoolManagement />;
       case 'registrations': return <RegistrationSection />;
       case 'store': return <OnlineStoreHub />;
-      case 'events': return <EventsManagement />;
+      case 'events': return <EventsManagement onNavigate={setActiveSection} />;
       case 'tournaments': return <TournamentManager />;
       case 'tournament-teams': return <TeamManager />;
       case 'matches': return <MatchManager />;

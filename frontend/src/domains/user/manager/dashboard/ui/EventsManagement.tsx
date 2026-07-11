@@ -1,6 +1,10 @@
 import React from 'react';
 import EventManager from '@/src/domains/competition/admin/EventManager';
 
-export default function EventsManagement() {
-  return <EventManager />;
+interface EventsManagementProps {
+  onNavigate?: (section: string) => void;
+}
+
+export default function EventsManagement({ onNavigate }: EventsManagementProps) {
+  return <EventManager onNavigate={onNavigate} />;
 }

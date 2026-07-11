@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, Calendar, MapPin, Users, Tag, Globe, CheckCircle, Eye, Edit3, Trash2, Send, ToggleLeft, ToggleRight, Clock, Youtube } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, Calendar, MapPin, Users, Tag, Globe, CheckCircle, Eye, Edit3, Trash2, Send, ToggleLeft, ToggleRight, Clock, Youtube, Trophy, GraduationCap, Swords, UserPlus } from 'lucide-react';
 import * as eventsApi from '../../competition/api/eventsApi';
 import type { BackendEvent } from '../../competition/api/eventsApi';
 
@@ -11,7 +11,11 @@ const defaultForm = {
   payment_required: false, registration_fee: '', capacity: '', youtube_live_url: '',
 };
 
-export default function EventManager() {
+interface EventManagerProps {
+  onNavigate?: (section: string) => void;
+}
+
+export default function EventManager({ onNavigate }: EventManagerProps) {
   const [events, setEvents] = useState<BackendEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -228,10 +232,21 @@ export default function EventManager() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => window.open(`/event/${e.id}`, '_blank')} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10"><Eye className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => window.open(`/event/${e.id}`, '_blank')} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10" title="View public page"><Eye className="w-3.5 h-3.5" /></button>
+                        {e.event_type === 'TOURNAMENT' && (
+                          <>
+                            <button onClick={() => onNavigate?.('tournaments')} className="p-1.5 rounded-lg text-purple-500 hover:bg-purple-50" title="Manage Tournament"><Trophy className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => onNavigate?.('tournament-teams')} className="p-1.5 rounded-lg text-indigo-500 hover:bg-indigo-50" title="Manage Teams"><Users className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => onNavigate?.('matches')} className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50" title="Manage Matches"><Swords className="w-3.5 h-3.5" /></button>
+                          </>
+                        )}
+                        {e.event_type === 'WORKSHOP' && (
+                          <button onClick={() => onNavigate?.('workshops')} className="p-1.5 rounded-lg text-cyan-500 hover:bg-cyan-50" title="Manage Workshop"><GraduationCap className="w-3.5 h-3.5" /></button>
+                        )}
+                        <button onClick={() => onNavigate?.('event-registrations')} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10" title="View Registrations"><UserPlus className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handlePublish(e.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-50" title={e.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}><Send className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => openEdit(e)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50"><Edit3 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleDelete(e.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => openEdit(e)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleDelete(e.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </td>
                   </tr>
