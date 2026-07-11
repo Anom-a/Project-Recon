@@ -211,7 +211,7 @@ export default function CertificatesPanel() {
                     <div className="w-8 h-8 rounded-lg bg-brand-red/5 flex items-center justify-center"><Award className="w-4 h-4 text-brand-red" /></div>
                     <h3 className="font-bold text-base text-slate-900">Issue Certificate</h3>
                   </div>
-                  <button onClick={() => { setShowIssue(false); setStudentSearch(''); setStudentResults([]); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X className="w-4 h-4" /></button>
+                  <button onClick={() => { setShowIssue(false); setStudentSearch(''); setStudentResults([]); }} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="p-4 space-y-4">
                   <div>
@@ -253,7 +253,7 @@ export default function CertificatesPanel() {
                 </div>
                 <div className="flex items-center justify-end gap-2 p-4 border-t border-brand-border">
                   <button onClick={() => { setShowIssue(false); setStudentSearch(''); setStudentResults([]); }}
-                    className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                    className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg">Cancel</button>
                   <button onClick={handleIssue} disabled={submitting || !form.student || !form.certificate}
                     className="bg-brand-red text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-brand-red-dark disabled:opacity-50 flex items-center gap-1.5">
                     {submitting && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -318,7 +318,7 @@ export default function CertificatesPanel() {
                     <Shield className="w-3 h-3" /> Verified & Authentic
                   </div>
                   <div className="flex gap-1.5">
-                    <button onClick={() => setShowDetail(null)} className="px-2.5 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-100 rounded-lg">
+                    <button onClick={() => setShowDetail(null)} className="px-2.5 py-1 text-[10px] font-medium text-slate-600 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg">
                       Close
                     </button>
                     {showDetail.pdf && (

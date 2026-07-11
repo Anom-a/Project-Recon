@@ -362,58 +362,8 @@ export default function TournamentDetailPage({ tournamentId, onBack }: Tournamen
           </div>
         )}
 
-        {/* Leaderboard */}
-        {tab === 'rankings' && (
-          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-            {standings.length === 0 ? (
-              <div className="text-center py-12">
-                <Medal className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-bold text-slate-500">No rankings yet</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-center px-4 py-3 text-[10px] font-black text-slate-500 uppercase w-16">Rank</th>
-                      <th className="text-left px-4 py-3 text-[10px] font-black text-slate-500 uppercase">Team</th>
-                      <th className="text-center px-4 py-3 text-[10px] font-black text-slate-500 uppercase">W</th>
-                      <th className="text-center px-4 py-3 text-[10px] font-black text-slate-500 uppercase">L</th>
-                      <th className="text-center px-4 py-3 text-[10px] font-black text-slate-500 uppercase">D</th>
-                      <th className="text-center px-4 py-3 text-[10px] font-black text-slate-500 uppercase">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {standings.map((s, i) => (
-                      <tr key={i} className={`transition-colors ${i < 3 ? 'bg-amber-50/50' : 'hover:bg-slate-50/50'}`}>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`w-7 h-7 rounded-lg inline-flex items-center justify-center text-xs font-black ${
-                            i === 0 ? 'bg-amber-100 text-amber-600' :
-                            i === 1 ? 'bg-slate-200 text-slate-600' :
-                            i === 2 ? 'bg-orange-100 text-orange-600' :
-                            'bg-slate-100 text-slate-400'
-                          }`}>{i + 1}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div>
-                            <span className="text-sm font-bold text-slate-900">{s.teamName}</span>
-                            {s.organization && <span className="text-[10px] text-slate-500 block">{s.organization}</span>}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center text-xs font-bold text-emerald-600">{s.wins}</td>
-                        <td className="px-4 py-3 text-center text-xs font-bold text-red-500">{s.losses}</td>
-                        <td className="px-4 py-3 text-center text-xs text-slate-500">{s.draws}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-base font-black text-slate-900">{s.points}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Leaderboard — VEX Pro Style */}
+        {tab === 'rankings' && <LeaderboardSection standings={standings} matches={completedMatches} />}
 
         {/* Results */}
         {tab === 'results' && (
@@ -480,6 +430,259 @@ export default function TournamentDetailPage({ tournamentId, onBack }: Tournamen
           </div>
         )}
       </motion.div>
+    </div>
+  );
+}
+
+/* ───── Leaderboard Section (VEX Pro Style) ───── */
+
+function computeTeamScores(completedMatches: MatchResult[]): Record<string, number> {
+  const scores: Record<string, number> = {};
+  for (const m of completedMatches) {
+    scores[m.team1] = (scores[m.team1] || 0) + m.score1;
+    scores[m.team2] = (scores[m.team2] || 0) + m.score2;
+  }
+  return scores;
+}
+
+function getMedalEmoji(rank: number): string {
+  if (rank === 1) return '🥇';
+  if (rank === 2) return '🥈';
+  if (rank === 3) return '🥉';
+  return '';
+}
+
+function getMedalClass(rank: number): string {
+  if (rank === 1) return 'bg-amber-100 text-amber-600 border-amber-300 shadow-amber-200';
+  if (rank === 2) return 'bg-slate-100 text-slate-500 border-slate-300 shadow-slate-200';
+  if (rank === 3) return 'bg-orange-100 text-orange-600 border-orange-300 shadow-orange-200';
+  return 'bg-slate-50 text-slate-400 border-slate-200';
+}
+
+function getRowGlow(rank: number): string {
+  if (rank === 1) return 'bg-gradient-to-r from-amber-50/80 via-amber-50/40 to-transparent';
+  if (rank === 2) return 'bg-gradient-to-r from-slate-50/80 via-slate-50/40 to-transparent';
+  if (rank === 3) return 'bg-gradient-to-r from-orange-50/80 via-orange-50/40 to-transparent';
+  return '';
+}
+
+function LeaderboardSection({ standings, matches }: { standings: StandingEntry[]; matches: MatchResult[] }) {
+  const teamScores = useMemo(() => computeTeamScores(matches), [matches]);
+
+  const ranked = useMemo(() => {
+    if (standings.length === 0) return [];
+
+    return [...standings]
+      .map(s => ({
+        ...s,
+        matchesPlayed: s.wins + s.losses + s.draws,
+        totalScore: teamScores[s.teamName] || 0,
+      }))
+      .sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.totalScore - a.totalScore;
+      })
+      .map((entry, index) => ({ ...entry, finalRank: index + 1 }));
+  }, [standings, teamScores]);
+
+  if (standings.length === 0) {
+    return (
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl border border-slate-700/60 p-12 text-center">
+        <Medal className="w-14 h-14 text-slate-600 mx-auto mb-4" />
+        <h3 className="font-black text-xl text-slate-300 mb-2">Leaderboard</h3>
+        <p className="text-sm text-slate-500 max-w-md mx-auto">
+          Leaderboard will appear once matches begin.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Quick stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Teams', value: ranked.length, icon: Users, color: 'text-brand-blue', bg: 'bg-brand-blue/5' },
+          { label: 'Matches Played', value: matches.length, icon: Gamepad2, color: 'text-brand-red', bg: 'bg-brand-red/5' },
+          { label: 'Total Points', value: ranked.reduce((a, b) => a + b.points, 0), icon: Trophy, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Top Score', value: ranked[0]?.points || 0, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        ].map((s, i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+            <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-1.5`}>
+              <s.icon className={`w-4 h-4 ${s.color}`} />
+            </div>
+            <p className="font-black text-xl text-slate-900">{s.value}</p>
+            <p className="text-[10px] font-bold text-slate-500">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Podium — Top 3 */}
+      {ranked.length >= 3 && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl border border-slate-700/60 p-6 md:p-8 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.04]" style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+            backgroundSize: '40px 40px',
+          }} />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-brand-red/5 rounded-full blur-3xl" />
+
+          <div className="relative">
+            <h4 className="font-black text-xs text-amber-400 uppercase tracking-widest flex items-center gap-1.5 mb-6">
+              <Medal className="w-4 h-4" /> Top Teams
+            </h4>
+
+            <div className="flex items-end justify-center gap-4 md:gap-8">
+              {[1, 0, 2].map(pos => {
+                const entry = ranked[pos];
+                if (!entry) return null;
+                const isFirst = pos === 0;
+                return (
+                  <div key={entry.teamName}
+                    className={`flex flex-col items-center gap-2 ${isFirst ? 'order-2' : pos === 0 ? 'order-1' : 'order-3'}`}
+                  >
+                    {/* Medal */}
+                    <div className={`w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center text-lg md:text-2xl ${
+                      pos === 0 ? 'bg-amber-400/20 ring-2 ring-amber-400/40' :
+                      pos === 1 ? 'bg-slate-400/20 ring-2 ring-slate-400/40' :
+                      'bg-orange-400/20 ring-2 ring-orange-400/40'
+                    }`}>
+                      {getMedalEmoji(pos + 1)}
+                    </div>
+                    {/* Points badge */}
+                    <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black ${
+                      pos === 0 ? 'bg-amber-400/20 text-amber-300' :
+                      pos === 1 ? 'bg-slate-400/20 text-slate-300' :
+                      'bg-orange-400/20 text-orange-300'
+                    }`}>
+                      {entry.points} pts
+                    </div>
+                    {/* Bar */}
+                    <div className={`w-20 md:w-28 rounded-t-xl flex flex-col items-center justify-end pb-2 ${
+                      pos === 0 ? 'h-28 md:h-32 bg-gradient-to-t from-amber-500/40 to-amber-500/10' :
+                      pos === 1 ? 'h-20 md:h-24 bg-gradient-to-t from-slate-500/40 to-slate-500/10' :
+                      'h-16 md:h-20 bg-gradient-to-t from-orange-500/40 to-orange-500/10'
+                    }`}>
+                      <span className={`font-black text-lg md:text-xl ${
+                        pos === 0 ? 'text-amber-300' :
+                        pos === 1 ? 'text-slate-300' :
+                        'text-orange-300'
+                      }`}>
+                        {entry.wins}W
+                      </span>
+                    </div>
+                    {/* Team name */}
+                    <span className={`font-black text-sm md:text-base text-center leading-tight max-w-28 truncate ${
+                      pos === 0 ? 'text-white' : 'text-slate-300'
+                    }`}>
+                      {entry.teamName}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full rankings table */}
+      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider w-14">Rank</th>
+                <th className="text-left px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">Team</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">MP</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">W</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">L</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider hidden sm:table-cell">D</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider hidden md:table-cell">Total Score</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">RP</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {ranked.map((entry, i) => {
+                const isTop3 = i < 3;
+                return (
+                  <tr key={entry.teamName}
+                    className={`transition-all duration-200 ${isTop3 ? getRowGlow(entry.finalRank) : 'hover:bg-slate-50/80'}`}
+                  >
+                    {/* Rank */}
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        {isTop3 ? (
+                          <span className="text-base">{getMedalEmoji(entry.finalRank)}</span>
+                        ) : (
+                          <span className={`w-7 h-7 rounded-lg inline-flex items-center justify-center text-xs font-black border ${getMedalClass(entry.finalRank)}`}>
+                            {entry.finalRank}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    {/* Team */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${
+                          isTop3
+                            ? 'bg-gradient-to-br from-brand-red/10 to-brand-red/5 text-brand-red'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {entry.teamName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <span className={`text-sm font-bold ${isTop3 ? 'text-slate-900' : 'text-slate-800'}`}>
+                            {entry.teamName}
+                          </span>
+                          {entry.organization && (
+                            <span className="text-[10px] text-slate-400 block">{entry.organization}</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    {/* MP */}
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-sm font-bold text-slate-700">{entry.matchesPlayed}</span>
+                    </td>
+                    {/* W */}
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-sm font-black text-emerald-600">{entry.wins}</span>
+                    </td>
+                    {/* L */}
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-sm font-black text-red-500">{entry.losses}</span>
+                    </td>
+                    {/* D */}
+                    <td className="px-4 py-3 text-center hidden sm:table-cell">
+                      <span className="text-sm text-slate-500">{entry.draws}</span>
+                    </td>
+                    {/* Total Score */}
+                    <td className="px-4 py-3 text-center hidden md:table-cell">
+                      <span className="text-sm font-bold text-slate-700">{entry.totalScore}</span>
+                    </td>
+                    {/* RP */}
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-sm font-black ${
+                        isTop3
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {entry.points}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Footer note */}
+      <p className="text-[10px] text-slate-400 text-center">
+        RP = Ranking Points · Sorted by RP → Wins → Total Score
+      </p>
     </div>
   );
 }

@@ -199,7 +199,7 @@ export default function CertificateTemplateManager() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => openEdit(t)} className="p-1 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10" title="Edit"><FileText className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => toggleActive(t)} className={`p-1 rounded-lg ${t.is_active !== false ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`} title={t.is_active !== false ? 'Deactivate' : 'Activate'}>
+                      <button onClick={() => toggleActive(t)} className="p-1 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10" title={t.is_active !== false ? 'Deactivate' : 'Activate'}>
                         {t.is_active !== false ? <X className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                       </button>
                     </div>
@@ -225,7 +225,7 @@ export default function CertificateTemplateManager() {
                     <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center"><Award className="w-4 h-4 text-amber-600" /></div>
                     <h3 className="font-bold text-base text-slate-900">{editing ? 'Edit Template' : 'New Certificate Template'}</h3>
                   </div>
-                  <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X className="w-4 h-4" /></button>
+                  <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Title</label>
@@ -308,7 +308,7 @@ export default function CertificateTemplateManager() {
                   </div>
                 </div>
                 <div className="flex items-center justify-end gap-2 p-4 border-t border-brand-border">
-                  <button onClick={() => { setShowForm(false); resetFileState(); }} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                  <button onClick={() => { setShowForm(false); resetFileState(); }} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg">Cancel</button>
                   <button onClick={handleSave} disabled={saving || !form.title || !form.sub_program}
                     className="bg-brand-red text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-brand-red-dark disabled:opacity-50 flex items-center gap-1.5">
                     {saving && <Loader2 className="w-3 h-3 animate-spin" />}

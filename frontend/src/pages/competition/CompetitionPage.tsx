@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Trophy, Gamepad2, Users, BarChart3, LayoutDashboard, ClipboardList } from 'lucide-react';
+import { Trophy, Gamepad2, Users, BarChart3, ClipboardList } from 'lucide-react';
 import CompetitionHub from '../../domains/competition/hub/ui/CompetitionHub';
 import EventDashboard from '../../domains/competition/hub/ui/EventDashboard';
 import TournamentDetailPage from '../../domains/competition/tournaments/ui/TournamentDetailPage';
@@ -51,39 +51,59 @@ export default function CompetitionPage({ currentUser }: CompetitionPageProps) {
 
   return (
     <motion.div key="competitions-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-      <div className="min-h-[calc(100vh-76px)] bg-brand-paper py-10 px-4 md:px-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/8 via-[#080808] to-brand-red/5 pointer-events-none" />
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex gap-1 mb-6 p-1 bg-slate-100 border border-slate-200 rounded-2xl w-fit overflow-x-auto">
-            {visibleTabs.map(tab => {
-              const TabIcon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button key={tab.id} onClick={() => navTo(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                    isActive
-                      ? 'bg-gradient-to-r from-brand-red to-brand-red-dark text-white shadow-lg shadow-brand-red/25'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <TabIcon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
+      <div className="min-h-[calc(100vh-76px)] bg-gradient-to-b from-white via-brand-paper to-white relative overflow-hidden">
+        {/* Subtle grid pattern overlay */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.15]"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(37, 51, 141, 0.06) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(37, 51, 141, 0.06) 1px, transparent 1px)
+            `,
+            backgroundSize: '60px 60px',
+          }} />
+        {/* Soft red accent blob - top right */}
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-brand-red/[0.03] blur-3xl pointer-events-none" />
+        {/* Soft blue accent blob - bottom left */}
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-brand-blue/[0.03] blur-3xl pointer-events-none" />
+
+        <div className="max-w-[1400px] mx-auto relative z-10 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+          {/* Page header with navigation tabs */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">Competition Portal</h1>
+              <p className="text-xs text-slate-500 mt-0.5">Manage and browse all robotics events, teams, and matches</p>
+            </div>
+            <div className="flex gap-1 p-0.5 bg-white border border-brand-border-light rounded-2xl shadow-sm w-fit overflow-x-auto">
+              {visibleTabs.map(tab => {
+                const TabIcon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => navTo(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-gradient-to-r from-brand-red to-brand-red-dark text-white shadow-md shadow-brand-red/20'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <TabIcon className="w-3.5 h-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {activeTab === 'hub' && <CompetitionHub currentUser={currentUser} onViewTournament={openTournament} />}
           {activeTab === 'dashboard' && isStaff && <EventDashboard />}
           {activeTab === 'teams' && <TeamListPage onSelectTeam={openTeam} />}
-          {activeTab === 'team-detail' && selectedTeamId && (
+          {view === 'team-detail' && selectedTeamId && (
             <TeamDetailsPage teamId={selectedTeamId} onBack={() => navTo('teams')} />
           )}
           {activeTab === 'matches' && <MatchListPage onSelectMatch={openMatch} />}
-          {activeTab === 'match-detail' && selectedMatchId && (
+          {view === 'match-detail' && selectedMatchId && (
             <MatchDetailsPage matchId={selectedMatchId} onBack={() => navTo('matches')} />
           )}
-          {activeTab === 'tournament-detail' && selectedTournamentId && (
+          {view === 'tournament-detail' && selectedTournamentId && (
             <TournamentDetailPage tournamentId={selectedTournamentId} onBack={() => navTo('hub')} />
           )}
           {activeTab === 'registrations' && isStaff && <RegistrationDashboard />}

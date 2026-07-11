@@ -48,7 +48,7 @@ function mapBackendEventToWorkshop(e: eventsApi.BackendEvent): Workshop {
     registrationFee: e.registration_fee || null,
     capacity: e.capacity || 0,
     enrolledCount: e.enrolled_count,
-    instructor: e.workshop?.instructor_name || 'TBD',
+    instructor: e.workshop?.instructor_name || 'To be announced',
     level: (e.workshop?.level || 'BEGINNER') as Workshop['level'],
     duration: e.workshop?.duration_minutes || 0,
     price: parseFloat(e.workshop?.price || '0'),
@@ -58,8 +58,8 @@ function mapBackendEventToWorkshop(e: eventsApi.BackendEvent): Workshop {
 function mapBackendMatchToResult(m: eventsApi.BackendMatch): MatchResult {
   const sideA = m.sides?.find(s => s.side === 'SIDE_A');
   const sideB = m.sides?.find(s => s.side === 'SIDE_B');
-  const teamA = sideA?.participants?.[0]?.tournament_team_name || 'TBD';
-  const teamB = sideB?.participants?.[0]?.tournament_team_name || 'TBD';
+  const teamA = sideA?.participants?.[0]?.tournament_team_name || '—';
+  const teamB = sideB?.participants?.[0]?.tournament_team_name || '—';
   const status: 'scheduled' | 'live' | 'completed' = m.status === 'LIVE' ? 'live' : m.status === 'COMPLETED' ? 'completed' : 'scheduled';
   return {
     id: m.id,

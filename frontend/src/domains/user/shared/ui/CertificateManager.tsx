@@ -88,7 +88,7 @@ export default function CertificateManager({ currentUserRole }: Props) {
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                activeTab === tab.id ? 'bg-brand-blue text-white' : 'text-slate-500 hover:text-brand-blue'
               }`}
             >
               <TIcon className="w-3.5 h-3.5" /> {tab.label}
@@ -414,11 +414,11 @@ function TemplatesTab({ templates, subPrograms, onRefresh, canManage, onError }:
                           <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10" title="Edit">
                             <FileText className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => duplicateTemplate(t)} className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50" title="Duplicate">
+                          <button onClick={() => duplicateTemplate(t)} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10" title="Duplicate">
                             <RotateCcw className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={() => toggleActive(t)}
-                            className={`p-1.5 rounded-lg ${t.is_active !== false ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10"
                             title={t.is_active !== false ? 'Deactivate' : 'Activate'}>
                             {t.is_active !== false ? <X className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                           </button>
@@ -451,7 +451,7 @@ function TemplatesTab({ templates, subPrograms, onRefresh, canManage, onError }:
                     </div>
                     <h3 className="font-bold text-base text-slate-900">{editing ? 'Edit Template' : 'New Certificate Template'}</h3>
                   </div>
-                  <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X className="w-4 h-4" /></button>
+                  <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="p-4 space-y-3">
                   <div>
@@ -554,7 +554,7 @@ function TemplatesTab({ templates, subPrograms, onRefresh, canManage, onError }:
                   </div>
                 </div>
                 <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-100">
-                  <button onClick={() => { setShowForm(false); resetFileState(); }} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                  <button onClick={() => { setShowForm(false); resetFileState(); }} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg">Cancel</button>
                   <button onClick={handleSave} disabled={saving || !form.title || !form.sub_program}
                     className="bg-brand-red text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-brand-red-dark disabled:opacity-50 flex items-center gap-1.5">
                     {saving && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -640,7 +640,7 @@ function TemplatesTab({ templates, subPrograms, onRefresh, canManage, onError }:
                         <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" /> Template Preview
                         </span>
-                        <button onClick={() => setPreview(null)} className="px-2.5 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Close</button>
+                        <button onClick={() => setPreview(null)} className="px-2.5 py-1 text-[10px] font-medium text-slate-600 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg">Close</button>
                       </div>
                     </>
                   );
@@ -743,7 +743,7 @@ function IssueTab({ templates, students, onRefresh, canManage, onError }: {
         {(['student', 'event', 'tournament', 'workshop'] as const).map(m => (
           <button key={m} onClick={() => setEventMode(m)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize ${
-              eventMode === m ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              eventMode === m ? 'bg-brand-blue text-white' : 'text-slate-500 hover:text-brand-blue'
             }`}
           >{m === 'student' ? 'Individual' : `From ${m}s`}</button>
         ))}
@@ -1085,7 +1085,7 @@ function IssuedTab({ issuedCerts, loading, onRefresh }: {
                       </button>
                       {c.pdf && (
                         <a href={c.pdf} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50" title="Download PDF">
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10" title="Download PDF">
                           <Download className="w-3.5 h-3.5" />
                         </a>
                       )}
@@ -1151,7 +1151,7 @@ function IssuedTab({ issuedCerts, loading, onRefresh }: {
                     <CheckCircle2 className="w-3 h-3" /> Verified & Authentic
                   </div>
                   <div className="flex gap-1.5">
-                    <button onClick={() => setShowDetail(null)} className="px-2.5 py-1 text-[10px] font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Close</button>
+                    <button onClick={() => setShowDetail(null)} className="px-2.5 py-1 text-[10px] font-medium text-slate-600 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg">Close</button>
                     {showDetail.pdf && (
                       <a href={showDetail.pdf} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1 text-[10px] font-bold text-white bg-brand-red px-3 py-1 rounded-lg hover:bg-brand-red-dark transition-colors">
