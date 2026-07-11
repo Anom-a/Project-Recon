@@ -181,6 +181,14 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
   const totalTeams = teams.length;
   const totalParticipants = [...new Set(teams.map(t => t.teamName))].length;
 
+  const daysUntil = (date: string) => {
+    const diff = Math.ceil((new Date(date).getTime() - Date.now()) / 86400000);
+    if (diff < 0) return null;
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    return `In ${diff} days`;
+  };
+
   const FILTERS: { id: TimeFilter; label: string; icon: typeof Calendar }[] = [
     { id: 'all', label: 'All', icon: Trophy },
     { id: 'upcoming', label: 'Upcoming', icon: Calendar },
@@ -193,13 +201,20 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
       {/* ════════════════════════════════════════ */}
       {/* HERO */}
       {/* ════════════════════════════════════════ */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl border border-slate-700/60 p-6 md:p-10">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+        className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl border border-slate-700/60 p-6 md:p-10"
+      >
         <div className="absolute inset-0 opacity-[0.04]" style={{
           backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
           backgroundSize: '40px 40px',
         }} />
-        <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl" />
+        {/* Animated gradient orbs */}
+        <motion.div animate={{ scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -top-20 -right-20 w-96 h-96 bg-red-600/10 rounded-full blur-3xl" />
+        <motion.div animate={{ scale: [1, 1.15, 1], rotate: [0, -5, 0] }} transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl" />
+        {/* Accent line */}
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
         <div className="relative">
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20 rounded-full">
@@ -208,35 +223,51 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
             <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold uppercase tracking-widest bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full">
               <Sparkles className="w-3 h-3" /> 2025 Season
             </span>
+            {upcomingEvents.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
+                <Calendar className="w-3 h-3" /> Next: {new Date(upcomingEvents[0].startDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">
-            Competitions & Events
-          </h1>
-          <p className="mt-2 text-base md:text-lg text-slate-300 max-w-2xl">
-            Browse upcoming tournaments, workshops, and events. Register to participate and showcase your skills.
-          </p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight">
+                Competitions & Events
+              </h1>
+              <p className="mt-3 text-base md:text-lg text-slate-300 max-w-2xl leading-relaxed">
+                Browse upcoming tournaments, workshops, and events. Register to participate and showcase your skills.
+              </p>
+            </div>
+            {featured && daysUntil(featured.startDateTime) && (
+              <div className="shrink-0 bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-center backdrop-blur-sm">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Next Event</p>
+                <p className="text-xl font-black text-white mt-0.5">{daysUntil(featured.startDateTime)}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{featured.title}</p>
+              </div>
+            )}
+          </div>
 
           {/* Stats row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
             {[
               { label: 'Tournaments', value: totalTournaments, icon: Trophy, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
               { label: 'Teams', value: totalTeams, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
               { label: 'Participants', value: totalParticipants, icon: Users, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
               { label: 'Live Now', value: liveEvents.length, icon: Zap, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
             ].map(s => (
-              <div key={s.label}
-                className={`${s.bg} ${s.border} border rounded-2xl p-4 backdrop-blur-sm`}>
+              <motion.div key={s.label} whileHover={{ scale: 1.02 }}
+                className={`${s.bg} ${s.border} border rounded-2xl p-4 backdrop-blur-sm transition-shadow hover:shadow-lg hover:shadow-white/5`}>
                 <div className="flex items-center gap-2 mb-1">
                   <s.icon className={`w-4 h-4 ${s.color}`} />
                   <span className="text-[10px] font-bold uppercase tracking-wider text-white/60">{s.label}</span>
                 </div>
                 <p className="text-2xl font-black text-white">{s.value}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ════════════════════════════════════════ */}
       {/* FEATURED TOURNAMENT */}
@@ -289,25 +320,48 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
       {/* LIVE MATCHES BAR */}
       {/* ════════════════════════════════════════ */}
       <AnimatePresence>
-        {liveMatchCount > 0 && !loading && (
+        {liveEvents.length > 0 && !loading && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            className="bg-gradient-to-r from-red-500 via-red-600 to-red-500 rounded-2xl p-4 shadow-lg shadow-red-500/20 flex items-center justify-between"
+            className="bg-gradient-to-r from-red-500 via-red-600 to-red-500 rounded-2xl p-4 shadow-lg shadow-red-500/20"
           >
-            <div className="flex items-center gap-3">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
-              </span>
-              <div>
-                <p className="text-sm font-black text-white uppercase tracking-wider">
-                  {liveMatchCount} Match{liveMatchCount > 1 ? 'es' : ''} Live Now
-                </p>
-                <p className="text-[11px] text-red-200">Watch live matches and follow the action</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
+                </span>
+                <div>
+                  <p className="text-sm font-black text-white uppercase tracking-wider">
+                    {liveEvents.length} Event{liveEvents.length > 1 ? 's' : ''} Live Now
+                  </p>
+                  <p className="text-[11px] text-red-200">Watch live and follow the action</p>
+                </div>
               </div>
+              {(() => {
+                const liveTournament = liveEvents.find(e => e.eventType === 'TOURNAMENT') as Tournament | undefined;
+                const liveUrl = liveTournament?.youtubeLiveUrl;
+                return liveUrl ? (
+                  <a href={liveUrl} target="_blank" rel="noopener noreferrer"
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5">
+                    <Tv className="w-3.5 h-3.5" /> Watch
+                  </a>
+                ) : null;
+              })()}
             </div>
-            <button className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5">
-              <Tv className="w-3.5 h-3.5" /> Watch
-            </button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {liveEvents.map(ev => (
+                <button key={ev.id} onClick={() => {
+                  if (ev.eventType === 'TOURNAMENT' && onViewTournament) onViewTournament(ev.id);
+                  else setDetailEvent(ev);
+                }}
+                  className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  {ev.title}
+                  {ev.eventType === 'TOURNAMENT' && <ChevronRight className="w-3 h-3" />}
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -474,6 +528,12 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
                           <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-600 bg-red-50 px-2.5 py-1 rounded-lg border border-red-100 animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                             LIVE
+                          </span>
+                        )}
+                        {daysUntil(event.startDateTime) && event.computedState !== 'PAST' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100">
+                            <Calendar className="w-3 h-3" />
+                            {daysUntil(event.startDateTime)}
                           </span>
                         )}
                       </div>
