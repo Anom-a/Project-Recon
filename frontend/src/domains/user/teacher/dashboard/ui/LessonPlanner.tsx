@@ -4,7 +4,7 @@ import {
   Search, Filter, Calendar, BookOpen, Target, TrendingUp,
   X, Edit3, Save, Loader2, ChevronDown, ChevronUp, Copy,
   Flag, AlertTriangle, MessageSquare,
-  Download, LayoutGrid, List, GripVertical, CalendarDays,
+  Download, LayoutGrid, List, CalendarDays,
   BarChart3, Eye, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
