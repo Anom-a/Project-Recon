@@ -29,7 +29,6 @@ import { ActiveTab, CartItem, UserProfile } from '../shared/types';
 
 const LoginView = React.lazy(() => import('../domains/auth/login/ui/LoginView'));
 const AuthModal = React.lazy(() => import('../domains/auth/modal/ui/AuthModal'));
-const AiTutor = React.lazy(() => import('../domains/ai/tutor/ui/AiTutor'));
 
 export default function App() {
   const {
@@ -233,7 +232,6 @@ export default function App() {
 
       {!currentUser && <Footer onNavigate={handleTabChange} />}
 
-      <AiTutor />
     </div>
   );
 }
