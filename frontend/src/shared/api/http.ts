@@ -48,8 +48,12 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
   if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
   let token = localStorage.getItem('access_token');
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...init.headers as Record<string, string> };
+  const headers: Record<string, string> = { ...init.headers as Record<string, string> };
   
+  if (!(init.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -121,11 +125,11 @@ export const http = {
   get: <T>(endpoint: string, config?: RequestConfig) =>
     request<T>(endpoint, { ...config, method: 'GET' }),
   post: <T>(endpoint: string, body: unknown, config?: RequestConfig) =>
-    request<T>(endpoint, { ...config, method: 'POST', body: JSON.stringify(body) }),
+    request<T>(endpoint, { ...config, method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body) }),
   put: <T>(endpoint: string, body: unknown, config?: RequestConfig) =>
-    request<T>(endpoint, { ...config, method: 'PUT', body: JSON.stringify(body) }),
+    request<T>(endpoint, { ...config, method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body) }),
   patch: <T>(endpoint: string, body: unknown, config?: RequestConfig) =>
-    request<T>(endpoint, { ...config, method: 'PATCH', body: JSON.stringify(body) }),
+    request<T>(endpoint, { ...config, method: 'PATCH', body: body instanceof FormData ? body : JSON.stringify(body) }),
   delete: <T>(endpoint: string, config?: RequestConfig) =>
     request<T>(endpoint, { ...config, method: 'DELETE' }),
 };
