@@ -1,4 +1,4 @@
-import { Product, Program, UpdatePost, SubscriptionTier, Certificate, AppNotification, Tournament, MatchResult, ForumPost, VideoCourse, ConsultancyRequest, Referral, LeaderboardEntry, AnalyticsData, Workshop, VexTeam, VexRobot, VexAward, VexNotebookEntry, VexMatchRecord } from '@/src/shared/types';
+import { Product, UpdatePost, SubscriptionTier, StudentAward, AppNotification, Tournament, MatchResult, ForumPost, VideoCourse, ConsultancyRequest, Referral, LeaderboardEntry, AnalyticsData, Workshop, VexTeam, VexRobot, VexAward, VexNotebookEntry, VexMatchRecord } from '@/src/shared/types';
 
 import progImg1 from '@/assets/0M6A6519.00_36_58_18.Still042.jpg';
 import progImg2 from '@/assets/0M6A6519.00_57_00_00.Still045.jpg';
@@ -319,7 +319,7 @@ export const ROBOTICS_PRODUCTS: Product[] = [
   },
 ];
 
-export const ROBOTICS_PROGRAMS: Program[] = [
+export const ROBOTICS_PROGRAMS = [
   {
     id: 'prog-vex-iq',
     title: 'Junior Innovators: VEX IQ Robotics League',
@@ -480,7 +480,7 @@ export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
 ];
 
 // ── Certificates ──
-export const MOCK_CERTIFICATES: Certificate[] = [
+export const MOCK_CERTIFICATES: StudentAward[] = [
   {
     id: 'cert-001', studentName: 'Abebe Kebede', programTitle: 'VEX V5 Competitive Engineering Academy',
     category: 'VEX V5', issueDate: 'May 28, 2026', type: 'completion',
@@ -563,14 +563,11 @@ export const MOCK_CERTIFICATES: Certificate[] = [
 ];
 
 // ── Notifications ──
-export const MOCK_NOTIFICATIONS: AppNotification[] = [
-  { id: 'n1', title: 'Competition Registration Open', message: 'VEX Regional Finals registration is now open. Deadline: June 30th.', type: 'info', timestamp: '2 hours ago', read: false, icon: '🏆' },
-  { id: 'n2', title: 'Certificate Ready', message: 'Your VEX V5 completion certificate is ready for download.', type: 'success', timestamp: '5 hours ago', read: false, icon: '📜' },
-  { id: 'n3', title: 'Payment Confirmed', message: 'Payment of 3,500 ETB for VEX V5 enrollment has been confirmed.', type: 'success', timestamp: '1 day ago', read: true, icon: '✅' },
-  { id: 'n4', title: 'New Video Lesson', message: 'A new lesson "PID Controllers Explained" has been added to your course.', type: 'info', timestamp: '2 days ago', read: true, icon: '🎬' },
-  { id: 'n5', title: 'Safety Reminder', message: 'Mandatory safety seminar this Saturday at 9 AM. Attendance required.', type: 'warning', timestamp: '3 days ago', read: true, icon: '⚠️' },
-  { id: 'n6', title: 'Referral Reward!', message: 'Your friend Selam enrolled using your code! You earned 500 XP bonus.', type: 'success', timestamp: '4 days ago', read: true, icon: '🎉' },
-];
+const now = Date.now();
+const ms = (h: number) => h * 3600000;
+const ISO = (hoursAgo: number) => new Date(now - ms(hoursAgo)).toISOString();
+
+export const MOCK_NOTIFICATIONS: AppNotification[] = [];
 
 // ── Workshops ──
 export const MOCK_WORKSHOPS: Workshop[] = [

@@ -2,6 +2,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
+  _isRetry?: boolean;
 }
 
 /**
@@ -40,11 +41,6 @@ function onRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
-interface RequestConfig extends RequestInit {
-  params?: Record<string, string>;
-  _isRetry?: boolean;
-}
-
 async function request<T>(endpoint: string, config: RequestConfig = {}): Promise<T> {
   const { params, _isRetry, ...init } = config;
   const urlStr = `${BASE_URL}${endpoint}`;
@@ -52,8 +48,12 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
   if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
   let token = localStorage.getItem('access_token');
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...init.headers as Record<string, string> };
+  const headers: Record<string, string> = { ...init.headers as Record<string, string> };
   
+  if (!(init.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -87,8 +87,8 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
             // Refresh failed, user needs to login again
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
-            // Reload to clear state, or dispatch event.
-            window.location.reload(); 
+            localStorage.removeItem('ethio_robotics_user');
+            window.dispatchEvent(new CustomEvent('auth:logout'));
           }
         } catch {
           localStorage.removeItem('access_token');
@@ -125,11 +125,11 @@ export const http = {
   get: <T>(endpoint: string, config?: RequestConfig) =>
     request<T>(endpoint, { ...config, method: 'GET' }),
   post: <T>(endpoint: string, body: unknown, config?: RequestConfig) =>
-    request<T>(endpoint, { ...config, method: 'POST', body: JSON.stringify(body) }),
+    request<T>(endpoint, { ...config, method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body) }),
   put: <T>(endpoint: string, body: unknown, config?: RequestConfig) =>
-    request<T>(endpoint, { ...config, method: 'PUT', body: JSON.stringify(body) }),
+    request<T>(endpoint, { ...config, method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body) }),
   patch: <T>(endpoint: string, body: unknown, config?: RequestConfig) =>
-    request<T>(endpoint, { ...config, method: 'PATCH', body: JSON.stringify(body) }),
+    request<T>(endpoint, { ...config, method: 'PATCH', body: body instanceof FormData ? body : JSON.stringify(body) }),
   delete: <T>(endpoint: string, config?: RequestConfig) =>
     request<T>(endpoint, { ...config, method: 'DELETE' }),
 };

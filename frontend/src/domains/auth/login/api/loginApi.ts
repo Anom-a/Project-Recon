@@ -3,6 +3,19 @@ import type { UserProfile } from '../../../../shared/types';
 import type { LoginCredentials, AuthResponse } from '../../model/types';
 
 /**
+ * Custom error thrown when login fails because the user's email is not verified.
+ * Contains the email so the frontend can redirect to the OTP page.
+ */
+export class EmailNotVerifiedError extends Error {
+  email: string;
+  constructor(email: string) {
+    super('Email verification required.');
+    this.name = 'EmailNotVerifiedError';
+    this.email = email;
+  }
+}
+
+/**
  * Decode a JWT payload without a library.
  */
 function parseJwt(token: string): Record<string, unknown> | null {
@@ -26,14 +39,15 @@ function parseJwt(token: string): Record<string, unknown> | null {
  * Backend role constants → frontend UserProfile role mapping.
  *
  * Backend roles (from UserAssignment.role):
- *   super_admin, branch_manager, instructor, student
+ *   super_admin, branch_manager, secretary, instructor, student
  *
  * Frontend UserProfile roles:
- *   Admin, Manager, Instructor, Student
+ *   Admin, Manager, Secretary, Instructor, Student
  */
 const ROLE_MAP: Record<string, UserProfile['role']> = {
   super_admin: 'Admin',
   branch_manager: 'Manager',
+  secretary: 'Secretary',
   instructor: 'Instructor',
   student: 'Student',
 };
@@ -45,8 +59,8 @@ const ROLE_MAP: Record<string, UserProfile['role']> = {
 function resolveRole(assignments: Array<{ role: string; is_primary?: boolean; is_active?: boolean }>): UserProfile['role'] {
   if (!assignments || assignments.length === 0) return 'Student';
 
-  // Priority order: super_admin > branch_manager > instructor > student
-  const priority = ['super_admin', 'branch_manager', 'instructor', 'student'];
+  // Priority order mirrors backend operational responsibility.
+  const priority = ['super_admin', 'branch_manager', 'secretary', 'instructor', 'student'];
 
   // Check primary assignment first
   const primary = assignments.find((a) => a.is_primary && a.is_active);
@@ -71,11 +85,38 @@ function resolveRole(assignments: Array<{ role: string; is_primary?: boolean; is
  *  4. Map backend user to frontend UserProfile
  */
 export async function loginApi(credentials: LoginCredentials): Promise<AuthResponse> {
+  const deviceId = localStorage.getItem('device_id') || crypto.randomUUID();
+  localStorage.setItem('device_id', deviceId);
+
   // Step 1: Authenticate – get JWT tokens
-  const tokenData = await http.post<{ access: string; refresh: string }>(
-    '/accounts/login/',
-    { email: credentials.email, password: credentials.password }
-  );
+  const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+  const loginUrl = `${BASE_URL}/accounts/login/`;
+  const loginRes = await fetch(loginUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: credentials.email,
+      password: credentials.password,
+      device_id: deviceId,
+      device_name: navigator.platform || 'Browser',
+      fingerprint: deviceId,
+      user_agent: navigator.userAgent,
+    }),
+  });
+
+  const loginBody = await loginRes.json();
+
+  // Check for email verification required
+  if (loginRes.status === 403 && loginBody.code === 'email_not_verified') {
+    throw new EmailNotVerifiedError(loginBody.email);
+  }
+
+  if (!loginRes.ok) {
+    const msg = loginBody.detail || Object.values(loginBody).flat().join('; ') || 'Login failed';
+    throw new Error(msg);
+  }
+
+  const tokenData = loginBody as { access: string; refresh: string };
 
   // Step 2: Persist tokens
   localStorage.setItem('access_token', tokenData.access);
@@ -86,10 +127,10 @@ export async function loginApi(credentials: LoginCredentials): Promise<AuthRespo
   const userId = payload?.user_id as string | undefined;
 
   let userProfile: UserProfile = {
+    id: userId || '',
     email: credentials.email,
     name: credentials.email.split('@')[0],
     role: 'Student',
-    enrolledPrograms: [],
     xpPoints: 0,
     badges: [],
   };
@@ -114,21 +155,49 @@ export async function loginApi(credentials: LoginCredentials): Promise<AuthRespo
         }>;
         phone_number?: string;
         profile_picture?: string;
+        date_of_birth?: string;
+        gender?: string;
       }>(`/accounts/users/${userId}/`);
 
       const role = resolveRole(userData.assignments);
 
       userProfile = {
+        id: userData.id,
         email: userData.email,
         name: userData.full_name || `${userData.first_name} ${userData.last_name}`.trim() || userData.email.split('@')[0],
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        phone_number: userData.phone_number || '',
+        profile_picture: userData.profile_picture || '',
+        date_of_birth: userData.date_of_birth || '',
+        gender: userData.gender || '',
         role,
-        enrolledPrograms: [],
         xpPoints: role === 'Admin' ? 99999 : role === 'Manager' ? 9999 : role === 'Instructor' ? 500 : 150,
         badges: role === 'Admin' ? ['System Admin', 'Root Access'] : role === 'Manager' ? ['System Admin'] : role === 'Instructor' ? ['Master Instructor'] : ['Starter Badge'],
       };
     } catch (err) {
       // If user detail fetch fails (e.g. permission), use token claims
       console.warn('Could not fetch user profile, using token claims:', err);
+    }
+  }
+
+  // Step 4: For students, try to discover student ID from localStorage or certificates
+  if (userProfile.role === 'Student') {
+    const storedKey = `studentId_${userProfile.email}`;
+    const storedId = localStorage.getItem(storedKey);
+    if (storedId) {
+      userProfile.studentId = storedId;
+    } else {
+      try {
+        const certBody = await http.get<{ student: string }[] | { results: { student: string }[] }>('/academic/student-certificates/');
+        const certList = Array.isArray(certBody) ? certBody : certBody.results;
+        if (certList.length > 0 && certList[0].student) {
+          userProfile.studentId = certList[0].student;
+          localStorage.setItem(storedKey, certList[0].student);
+        }
+      } catch {
+        // Student has no certificates yet — no fallback available
+      }
     }
   }
 
@@ -171,10 +240,109 @@ export async function forgotPasswordApi(email: string): Promise<void> {
 /**
  * Call the backend reset-password endpoint to submit the OTP and new password.
  */
-export async function resetPasswordApi(email: string, otp: string, password: string): Promise<void> {
+export async function resetPasswordApi(otp: string, password: string): Promise<void> {
   await http.post('/accounts/password/reset/', {
-    email,
     otp,
     new_password: password
   });
+}
+
+/**
+ * Request an email verification OTP (public, no auth required).
+ */
+export async function requestEmailVerificationApi(email: string): Promise<void> {
+  await http.post('/accounts/public/email-verification/request/', { email });
+}
+
+/**
+ * Verify an email OTP and receive JWT tokens on success (public, no auth required).
+ */
+export async function verifyEmailOtpApi(email: string, otp: string): Promise<AuthResponse> {
+  const deviceId = localStorage.getItem('device_id') || crypto.randomUUID();
+  localStorage.setItem('device_id', deviceId);
+
+  const tokenData = await http.post<{ access: string; refresh: string }>(
+    '/accounts/public/email-verification/verify/',
+    {
+      email,
+      otp,
+      device_id: deviceId,
+      fingerprint: deviceId,
+      user_agent: navigator.userAgent,
+    }
+  );
+
+  // Persist tokens
+  localStorage.setItem('access_token', tokenData.access);
+  localStorage.setItem('refresh_token', tokenData.refresh);
+
+  // Decode token for user_id, then fetch user profile
+  const payload = parseJwt(tokenData.access);
+  const userId = payload?.user_id as string | undefined;
+
+  let userProfile: UserProfile = {
+    id: userId || '',
+    email,
+    name: email.split('@')[0],
+    role: 'Student',
+    xpPoints: 0,
+    badges: [],
+  };
+
+  if (userId) {
+    try {
+      const userData = await http.get<{
+        id: string;
+        email: string;
+        first_name: string;
+        last_name: string;
+        full_name: string;
+        status: string;
+        is_email_verified: boolean;
+        assignments: Array<{
+          id: string;
+          branch_id: string | null;
+          branch_name: string | null;
+          role: string;
+          is_primary: boolean;
+          is_active: boolean;
+        }>;
+      }>(`/accounts/users/${userId}/`);
+
+      const role = resolveRole(userData.assignments);
+
+      userProfile = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.full_name || `${userData.first_name} ${userData.last_name}`.trim() || userData.email.split('@')[0],
+        role,
+        xpPoints: role === 'Admin' ? 99999 : role === 'Manager' ? 9999 : role === 'Instructor' ? 500 : 150,
+        badges: role === 'Admin' ? ['System Admin', 'Root Access'] : role === 'Manager' ? ['System Admin'] : role === 'Instructor' ? ['Master Instructor'] : ['Starter Badge'],
+      };
+    } catch (err) {
+      console.warn('Could not fetch user profile after verification:', err);
+    }
+  }
+
+  // Step 4: For students, try to discover student ID from localStorage or certificates
+  if (userProfile.role === 'Student') {
+    const storedKey = `studentId_${userProfile.email}`;
+    const storedId = localStorage.getItem(storedKey);
+    if (storedId) {
+      userProfile.studentId = storedId;
+    } else {
+      try {
+        const certBody = await http.get<{ student: string }[] | { results: { student: string }[] }>('/academic/student-certificates/');
+        const certList = Array.isArray(certBody) ? certBody : certBody.results;
+        if (certList.length > 0 && certList[0].student) {
+          userProfile.studentId = certList[0].student;
+          localStorage.setItem(storedKey, certList[0].student);
+        }
+      } catch {
+        // Student has no certificates yet — no fallback available
+      }
+    }
+  }
+
+  return { user: userProfile, token: tokenData.access };
 }

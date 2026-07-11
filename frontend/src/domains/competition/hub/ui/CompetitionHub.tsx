@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy, MapPin, Users, Calendar, ChevronRight, Shield, Medal, Target, Clock,
   SearchX, CheckCircle2, ExternalLink, Sparkles, Tv, Binary, GraduationCap,
-  BookOpen, User, Clock3, DollarSign, Wrench, Cpu, Swords
+  BookOpen, User, Clock3, DollarSign, Wrench, Cpu
 } from 'lucide-react';
-import { MOCK_TOURNAMENTS, MOCK_MATCHES, MOCK_WORKSHOPS } from '@/src/shared/constants/mock-data';
 
-import { UserProfile } from '@/src/shared/types';
+import { UserProfile, type Tournament, type Workshop, type MatchResult } from '@/src/shared/types';
+import { getTournaments, getTournamentById, getMatches, getWorkshops, getWorkshopById, registerForTournament, enrollInWorkshop } from '../../api/competitionApi';
 
 type StatusFilter = 'all' | 'upcoming' | 'live' | 'completed';
 type HubTab = 'tournaments' | 'workshops' | 'myteam';
@@ -36,22 +36,32 @@ export default function CompetitionHub({ currentUser }: CompetitionHubProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedTournament, setSelectedTournament] = useState<string | null>(null);
   const [selectedWorkshop, setSelectedWorkshop] = useState<string | null>(null);
-  const [registered, setRegistered] = useState<string[]>([]);
-  const [workshopEnrolled, setWorkshopEnrolled] = useState<string[]>([]);
+  const [registeredIds, setRegisteredIds] = useState<string[]>([]);
+  const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
 
-  const filtered = statusFilter === 'all' ? MOCK_TOURNAMENTS : MOCK_TOURNAMENTS.filter(t => t.status === statusFilter);
-  const selected = MOCK_TOURNAMENTS.find(t => t.id === selectedTournament);
-  const selectedMatches = MOCK_MATCHES.filter(m => m.tournamentId === selectedTournament);
-  const isRegistered = selected ? registered.includes(selected.id) : false;
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [matches, setMatches] = useState<MatchResult[]>([]);
+  const [workshops, setWorkshops] = useState<Workshop[]>([]);
 
-  const filteredWorkshops = statusFilter === 'all' ? MOCK_WORKSHOPS : MOCK_WORKSHOPS.filter(w => w.status === statusFilter);
-  const selectedWorkshopData = MOCK_WORKSHOPS.find(w => w.id === selectedWorkshop);
-  const isEnrolled = selectedWorkshopData ? workshopEnrolled.includes(selectedWorkshopData.id) : false;
+  useEffect(() => {
+    getTournaments().then(setTournaments).catch(console.error);
+    getMatches().then(setMatches).catch(console.error);
+    getWorkshops().then(setWorkshops).catch(console.error);
+  }, []);
+
+  const filtered = statusFilter === 'all' ? tournaments : tournaments.filter(t => t.status === statusFilter);
+  const selected = tournaments.find(t => t.id === selectedTournament);
+  const selectedMatches = matches.filter(m => m.tournamentId === selectedTournament);
+  const isRegistered = selected ? registeredIds.includes(selected.id) : false;
+
+  const filteredWorkshops = statusFilter === 'all' ? workshops : workshops.filter(w => w.status === statusFilter);
+  const selectedWorkshopData = workshops.find(w => w.id === selectedWorkshop);
+  const isEnrolled = selectedWorkshopData ? enrolledIds.includes(selectedWorkshopData.id) : false;
 
   const sc: Record<string, { bg: string; text: string; dot: string }> = {
     upcoming: { bg: 'bg-brand-blue/10', text: 'text-brand-blue', dot: 'bg-brand-blue' },
     live: { bg: 'bg-brand-red/10', text: 'text-brand-red', dot: 'bg-brand-red animate-pulse' },
-    completed: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-500' },
+    completed: { bg: 'bg-emerald-500/10', text: 'text-emerald-600', dot: 'bg-emerald-500' },
   };
 
   const FILTERS: { id: StatusFilter; icon: React.ElementType }[] = [
@@ -61,8 +71,14 @@ export default function CompetitionHub({ currentUser }: CompetitionHubProps) {
     { id: 'completed', icon: CheckCircle2 },
   ];
 
-  const handleRegister = (tournamentId: string) => setRegistered(prev => [...prev, tournamentId]);
-  const handleEnroll = (workshopId: string) => setWorkshopEnrolled(prev => [...prev, workshopId]);
+  const handleRegister = (tournamentId: string) => {
+    registerForTournament(tournamentId);
+    setRegisteredIds(prev => [...prev, tournamentId]);
+  };
+  const handleEnroll = (workshopId: string) => {
+    enrollInWorkshop(workshopId);
+    setEnrolledIds(prev => [...prev, workshopId]);
+  };
 
   const switchTab = (tab: HubTab) => {
     setHubTab(tab);
@@ -72,7 +88,7 @@ export default function CompetitionHub({ currentUser }: CompetitionHubProps) {
   };
 
   return (
-    <div className="min-h-[calc(100vh-76px)] bg-[#f7f8ff] py-10 px-4 md:px-8 relative overflow-hidden">
+    <div className="min-h-[calc(100vh-76px)] bg-brand-paper py-10 px-4 md:px-8 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/8 via-[#080808] to-brand-red/5 pointer-events-none" />
       <div className="absolute top-[-8%] right-[-5%] w-[500px] h-[500px] bg-brand-red/6 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[-8%] left-[-5%] w-[400px] h-[400px] bg-brand-blue/6 rounded-full blur-[120px] pointer-events-none" />
@@ -182,9 +198,9 @@ export default function CompetitionHub({ currentUser }: CompetitionHubProps) {
 function TournamentsView({
   filtered, selected, selectedMatches, isRegistered, selectedTournament, sc, statusFilter, onSelect, onRegister,
 }: {
-  filtered: typeof MOCK_TOURNAMENTS;
-  selected: typeof MOCK_TOURNAMENTS[0] | undefined;
-  selectedMatches: typeof MOCK_MATCHES;
+  filtered: Tournament[];
+  selected: Tournament | undefined;
+  selectedMatches: MatchResult[];
   isRegistered: boolean;
   selectedTournament: string | null;
   sc: Record<string, { bg: string; text: string; dot: string }>;
@@ -210,7 +226,7 @@ function TournamentsView({
                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${s.bg} ${s.text} text-[9px] font-black uppercase tracking-wider`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{t.status}
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{t.category}</span>
+                <span className={`text-[9px] font-black text-white px-2 py-0.5 rounded-md bg-gradient-to-r ${CATEGORY_COLORS[t.category] || 'from-slate-500 to-slate-600'}`}>{t.category}</span>
               </div>
               <h3 className={`font-black text-base mb-1 transition-colors ${isSelected ? 'text-brand-red' : 'text-slate-900'}`}>{t.name}</h3>
               <div className="flex flex-col gap-1.5 text-xs text-slate-500 mt-2">
@@ -363,8 +379,8 @@ function TournamentsView({
 function WorkshopsView({
   filteredWorkshops, selectedWorkshopData, isEnrolled, statusFilter, onSelect, onEnroll,
 }: {
-  filteredWorkshops: typeof MOCK_WORKSHOPS;
-  selectedWorkshopData: typeof MOCK_WORKSHOPS[0] | undefined;
+  filteredWorkshops: Workshop[];
+  selectedWorkshopData: Workshop | undefined;
   isEnrolled: boolean;
   statusFilter: string;
   onSelect: (id: string | null) => void;

@@ -1,61 +1,69 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   BarChart3, Users, Shield, Settings, FileText, Bell, Activity,
-  Plus, RefreshCw, AlertTriangle, Clock, CheckCircle, XCircle,
+  Plus, RefreshCw, AlertTriangle, Clock, CheckCircle, XCircle, AlertCircle,
   BookOpen, MessageSquare, GraduationCap, Award, DollarSign, Building,
   Handshake, UserCog, Swords, Medal, Wrench, ClipboardList, Cpu, Star, Target,
-  Edit3, Trash2, Eye, Search, Filter, Download, ChevronDown, Save, X,
+  Edit3, Trash2, Eye, EyeOff, Search, Filter, Download, ChevronDown, Save, X,
   UserPlus, UserCheck, UserX, Lock, Globe, Zap, TrendingUp, TrendingDown,
-  Mail, Phone, MapPin, Camera, Sparkles, Send, Loader2, Archive,
+  Mail, Phone, MapPin, Camera, Sparkles, Send, Loader2, Archive, LayoutDashboard, GitBranch, BellOff, CheckCircle2
 } from 'lucide-react';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
+import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
+import CmsDashboard from '@/src/domains/cms/admin/ui/CmsDashboard';
 import { NavItem } from '@/src/shared/ui/Sidebar';
-import { UserProfile } from '@/src/shared/types';
+import { BranchSectionShell } from '@/src/domains/branches/ui/BranchSectionShell';
+import AcademicCatalogManager from '@/src/domains/learning/academics/ui/AcademicCatalogManager';
+import { ErrorModal } from '@/src/shared/ui/ErrorModal';
+import type { UserProfile, AppNotification, Enrollment, EnrollmentPayment } from '@/src/shared/types';
+import { fetchEnrollmentsApi, fetchPaymentsApi } from '@/src/domains/learning/academics/api/academicApi';
 import {
   fetchUsersApi,
   toggleUserStatusApi,
   archiveUserApi,
   createStaffApi,
+  createBranchManagerApi,
   updateUserApi,
-  fetchAuditLogsApi,
   resolveRole,
   formatRelativeTime,
   formatJoinDate,
   branchesApi,
   assignmentsApi,
   type AdminUserResponse,
-  type AuditLogEntry,
   type PaginatedResponse,
   type BranchResponse,
   type AssignmentResponse,
 } from '../api/adminApi';
+import { getNotifications } from '@/src/domains/notification/model/notificationApi';
+import UserManagementPanel from './UserManagementPanel';
+import AdminAccount from './AdminAccount';
+import SystemHealth from './SystemHealth';
+import SystemLogs from './SystemLogs';
+import AdminOverviewDashboard from './AdminOverviewDashboard';
 
 interface Props { currentUser: UserProfile; onLogout: () => void; }
 
-type SectionId = 'overview' | 'users' | 'roles' | 'settings' | 'moderation' | 'audit' | 'notifications' | 'maintenance' | 'partners' | 'vex-roles' | 'schools' | 'registrations';
+type SectionId = 'overview' | 'users' | 'roles' | 'academics' | 'account' | 'audit' | 'branches' | 'registrations' | 'cms';
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Dashboard', icon: BarChart3, group: 'main' },
   { id: 'users', label: 'Accounts & Users', icon: Users, group: 'main' },
   { id: 'roles', label: 'Roles & Permissions', icon: Shield, group: 'main' },
+  { id: 'academics', label: 'Academic Catalog', icon: GraduationCap, group: 'main' },
   { id: 'registrations', label: 'Enrollments', icon: ClipboardList, group: 'main' },
-  { id: 'partners', label: 'Strategic Partners', icon: Handshake, group: 'main' },
-  { id: 'vex-roles', label: 'VEX Teams', icon: UserCog, group: 'vex' },
-  { id: 'schools', label: 'Institutions', icon: Building, group: 'main' },
-  { id: 'moderation', label: 'Content Moderation', icon: MessageSquare, group: 'system' },
+  { id: 'branches', label: 'Branches', icon: GitBranch, group: 'main' },
+  { id: 'cms', label: 'Content Manager', icon: LayoutDashboard, group: 'main' },
   { id: 'audit', label: 'System Logs', icon: FileText, group: 'system' },
-  { id: 'notifications', label: 'Notifications', icon: Bell, group: 'system' },
-  { id: 'settings', label: 'Settings', icon: Settings, group: 'system' },
-  { id: 'maintenance', label: 'System Health', icon: Activity, group: 'system' },
+  { id: 'account', label: 'My Account', icon: Shield, group: 'system' },
 ];
 
 const pageTitle: Record<SectionId, string> = {
-  overview: 'Overview', users: 'User Management', roles: 'Roles & Permissions',
-  partners: 'Partners & Sponsors', 'vex-roles': 'VEX Role Management',
-  schools: 'School Management', registrations: 'Registration Management',
-  moderation: 'Content Moderation', audit: 'Audit Logs',
-  notifications: 'Notifications', settings: 'System Settings', maintenance: 'Maintenance',
+  overview: 'Dashboard', users: 'User Management', roles: 'Roles & Permissions',
+  academics: 'Academic Catalog',
+  branches: 'Branch Management', registrations: 'Registration Management',
+  audit: 'Audit Logs',
+  cms: 'Content Management', account: 'My Account',
 };
 
 /* ─── HELPERS ─── */
@@ -64,6 +72,8 @@ const roleBadge = (role: string) => {
     Admin: 'bg-purple-50 text-purple-600',
     Manager: 'bg-amber-50 text-amber-600',
     Instructor: 'bg-blue-50 text-blue-600',
+    Secretary: 'bg-rose-50 text-rose-600',
+    Student: 'bg-emerald-50 text-emerald-600',
     Parent: 'bg-emerald-50 text-emerald-600',
   };
   return colors[role] || 'bg-slate-50 text-slate-600';
@@ -175,14 +185,22 @@ function UserManagement({ userRole }: { userRole?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUserResponse | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState<AdminUserResponse | null>(null);
+  const [viewingUser, setViewingUser] = useState<AdminUserResponse | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const [archiving, setArchiving] = useState<string | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
   const [branches, setBranches] = useState<BranchResponse[]>([]);
   const [formData, setFormData] = useState({
-    email: '', first_name: '', last_name: '', password: '', branch_id: '', role: 'instructor'
+    email: '', first_name: '', last_name: '', password: '', branch_id: '', role: 'instructor',
+    phone_number: '', gender: '', date_of_birth: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -219,6 +237,8 @@ function UserManagement({ userRole }: { userRole?: string }) {
     setArchiving(u.id);
     try {
       await archiveUserApi(u.id);
+      setConfirmArchive(null);
+      setSelectedIds(prev => { const next = new Set(prev); next.delete(u.id); return next; });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to archive user');
@@ -227,32 +247,103 @@ function UserManagement({ userRole }: { userRole?: string }) {
     }
   };
 
-  const commonPasswords = new Set([
-    'password', 'password1', 'password123', '12345678', '123456789',
-    '1234567890', 'qwerty123', 'abc123', 'letmein', 'welcome',
-    'admin', 'admin123', 'test123', 'passw0rd', 'hello123',
-  ]);
+  const handleBulkToggle = async (activate: boolean) => {
+    setBulkProcessing(true);
+    setError(null);
+    let success = 0;
+    for (const id of selectedIds) {
+      const user = filtered.find(u => u.id === id);
+      if (!user) continue;
+      const shouldToggle = activate ? user.status !== 'Active' : user.status === 'Active';
+      if (!shouldToggle) { success++; continue; }
+      try {
+        await toggleUserStatusApi(id, user.status);
+        success++;
+      } catch { /* skip failed */ }
+    }
+    setSelectedIds(new Set());
+    setBulkProcessing(false);
+    await load();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(u => u.id)));
+    }
+  };
+
+  const minPwLength = formData.role === 'super_admin' ? 6 : 8;
 
   const validatePassword = (pw: string): string | null => {
-    if (pw.length < 8) return 'Password must be at least 8 characters';
-    if (commonPasswords.has(pw.toLowerCase())) return 'This password is too common';
-    if (/^\d+$/.test(pw)) return 'Password cannot be entirely numeric';
+    if (pw.length < minPwLength) return `Password must be at least ${minPwLength} characters`;
     return null;
   };
 
   const handleAdd = async () => {
+    setError(null);
+    const email = formData.email.trim();
+    const firstName = formData.first_name.trim();
+    const lastName = formData.last_name.trim();
+
+    if (!email || !firstName || !lastName) {
+      setError('Email, first name, and last name are required.');
+      return;
+    }
+    if (!formData.branch_id) {
+      setError('Please select a branch before creating this user.');
+      return;
+    }
+    if (formData.role === 'branch_manager' && userRole !== 'Admin') {
+      setError('Only an Admin can create a branch manager account.');
+      return;
+    }
+
     const pwError = validatePassword(formData.password);
     if (pwError) {
       setError(pwError);
       return;
     }
     try {
-      await createStaffApi(formData);
+      const extra = { phone_number: formData.phone_number || undefined, gender: formData.gender || undefined, date_of_birth: formData.date_of_birth || undefined };
+      if (formData.role === 'branch_manager') {
+        await createBranchManagerApi({
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          password: formData.password,
+          branch_id: formData.branch_id,
+          ...extra,
+        });
+      } else {
+        await createStaffApi({
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          password: formData.password,
+          branch_id: formData.branch_id,
+          role: formData.role,
+          ...extra,
+        });
+      }
       setShowAddModal(false);
-      setFormData({ email: '', first_name: '', last_name: '', password: '', branch_id: '', role: 'instructor' });
+      setFormData({ email: '', first_name: '', last_name: '', password: '', branch_id: '', role: 'instructor', phone_number: '', gender: '', date_of_birth: '' });
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create user');
+      let msg = e instanceof Error ? e.message : 'Failed to create user';
+      if (msg.includes('Branch manager already exists')) {
+        msg = 'This branch already has an active manager. Please choose a different branch or re-assign the manager.';
+      }
+      setError(msg);
     }
   };
 
@@ -263,6 +354,9 @@ function UserManagement({ userRole }: { userRole?: string }) {
         first_name: editingUser.first_name,
         last_name: editingUser.last_name,
         email: editingUser.email,
+        phone_number: editingUser.phone_number || null,
+        gender: editingUser.gender || null,
+        date_of_birth: editingUser.date_of_birth || null,
       });
       setEditingUser(null);
       await load();
@@ -276,48 +370,129 @@ function UserManagement({ userRole }: { userRole?: string }) {
     }
   };
 
-  const filtered = useMemo(() =>
-    data?.results?.filter(u =>
-      u.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
-    ) ?? []
-  , [data, search]);
+  const filtered = useMemo(() => {
+    let list = data?.results ?? [];
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(u => u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    }
+    if (roleFilter !== 'all') {
+      list = list.filter(u => resolveRole(u.assignments).toLowerCase() === roleFilter);
+    }
+    if (statusFilter !== 'all') {
+      list = list.filter(u => u.status.toLowerCase() === statusFilter);
+    }
+    return list;
+  }, [data, search, roleFilter, statusFilter]);
+
+  const userStats = useMemo(() => {
+    const users = data?.results ?? [];
+    return {
+      active: users.filter(u => u.status === 'Active').length,
+      pending: users.filter(u => u.status === 'Pending').length,
+      suspended: users.filter(u => u.status === 'Suspended').length,
+      archived: users.filter(u => u.status === 'Archived').length,
+    };
+  }, [data]);
 
   return (
     <div className="space-y-4">
-      {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>
-        </div>
-      )}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..." className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" />
-        </div>
-        <div className="flex gap-2 items-center">
-          {data && <span className="text-xs text-slate-400">{data.count} total</span>}
-          <button onClick={load} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Refresh"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
-          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark"><UserPlus className="w-3.5 h-3.5" /> Add User</button>
-        </div>
+      <ErrorModal
+        isOpen={!!error}
+        message={error || ''}
+        onClose={() => setError(null)}
+      />
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {[
+          { label: 'Active', value: userStats.active, color: 'text-emerald-600 bg-emerald-50' },
+          { label: 'Pending', value: userStats.pending, color: 'text-amber-600 bg-amber-50' },
+          { label: 'Suspended', value: userStats.suspended, color: 'text-red-600 bg-red-50' },
+          { label: 'Archived', value: userStats.archived, color: 'text-slate-600 bg-slate-100' },
+        ].map(stat => (
+          <div key={stat.label} className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className={`mb-2 inline-flex rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wide ${stat.color}`}>{stat.label}</p>
+            <p className="text-2xl font-black text-slate-900">{stat.value}</p>
+            <p className="text-xs text-slate-400">accounts in current page</p>
+          </div>
+        ))}
       </div>
+
+      {/* Filters & Actions Bar */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..." className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 focus:outline-none focus:border-brand-blue/30">
+              <option value="all">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="secretary">Secretary</option>
+              <option value="instructor">Instructor</option>
+              <option value="student">Student</option>
+            </select>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 focus:outline-none focus:border-brand-blue/30">
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="pending">Pending</option>
+              <option value="suspended">Suspended</option>
+              <option value="archived">Archived</option>
+            </select>
+            {data && <span className="text-xs text-slate-400">{data.count} total</span>}
+            <button onClick={load} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Refresh"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-5 py-2.5 bg-brand-red text-white rounded-xl text-sm font-extrabold hover:bg-brand-red-dark shadow-md hover:shadow-lg"><UserPlus className="w-4 h-4" /> Add User</button>
+          </div>
+        </div>
+
+        {/* Bulk Actions */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-brand-blue/5 border border-brand-blue/20 rounded-lg">
+            <span className="text-xs font-semibold text-slate-600">{selectedIds.size} selected</span>
+            <div className="h-3 w-px bg-slate-200" />
+            <button onClick={() => handleBulkToggle(true)} disabled={bulkProcessing} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50">
+              {bulkProcessing ? 'Processing...' : 'Activate All'}
+            </button>
+            <button onClick={() => handleBulkToggle(false)} disabled={bulkProcessing} className="text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50">
+              {bulkProcessing ? 'Processing...' : 'Deactivate All'}
+            </button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-xs font-semibold text-slate-400 hover:text-slate-600 px-2 py-1 rounded hover:bg-slate-100 ml-auto">
+              Clear
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
-            <tr><th className="px-4 py-3 font-semibold text-slate-600">Name</th><th className="px-4 py-3 font-semibold text-slate-600">Role</th><th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Status</th><th className="px-4 py-3 font-semibold text-slate-600 hidden lg:table-cell">Joined</th><th className="px-4 py-3 font-semibold text-slate-600 hidden xl:table-cell">Last Active</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr>
+            <tr>
+              <th className="px-4 py-3 w-10">
+                <input type="checkbox" checked={filtered.length > 0 && selectedIds.size === filtered.length} onChange={toggleSelectAll} className="rounded border-slate-300" />
+              </th>
+              <th className="px-4 py-3 font-semibold text-slate-600">Name</th>
+              <th className="px-4 py-3 font-semibold text-slate-600">Role</th>
+              <th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Status</th>
+              <th className="px-4 py-3 font-semibold text-slate-600 hidden lg:table-cell">Joined</th>
+              <th className="px-4 py-3 font-semibold text-slate-600 hidden xl:table-cell">Last Active</th>
+              <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />Loading users...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />Loading users...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No users found</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No users found</td></tr>
             ) : filtered.map(u => {
               const role = resolveRole(u.assignments);
               const sd = statusDisplay(u.status);
               return (
-                <tr key={u.id} className="hover:bg-slate-50/50">
+                <tr key={u.id} className={`hover:bg-slate-50/50 ${selectedIds.has(u.id) ? 'bg-brand-blue/[0.02]' : ''}`}>
+                  <td className="px-4 py-3">
+                    <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)} className="rounded border-slate-300" />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">{u.full_name.charAt(0).toUpperCase()}</div>
@@ -331,13 +506,14 @@ function UserManagement({ userRole }: { userRole?: string }) {
                   <td className="px-4 py-3">
                     {userRole === 'Admin' || userRole === 'Manager' ? (
                       <div className="flex gap-1">
-                        <button onClick={() => setEditingUser(u)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50"><Edit3 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleToggle(u)} disabled={toggling === u.id} className={`p-1.5 rounded-lg ${toggling === u.id ? 'text-slate-300' : u.status === 'Active' ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
+                        <button onClick={() => setViewingUser(u)} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5" title="View Details"><Eye className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setEditingUser(u)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleToggle(u)} disabled={toggling === u.id} className={`p-1.5 rounded-lg ${toggling === u.id ? 'text-slate-300' : u.status === 'Active' ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'}`} title={u.status === 'Active' ? 'Deactivate' : 'Activate'}>
                           {toggling === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : u.status === 'Active' ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
                         </button>
                         {u.status !== 'Archived' && (
-                          <button onClick={() => handleArchive(u)} disabled={archiving === u.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
-                            {archiving === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
+                          <button onClick={() => setConfirmArchive(u)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" title="Archive">
+                            <Archive className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -355,16 +531,32 @@ function UserManagement({ userRole }: { userRole?: string }) {
       {showAddModal && (
         <Modal title="Add Staff User" onClose={() => setShowAddModal(false)}>
           <div className="space-y-3">
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="user@email.com" /></div>
+            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. yonas.tadesse@email.com" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">First Name</label><input value={formData.first_name} onChange={e => setFormData(p => ({ ...p, first_name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Last Name</label><input value={formData.last_name} onChange={e => setFormData(p => ({ ...p, last_name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">First Name</label><input value={formData.first_name} onChange={e => setFormData(p => ({ ...p, first_name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Yonas" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Last Name</label><input value={formData.last_name} onChange={e => setFormData(p => ({ ...p, last_name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Tadesse" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={formData.phone_number} onChange={e => setFormData(p => ({ ...p, phone_number: e.target.value }))} placeholder="e.g. +251-911-000000" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Gender</label>
+                <select value={formData.gender} onChange={e => setFormData(p => ({ ...p, gender: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
+                  <option value="">Prefer not to say</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </div>
+            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Date of Birth</label><input type="date" value={formData.date_of_birth} onChange={e => setFormData(p => ({ ...p, date_of_birth: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
             <div><label className="text-xs font-medium text-slate-500 mb-1 block">Password</label>
-              <input type="password" value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="********" />
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} value={formData.password} onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} className="w-full px-3 py-2 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. ••••••••" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600">
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               <div className="mt-1.5 space-y-1">
-                {['At least 8 characters', 'Not a common password', 'Not entirely numeric'].map((req, i) => {
-                  const met = i === 0 ? formData.password.length >= 8 : i === 1 ? !commonPasswords.has(formData.password.toLowerCase()) : !/^\d+$/.test(formData.password);
+                {[`At least ${minPwLength} characters`].map((req) => {
+                  const met = formData.password.length >= minPwLength;
                   return (
                     <div key={req} className={`flex items-center gap-1.5 text-xs ${formData.password ? (met ? 'text-green-600' : 'text-red-500') : 'text-slate-400'}`}>
                       <span>{met ? '✓' : '○'}</span> {req}
@@ -377,8 +569,9 @@ function UserManagement({ userRole }: { userRole?: string }) {
               <div><label className="text-xs font-medium text-slate-500 mb-1 block">Role</label>
                 <select value={formData.role} onChange={e => setFormData(p => ({ ...p, role: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
                   <option value="instructor">Instructor</option>
-                  <option value="branch_manager">Manager</option>
-                  <option value="super_admin">Admin</option>
+                  <option value="secretary">Secretary</option>
+                  <option value="student">Student</option>
+                  {userRole === 'Admin' && <option value="branch_manager">Branch Manager</option>}
                 </select>
               </div>
               <div><label className="text-xs font-medium text-slate-500 mb-1 block">Branch</label>
@@ -390,7 +583,7 @@ function UserManagement({ userRole }: { userRole?: string }) {
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowAddModal(false)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleAdd} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark">Create</button>
+              <button onClick={handleAdd} disabled={!formData.branch_id} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark disabled:cursor-not-allowed disabled:opacity-50">Create</button>
             </div>
           </div>
         </Modal>
@@ -399,11 +592,22 @@ function UserManagement({ userRole }: { userRole?: string }) {
       {editingUser && (
         <Modal title="Edit User" onClose={() => setEditingUser(null)}>
           <div className="space-y-3">
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={editingUser.email} onChange={e => setEditingUser(p => p ? { ...p, email: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={editingUser.email} onChange={e => setEditingUser(p => p ? { ...p, email: e.target.value } : p)} placeholder="e.g. yonas.tadesse@email.com" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">First Name</label><input value={editingUser.first_name} onChange={e => setEditingUser(p => p ? { ...p, first_name: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Last Name</label><input value={editingUser.last_name} onChange={e => setEditingUser(p => p ? { ...p, last_name: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">First Name</label><input value={editingUser.first_name} onChange={e => setEditingUser(p => p ? { ...p, first_name: e.target.value } : p)} placeholder="e.g. Yonas" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Last Name</label><input value={editingUser.last_name} onChange={e => setEditingUser(p => p ? { ...p, last_name: e.target.value } : p)} placeholder="e.g. Tadesse" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={editingUser.phone_number || ''} onChange={e => setEditingUser(p => p ? { ...p, phone_number: e.target.value } : p)} placeholder="e.g. +251-911-000000" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
+              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Gender</label>
+                <select value={editingUser.gender || ''} onChange={e => setEditingUser(p => p ? { ...p, gender: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
+                  <option value="">Prefer not to say</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </div>
+            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Date of Birth</label><input type="date" value={editingUser.date_of_birth || ''} onChange={e => setEditingUser(p => p ? { ...p, date_of_birth: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setEditingUser(null)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
               <button onClick={handleEdit} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark">Save</button>
@@ -411,6 +615,78 @@ function UserManagement({ userRole }: { userRole?: string }) {
           </div>
         </Modal>
       )}
+
+      {viewingUser && (
+        <Modal title="User Details" onClose={() => setViewingUser(null)}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
+              <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-black text-slate-600 shrink-0">
+                {viewingUser.full_name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-lg text-slate-900">{viewingUser.full_name}</h3>
+                <p className="text-sm text-slate-500">{viewingUser.email}</p>
+              </div>
+              <span className={`ml-auto text-xs font-semibold px-2.5 py-1 rounded-lg ${statusDisplay(viewingUser.status).color} ${statusDisplay(viewingUser.status).color.replace('text-', 'bg-').replace('600', '50')}`}>
+                {viewingUser.status}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">First Name</span><span className="text-slate-900 font-medium">{viewingUser.first_name || '—'}</span></div>
+              <div><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Last Name</span><span className="text-slate-900 font-medium">{viewingUser.last_name || '—'}</span></div>
+              <div><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone</span><span className="text-slate-900 font-medium">{viewingUser.phone_number || '—'}</span></div>
+              <div><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Gender</span><span className="text-slate-900 font-medium">{viewingUser.gender || '—'}</span></div>
+              <div><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Date of Birth</span><span className="text-slate-900 font-medium">{viewingUser.date_of_birth || '—'}</span></div>
+              <div><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Email Verified</span><span className={`font-medium ${viewingUser.is_email_verified ? 'text-emerald-600' : 'text-amber-600'}`}>{viewingUser.is_email_verified ? 'Yes' : 'No'}</span></div>
+              <div className="col-span-2"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Joined</span><span className="text-slate-900 font-medium">{formatJoinDate(viewingUser.created_at)}</span></div>
+            </div>
+            {viewingUser.assignments && viewingUser.assignments.length > 0 && (
+              <div className="pt-3 border-t border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Role Assignments</span>
+                <div className="flex flex-wrap gap-2">
+                    {viewingUser.assignments.map(a => {
+                    const badge = roleBadge(a.role === 'super_admin' ? 'Admin' : a.role === 'branch_manager' ? 'Manager' : a.role === 'secretary' ? 'Secretary' : a.role === 'instructor' ? 'Instructor' : 'Student');
+                    return (
+                      <span key={a.id} className={`text-xs font-semibold px-2 py-1 rounded-lg ${badge}`}>
+                        {a.role.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        {a.branch_name && ` @ ${a.branch_name}`}
+                        {a.is_primary && ' ⭐'}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setViewingUser(null)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-200">Close</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmArchive && (
+        <Modal title="Archive User" onClose={() => setConfirmArchive(null)}>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Are you sure you want to archive <strong>{confirmArchive.full_name}</strong>?
+              This will suspend their account and remove access.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setConfirmArchive(null)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button onClick={() => handleArchive(confirmArchive)} disabled={archiving === confirmArchive.id} className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-1.5">
+                {archiving === confirmArchive.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+                {archiving === confirmArchive.id ? 'Archiving...' : 'Confirm Archive'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      <ErrorModal
+        isOpen={!!error}
+        message={error || ''}
+        onClose={() => setError(null)}
+      />
     </div>
   );
 }
@@ -436,6 +712,16 @@ const PERMISSIONS: Record<string, { label: string; permissions: string[] }> = {
       'Manage local content & announcements',
       'View branch analytics',
       'Assign instructor roles (branch scope)',
+    ],
+  },
+  secretary: {
+    label: 'Secretary',
+    permissions: [
+      'Process student admissions & enrollments',
+      'Manage payments & receipts',
+      'Issue certificates',
+      'Manage daily branch operations',
+      'View student records',
     ],
   },
   instructor: {
@@ -496,10 +782,11 @@ function RolesPermissions() {
   useEffect(() => { load(); }, []);
 
   const roleDefs = [
-    { key: 'super_admin', label: 'Admin', color: 'red', icon: Shield, desc: 'Full system access. Manage users, branches, settings, and all platform resources.' },
-    { key: 'branch_manager', label: 'Manager', color: 'amber', icon: Building, desc: 'Manage branch operations, users, registrations, and local content.' },
-    { key: 'instructor', label: 'Instructor', color: 'blue', icon: GraduationCap, desc: 'Create and manage courses, grade students, moderate forum content.' },
-    { key: 'student', label: 'Student', color: 'emerald', icon: Users, desc: 'Access courses, participate in forums, shop in store, view certificates.' },
+    { key: 'super_admin', label: 'Admin', plural: 'Admins', weight: 'high', icon: Shield, desc: 'Full system access. Manage users, branches, settings, and all platform resources.' },
+    { key: 'branch_manager', label: 'Manager', plural: 'Managers', weight: 'high', icon: Building, desc: 'Manage branch operations, users, registrations, and local content.' },
+    { key: 'secretary', label: 'Secretary', plural: 'Secretaries', weight: 'mid', icon: ClipboardList, desc: 'Handle admissions, enrollments, payments, certificates, and daily operations.' },
+    { key: 'instructor', label: 'Instructor', plural: 'Instructors', weight: 'mid', icon: GraduationCap, desc: 'Create and manage courses, grade students, moderate forum content.' },
+    { key: 'student', label: 'Student', plural: 'Students', weight: 'low', icon: Users, desc: 'Access courses, participate in forums, shop in store, view certificates.' },
   ] as const;
 
   const getUsersByRole = (roleKey: string) =>
@@ -563,34 +850,22 @@ function RolesPermissions() {
     }
   };
 
-  const colorMap: Record<string, string> = {
-    red: 'bg-red-50 text-red-600 border-red-200',
-    amber: 'bg-amber-50 text-amber-600 border-amber-200',
-    blue: 'bg-blue-50 text-blue-600 border-blue-200',
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  };
-  const colorBg: Record<string, string> = {
-    red: 'bg-red-50 text-red-600',
-    amber: 'bg-amber-50 text-amber-600',
-    blue: 'bg-blue-50 text-blue-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-  };
-  const colorIcon: Record<string, string> = {
-    red: 'bg-red-100 text-red-600',
-    amber: 'bg-amber-100 text-amber-600',
-    blue: 'bg-blue-100 text-blue-600',
-    emerald: 'bg-emerald-100 text-emerald-600',
-  };
-
   const roleMap = Object.fromEntries(roleDefs.map(r => [r.key, r]));
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-brand-blue" />
+      <div className="flex flex-col gap-6 w-full animate-pulse">
+        <div className="h-24 bg-slate-100 rounded-xl w-full"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-48 bg-slate-100 rounded-xl"></div>)}
+        </div>
       </div>
     );
   }
+
+  // Calculate stats for signature element
+  const total = users.length || 1; // prevent div by zero
+  const weightColors = { high: 'bg-slate-900', mid: 'bg-slate-400', low: 'bg-slate-200' };
 
   return (
     <div className="space-y-6">
@@ -598,79 +873,84 @@ function RolesPermissions() {
         <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 transition-colors"><X className="w-4 h-4" /></button>
         </div>
       )}
 
-      {/* Summary bar */}
-      <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm">
-        <span className="font-semibold text-slate-700">{users.length} total users</span>
-        <span className="text-slate-300">|</span>
-        {roleDefs.map(r => {
-          const count = getUsersByRole(r.key).length;
-          return (
-            <span key={r.key} className="flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${r.color === 'red' ? 'bg-red-500' : r.color === 'amber' ? 'bg-amber-500' : r.color === 'blue' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-              <span className="text-slate-600">{r.label}s</span>
-              <span className="font-semibold text-slate-800">{count}</span>
-            </span>
-          );
-        })}
-        {unassignedUsers.length > 0 && (
-          <>
-            <span className="text-slate-300">|</span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-slate-300" />
-              <span className="text-slate-600">Unassigned</span>
-              <span className="font-semibold text-slate-800">{unassignedUsers.length}</span>
-            </span>
-          </>
-        )}
-        <div className="ml-auto">
-          <button onClick={() => setShowAssignModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-red text-white rounded-lg text-xs font-semibold hover:bg-brand-red-dark"><Plus className="w-3 h-3" /> Assign Role</button>
+      {/* Signature Element: Proportional Distribution Bar */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">{users.length}</h2>
+            <p className="text-sm font-medium text-slate-500">Total System Users</p>
+          </div>
+          <button onClick={() => setShowAssignModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-md text-sm font-semibold hover:bg-slate-800 transition-all shadow-sm hover:shadow-md hover:-translate-y-px">
+            <Plus className="w-4 h-4" /> Assign Role
+          </button>
+        </div>
+
+        {/* The Bar */}
+        <div className="flex w-full h-3 rounded-full overflow-hidden mb-4 bg-slate-50 shadow-inner">
+          {roleDefs.map(r => {
+            const count = getUsersByRole(r.key).length;
+            const width = (count / total) * 100;
+            if (width === 0) return null;
+            return <div key={r.key} style={{ width: `${width}%` }} className={`${weightColors[r.weight]} border-r border-white/20 last:border-r-0 transition-all`} title={`${r.plural}: ${count}`} />
+          })}
+          {unassignedUsers.length > 0 && (
+            <div style={{ width: `${(unassignedUsers.length / total) * 100}%` }} className="bg-red-200 transition-all" title={`Unassigned: ${unassignedUsers.length}`} />
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          {roleDefs.map(r => {
+            const count = getUsersByRole(r.key).length;
+            return (
+              <div key={r.key} className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-sm ${weightColors[r.weight]}`} />
+                <span className="font-medium text-slate-600">{r.plural}</span>
+                <span className="font-bold text-slate-900">{count}</span>
+              </div>
+            );
+          })}
+          {unassignedUsers.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-sm bg-red-200" />
+              <span className="font-medium text-slate-600">Unassigned</span>
+              <span className="font-bold text-slate-900">{unassignedUsers.length}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Unassigned users card */}
+      {/* Unassigned Users Callout */}
       {unassignedUsers.length > 0 && (
-        <div className="bg-white border border-dashed border-slate-300 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-slate-400" />
-              <h4 className="text-sm font-semibold text-slate-600">Unassigned Users</h4>
-              <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{unassignedUsers.length}</span>
+        <div className="bg-red-50/50 border border-red-200/60 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">{unassignedUsers.length} pending user{unassignedUsers.length !== 1 && 's'}</h4>
+              <p className="text-xs text-slate-600 mt-0.5">These users have registered but have no role assignment.</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {unassignedUsers.slice(0, 12).map(u => (
-              <button
-                key={u.id}
-                onClick={() => { setAssignForm({ user_id: u.id, branch_id: '', role: 'student', is_primary: false }); setShowAssignModal(true); }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-brand-blue/5 rounded-lg text-xs text-slate-600 hover:text-brand-blue transition-colors group"
-              >
-                <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-500 shrink-0">
-                  {u.full_name.charAt(0).toUpperCase()}
-                </div>
-                <span className="truncate max-w-[100px]">{u.full_name.split(' ')[0]}</span>
-                <Plus className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            ))}
-            {unassignedUsers.length > 12 && (
-              <span className="px-2.5 py-1.5 text-xs text-slate-400">+{unassignedUsers.length - 12} more</span>
-            )}
-          </div>
+          <button onClick={() => { setAssignForm(p => ({ ...p, role: 'student' })); setShowAssignModal(true); }} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-md shadow-sm hover:bg-slate-50 transition-colors shrink-0">
+            Review Unassigned
+          </button>
         </div>
       )}
 
       {/* Role Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {roleDefs.map(r => {
           const roleUsers = getUsersByRole(r.key);
           const roleAssignments = getAssignmentsByRole(r.key);
           const Icon = r.icon;
           const isExpanded = expandedRole === r.key;
           const permsOpen = showPerms === r.key;
-          const permDef = PERMISSIONS[r.key];
+          const permDef = PERMISSIONS[r.key] || { permissions: [] };
 
           const filteredRoleUsers = roleSearch && isExpanded
             ? roleUsers.filter(u =>
@@ -681,373 +961,554 @@ function RolesPermissions() {
 
           const branchCounts = [...new Set(roleAssignments.map(a => a.branch?.id).filter(Boolean))].length;
 
+          // Distinct weight styling
+          const cardClass = r.weight === 'high'
+            ? 'bg-white border-2 border-slate-900 shadow-sm'
+            : r.weight === 'mid'
+            ? 'bg-white border border-slate-200 shadow-sm'
+            : 'bg-slate-50 border border-slate-200 border-dashed';
+
+          const iconClass = r.weight === 'high'
+            ? 'bg-slate-900 text-white'
+            : r.weight === 'mid'
+            ? 'bg-slate-100 text-slate-700'
+            : 'bg-transparent text-slate-400 border border-slate-200';
+
           return (
-            <div key={r.key} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <div className="p-5">
-                <div className="flex items-start justify-between">
+            <div key={r.key} className={`rounded-xl overflow-hidden transition-all duration-200 ${cardClass} flex flex-col`}>
+              <div className="p-5 flex-1">
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorIcon[r.color] || colorIcon.emerald}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconClass}`}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg text-slate-900">{r.label}s</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">{r.desc}</p>
+                      <h3 className="font-bold text-lg text-slate-900 tracking-tight">{r.label}</h3>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs font-medium text-slate-500">
+                        <span>{roleUsers.length} user{roleUsers.length !== 1 && 's'}</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-300" />
+                        <span>{branchCounts} branch{branchCounts !== 1 && 'es'}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${colorBg[r.color] || colorBg.emerald}`}>
-                      {roleUsers.length} users
-                    </span>
-                  </div>
-                </div>
-
-                {/* Stats row */}
-                <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
-                  <span>{roleAssignments.length} assignment{roleAssignments.length !== 1 ? 's' : ''}</span>
-                  <span>{branchCounts} branche{branchCounts !== 1 ? 's' : ''}</span>
-                </div>
-
-                {/* User pills */}
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {roleAssignments.slice(0, 5).map(a => (
-                    <span key={a.id} className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${colorMap[r.color] || colorMap.emerald}`}>
-                      {a.user?.full_name?.split(' ')?.[0] || '—'} @ {a.branch?.name?.slice(0, 12) || 'HQ'}
-                    </span>
-                  ))}
-                  {roleAssignments.length > 5 && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">
-                      +{roleAssignments.length - 5} more
-                    </span>
+                  {/* Empty state explicit indicator if high/mid weight */}
+                  {roleUsers.length === 0 && r.weight !== 'low' && (
+                    <span className="px-2.5 py-1 bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold uppercase tracking-wider rounded-md">Empty</span>
                   )}
                 </div>
 
-                {/* Permissions toggle */}
-                <button
-                  onClick={() => setShowPerms(permsOpen ? null : r.key)}
-                  className="mt-3 text-xs font-medium text-slate-500 hover:text-slate-700 flex items-center gap-1"
-                >
-                  <CheckCircle className="w-3 h-3" />
-                  {permsOpen ? 'Hide' : 'View'} permissions ({permDef.permissions.length})
-                </button>
+                <p className="text-sm text-slate-600 mb-5 leading-relaxed">{r.desc}</p>
 
-                {permsOpen && (
-                  <div className="mt-3 space-y-1.5 pl-1">
-                    {permDef.permissions.map(p => (
-                      <div key={p} className="flex items-start gap-2 text-xs text-slate-600">
-                        <CheckCircle className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
-                        <span>{p}</span>
-                      </div>
-                    ))}
+                {roleUsers.length === 0 ? (
+                  <div className="py-6 flex flex-col items-center justify-center text-center bg-slate-50/50 rounded-lg border border-slate-100 mt-auto">
+                    <p className="text-sm font-semibold text-slate-700">No {r.plural.toLowerCase()} assigned</p>
+                    <p className="text-xs text-slate-500 mb-3 mt-1">Assign users to this role to grant them access.</p>
+                    <button
+                      onClick={() => { setAssignForm(p => ({ ...p, role: r.key })); setShowAssignModal(true); }}
+                      className="px-3 py-1.5 bg-slate-900 text-white rounded-md text-xs font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+                    >
+                      Assign {r.label}
+                    </button>
                   </div>
+                ) : (
+                  <>
+                    {/* User Badges */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {roleAssignments.slice(0, 4).map(a => {
+                        const nameParts = (a.user?.full_name || '').split(' ');
+                        const initials = nameParts.length > 1 ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}` : nameParts[0]?.[0] || '?';
+                        return (
+                          <div key={a.id} className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md p-1.5 pr-2.5 transition-colors cursor-pointer" onClick={() => setEditAssign(a)}>
+                            <div className="w-6 h-6 rounded bg-slate-200 text-[9px] font-bold flex items-center justify-center text-slate-600 shrink-0 uppercase">
+                              {initials}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[11px] font-semibold text-slate-900 leading-tight truncate">{a.user?.full_name?.split(' ')[0]}</span>
+                              <span className="text-[9px] text-slate-500 leading-tight truncate">{a.branch?.name?.slice(0, 15) || 'Global'}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {roleAssignments.length > 4 && (
+                        <div className="flex items-center justify-center px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-semibold text-slate-500">
+                          +{roleAssignments.length - 4}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-3 mt-auto pt-4 border-t border-slate-100">
+                      <button
+                        onClick={() => { setExpandedRole(isExpanded ? null : r.key); setRoleSearch(''); }}
+                        className="text-xs font-bold text-slate-700 hover:text-slate-900 flex items-center gap-1 transition-colors"
+                      >
+                        {isExpanded ? 'Hide' : 'Manage'} Users
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                      </button>
+                      <button
+                        onClick={() => setShowPerms(permsOpen ? null : r.key)}
+                        className="text-xs font-medium text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors"
+                      >
+                        <Shield className="w-3.5 h-3.5" />
+                        {permsOpen ? 'Hide' : 'View'} Policies
+                      </button>
+                    </div>
+                  </>
                 )}
 
-                {/* Expand users */}
-                <button
-                  onClick={() => { setExpandedRole(isExpanded ? null : r.key); setRoleSearch(''); }}
-                  className="mt-4 text-xs font-semibold text-brand-blue hover:text-brand-blue-dark flex items-center gap-1"
-                >
-                  {isExpanded ? 'Hide' : 'View'} users with this role
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                </button>
+                {/* Policies Drawer */}
+                <AnimatePresence>
+                  {permsOpen && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Granted Permissions</p>
+                        {permDef.permissions.map(p => (
+                          <div key={p} className="flex items-start gap-2 text-xs font-medium text-slate-700">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
+                            <span>{p}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
-              {isExpanded && (
-                <div className="border-t border-slate-100">
-                  {/* Inline search */}
-                  <div className="px-5 py-2 border-b border-slate-50">
-                    <input
-                      value={roleSearch}
-                      onChange={e => setRoleSearch(e.target.value)}
-                      placeholder="Search users in this role..."
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-xs focus:outline-none focus:border-brand-blue/30"
-                    />
-                  </div>
-                  <div className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
-                    {filteredRoleUsers.length === 0 ? (
-                      <p className="px-5 py-4 text-xs text-slate-400">{roleSearch ? 'No matching users' : 'No users with this role'}</p>
-                    ) : filteredRoleUsers.map(u => {
-                      const userAssignments = assignments.filter(a =>
-                        a.role === r.key && a.user?.id === u.id && a.is_active !== false
-                      );
-                      return (
-                        <div key={u.id} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50/50">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
-                              {u.full_name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-slate-900 truncate max-w-[160px]">{u.full_name}</p>
-                              <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
-                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                {userAssignments.map(a => (
-                                  <span key={a.id} className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-                                    {a.branch?.name && <><Building className="w-2.5 h-2.5" />{a.branch.name}</>}
-                                    {a.is_primary && <span className="text-amber-500 font-bold" title="Primary role">★</span>}
-                                  </span>
-                                ))}
+              {/* Expanded User List */}
+              <AnimatePresence>
+                {isExpanded && roleUsers.length > 0 && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-slate-200 bg-slate-50 overflow-hidden">
+                    <div className="p-3 border-b border-slate-200">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <input
+                          value={roleSearch}
+                          onChange={e => setRoleSearch(e.target.value)}
+                          placeholder={`Search ${r.plural.toLowerCase()}...`}
+                          className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-shadow"
+                        />
+                      </div>
+                    </div>
+                    <div className="divide-y divide-slate-200 max-h-60 overflow-y-auto">
+                      {filteredRoleUsers.length === 0 ? (
+                        <p className="p-4 text-xs text-center text-slate-500 font-medium">No matches found.</p>
+                      ) : filteredRoleUsers.map(u => {
+                        const userAssignments = assignments.filter(a => a.role === r.key && a.user?.id === u.id && a.is_active !== false);
+                        const nameParts = u.full_name.split(' ');
+                        const initials = nameParts.length > 1 ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}` : nameParts[0]?.[0] || '?';
+                        return (
+                          <div key={u.id} className="p-3 flex items-center justify-between hover:bg-slate-100/50 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0 uppercase">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-900 truncate">{u.full_name}</p>
+                                <p className="text-[10px] text-slate-500 truncate mt-0.5">{u.email}</p>
+                                <div className="flex flex-wrap items-center gap-1 mt-1">
+                                  {userAssignments.map(a => (
+                                    <span key={a.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[9px] font-semibold text-slate-600">
+                                      {a.branch?.name ? <><Building className="w-2.5 h-2.5 text-slate-400" />{a.branch.name}</> : 'Global Access'}
+                                      {a.is_primary && <Star className="w-2.5 h-2.5 text-amber-500" />}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
                             </div>
+                            <div className="flex flex-col gap-1 shrink-0 ml-2">
+                              {userAssignments.map(a => (
+                                <button
+                                  key={a.id}
+                                  onClick={() => setEditAssign(a)}
+                                  className="px-2 py-1 bg-white border border-slate-200 rounded text-[10px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
+                                >
+                                  Edit Access
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex gap-1 shrink-0">
-                            {userAssignments.map(a => (
-                              <button
-                                key={a.id}
-                                onClick={() => setEditAssign(a)}
-                                className="p-1 rounded text-slate-400 hover:text-amber-500 hover:bg-amber-50"
-                                title="Edit assignment"
-                              >
-                                <Edit3 className="w-3 h-3" />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           );
         })}
       </div>
 
       {/* Assign Role Modal */}
-      {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => { setShowAssignModal(false); setUserSearch(''); }}>
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-lg text-slate-900">Assign Role</h3>
-              <button onClick={() => { setShowAssignModal(false); setUserSearch(''); }} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-medium text-slate-500 mb-1.5 block">User</label>
-                <input
-                  value={userSearch}
-                  onChange={e => setUserSearch(e.target.value)}
-                  placeholder="Search users..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 mb-2"
-                />
-                <div className="max-h-40 overflow-y-auto border border-slate-100 rounded-lg">
-                  {filteredUserOptions.length === 0 ? (
-                    <p className="px-3 py-4 text-xs text-slate-400 text-center">No available users</p>
-                  ) : filteredUserOptions.map(u => (
-                    <button
-                      key={u.id}
-                      onClick={() => setAssignForm(p => ({ ...p, user_id: u.id }))}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 transition-colors ${assignForm.user_id === u.id ? 'bg-brand-blue/5 text-brand-blue font-semibold' : 'text-slate-700'}`}
-                    >
-                      <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
-                        {u.full_name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate">{u.full_name}</p>
-                        <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
-                      </div>
-                      {assignForm.user_id === u.id && <CheckCircle className="w-3.5 h-3.5 ml-auto text-brand-blue" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+      <AnimatePresence>
+        {showAssignModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.15 }}
+              className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
                 <div>
-                  <label className="text-xs font-medium text-slate-500 mb-1 block">Role</label>
-                  <select value={assignForm.role} onChange={e => setAssignForm(p => ({ ...p, role: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
-                    <option value="instructor">Instructor</option>
-                    <option value="branch_manager">Manager</option>
-                    <option value="super_admin">Admin</option>
-                    <option value="student">Student</option>
-                  </select>
+                  <h3 className="font-bold text-xl text-slate-900 tracking-tight">Assign Role</h3>
+                  <p className="text-xs text-slate-500 mt-1">Grant platform access to a registered user.</p>
                 </div>
+                <button onClick={() => { setShowAssignModal(false); setUserSearch(''); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="space-y-5">
                 <div>
-                  <label className="text-xs font-medium text-slate-500 mb-1 block">Branch</label>
-                  <select value={assignForm.branch_id} onChange={e => setAssignForm(p => ({ ...p, branch_id: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
-                    <option value="">— No branch —</option>
-                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 block">Select User</label>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      value={userSearch}
+                      onChange={e => setUserSearch(e.target.value)}
+                      placeholder="Search users by name or email..."
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-shadow"
+                    />
+                  </div>
+                  <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                    {filteredUserOptions.length === 0 ? (
+                      <p className="px-4 py-6 text-sm text-slate-500 text-center font-medium">No available users found.</p>
+                    ) : filteredUserOptions.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => setAssignForm(p => ({ ...p, user_id: u.id }))}
+                        className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${assignForm.user_id === u.id ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                      >
+                        <div className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold shrink-0 uppercase ${assignForm.user_id === u.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                          {u.full_name.charAt(0)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-sm truncate">{u.full_name}</p>
+                          <p className={`text-[11px] truncate ${assignForm.user_id === u.id ? 'text-slate-300' : 'text-slate-500'}`}>{u.email}</p>
+                        </div>
+                        {assignForm.user_id === u.id && <CheckCircle2 className="w-5 h-5 shrink-0 text-white" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 block">Role</label>
+                      <select value={assignForm.role} onChange={e => setAssignForm(p => ({ ...p, role: e.target.value }))}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-shadow">
+                        {roleDefs.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+                      </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 block">Branch Restriction</label>
+                    <select value={assignForm.branch_id} onChange={e => setAssignForm(p => ({ ...p, branch_id: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-shadow">
+                      <option value="">Global Access (All)</option>
+                      {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors mt-2">
+                  <input type="checkbox" checked={assignForm.is_primary} onChange={e => setAssignForm(p => ({ ...p, is_primary: e.target.checked }))}
+                    className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Set as Primary Role</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">This determines the user's default dashboard and badges.</p>
+                  </div>
+                </label>
+                <div className="flex gap-3 pt-4 border-t border-slate-100">
+                  <button onClick={() => { setShowAssignModal(false); setUserSearch(''); }}
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm">Cancel</button>
+                  <button onClick={handleAssignRole} disabled={!assignForm.user_id || !assignForm.role}
+                    className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm">Confirm Assignment</button>
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" checked={assignForm.is_primary} onChange={e => setAssignForm(p => ({ ...p, is_primary: e.target.checked }))}
-                  className="rounded border-slate-300" />
-                Set as primary role
-              </label>
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => { setShowAssignModal(false); setUserSearch(''); }}
-                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-                <button onClick={handleAssignRole} disabled={!assignForm.user_id || !assignForm.role}
-                  className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark disabled:opacity-50">Assign</button>
-              </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Edit Assignment Modal */}
-      {editAssign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setEditAssign(null)}>
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-lg text-slate-900">Edit Assignment</h3>
-              <button onClick={() => setEditAssign(null)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="space-y-4">
-              <div className="p-3 bg-slate-50 rounded-lg text-sm space-y-1">
-                <p><span className="font-medium text-slate-700">User:</span> {editAssign.user?.full_name || '—'}</p>
-                <p><span className="font-medium text-slate-700">Role:</span>
-                  <span className={`ml-1.5 text-xs font-semibold px-2 py-0.5 rounded-full ${colorBg[roleMap[editAssign.role]?.color || ''] || 'bg-slate-100 text-slate-600'}`}>
-                    {roleMap[editAssign.role]?.label || editAssign.role.replace('_', ' ')}
-                  </span>
-                </p>
-                <p><span className="font-medium text-slate-700">Branch:</span> {editAssign.branch?.name || '—'}</p>
+      <AnimatePresence>
+        {editAssign && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={() => setEditAssign(null)}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.15 }}
+              className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="font-bold text-xl text-slate-900 tracking-tight">Edit Access</h3>
+                  <p className="text-xs text-slate-500 mt-1">Modify existing role assignment.</p>
+                </div>
+                <button onClick={() => setEditAssign(null)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"><X className="w-5 h-5" /></button>
               </div>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" checked={editAssign.is_primary}
-                  onChange={e => setEditAssign(p => p ? { ...p, is_primary: e.target.checked } : p)}
-                  className="rounded border-slate-300" />
-                <span>Primary role <span className="text-amber-500">★</span></span>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" checked={editAssign.is_active}
-                  onChange={e => setEditAssign(p => p ? { ...p, is_active: e.target.checked } : p)}
-                  className="rounded border-slate-300" />
-                <span>Active <span className="text-xs text-slate-400">(inactive assignments are hidden)</span></span>
-              </label>
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => handleRemoveAssignment(editAssign.id)}
-                  className="px-3 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-50 flex items-center gap-1.5">
-                  <Trash2 className="w-3.5 h-3.5" /> Remove
-                </button>
-                <div className="flex-1" />
-                <button onClick={() => setEditAssign(null)}
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-                <button onClick={handleUpdateAssignment}
-                  className="px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark">Save</button>
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-semibold text-slate-500">User</span>
+                    <span className="font-bold text-slate-900">{editAssign.user?.full_name || '—'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-semibold text-slate-500">Role</span>
+                    <span className="font-bold text-slate-900 px-2 py-0.5 bg-slate-200 rounded-md text-xs">{roleMap[editAssign.role]?.label || editAssign.role}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-semibold text-slate-500">Scope</span>
+                    <span className="font-bold text-slate-900">{editAssign.branch?.name || 'Global Access'}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-3 pt-2">
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input type="checkbox" checked={editAssign.is_primary}
+                      onChange={e => setEditAssign(p => p ? { ...p, is_primary: e.target.checked } : p)}
+                      className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Primary Role <Star className="inline w-3.5 h-3.5 text-amber-500 mb-0.5" /></p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input type="checkbox" checked={editAssign.is_active}
+                      onChange={e => setEditAssign(p => p ? { ...p, is_active: e.target.checked } : p)}
+                      className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600" />
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Active Status</p>
+                    </div>
+                  </label>
+                </div>
+                
+                <div className="flex gap-3 pt-4 border-t border-slate-100 items-center">
+                  <button onClick={() => handleRemoveAssignment(editAssign.id)}
+                    className="px-3 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-bold hover:bg-red-50 hover:border-red-300 flex items-center gap-1.5 transition-colors shadow-sm">
+                    <Trash2 className="w-4 h-4" /> Revoke
+                  </button>
+                  <div className="flex-1" />
+                  <button onClick={() => setEditAssign(null)}
+                    className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm">Cancel</button>
+                  <button onClick={handleUpdateAssignment}
+                    className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800 transition-colors shadow-sm">Save Changes</button>
+                </div>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 function ContentModeration() {
-  const flags = [
-    { id: 'f1', title: 'Inappropriate language in thread', author: 'FlagBot', post: 'Re: How to tune PID', date: '2 hours ago', severity: 'medium' },
-    { id: 'f2', title: 'Spam promotional content', author: 'FlagBot', post: 'Cheap robots for sale!', date: '5 hours ago', severity: 'high' },
-    { id: 'f3', title: 'Off-topic discussion', author: 'Coach Nebil', post: 'General chat thread', date: '1 day ago', severity: 'low' },
+  const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [queueFilter, setQueueFilter] = useState<'all' | 'Forum' | 'Community' | 'Media'>('all');
+  const [resolved, setResolved] = useState<string[]>([]);
+  const [selectedFlag, setSelectedFlag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const initialFlags = [
+    { id: 'f1', title: 'Inappropriate language in thread', author: 'FlagBot', post: 'Re: How to tune PID', date: '2 hours ago', severity: 'high' as const, queue: 'Forum' as const, excerpt: 'This comment used language that may violate student safety rules.', reporter: 'Auto-flag', action: 'Pending' as const },
+    { id: 'f2', title: 'Spam promotional content', author: 'Coach Nebil', post: 'Cheap robots for sale!', date: '5 hours ago', severity: 'high' as const, queue: 'Community' as const, excerpt: 'External sales link detected in a student discussion thread.', reporter: 'Coach Nebil', action: 'Pending' as const },
+    { id: 'f3', title: 'Off-topic discussion', author: 'Student Kelby', post: 'General chat thread', date: '1 day ago', severity: 'low' as const, queue: 'Forum' as const, excerpt: 'Thread drifted away from the assigned robotics challenge.', reporter: 'Student Kelby', action: 'Pending' as const },
+    { id: 'f4', title: 'Unverified event photo', author: 'Media Review', post: 'Workshop gallery upload', date: '2 days ago', severity: 'medium' as const, queue: 'Media' as const, excerpt: 'Photo includes students and needs publishing confirmation.', reporter: 'Auto-flag', action: 'Pending' as const },
+    { id: 'f5', title: 'Duplicate user account', author: 'Admin System', post: 'Registration #9821', date: '3 days ago', severity: 'medium' as const, queue: 'Community' as const, excerpt: 'Multiple accounts detected from same IP address with different names.', reporter: 'Admin System', action: 'Pending' as const },
+    { id: 'f6', title: 'Copyrighted material', author: 'Coach Hanna', post: 'VEX CAD files', date: '4 days ago', severity: 'high' as const, queue: 'Media' as const, excerpt: 'Uploaded CAD files appear to be from a restricted source.', reporter: 'Coach Hanna', action: 'Pending' as const },
   ];
-  const severityColor: Record<string, string> = { high: 'text-red-600 bg-red-50', medium: 'text-amber-600 bg-amber-50', low: 'text-slate-600 bg-slate-100' };
-  return (
-    <div className="space-y-4">
-      {flags.map(f => (
-        <div key={f.id} className="bg-white border border-slate-200 rounded-xl p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1"><h3 className="font-semibold text-base text-slate-900">{f.title}</h3><p className="text-sm text-slate-500 mt-1">in <span className="font-medium text-slate-700">{f.post}</span></p><div className="flex items-center gap-3 mt-2 text-xs text-slate-400"><span>Flagged by {f.author}</span><span>{f.date}</span><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor[f.severity] || ''}`}>{f.severity}</span></div></div>
-            <div className="flex gap-2 shrink-0"><button className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-sm font-semibold hover:bg-emerald-100"><CheckCircle className="w-3.5 h-3.5" /> Approve</button><button className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100"><XCircle className="w-3.5 h-3.5" /> Remove</button></div>
-          </div>
-        </div>
-      ))}
-    </div>
+
+  const [flags, setFlags] = useState(initialFlags);
+
+  const severityColor: Record<string, string> = {
+    high: 'text-red-600 bg-red-50 border-red-100',
+    medium: 'text-amber-600 bg-amber-50 border-amber-100',
+    low: 'text-slate-600 bg-slate-100 border-slate-200'
+  };
+  const queueColor: Record<string, string> = {
+    Forum: 'bg-blue-50 text-blue-600',
+    Community: 'bg-purple-50 text-purple-600',
+    Media: 'bg-emerald-50 text-emerald-600',
+  };
+
+  const visible = flags.filter(f =>
+    !resolved.includes(f.id) &&
+    (filter === 'all' || f.severity === filter) &&
+    (queueFilter === 'all' || f.queue === queueFilter) &&
+    (!searchQuery || f.title.toLowerCase().includes(searchQuery.toLowerCase()) || f.post.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-}
 
-function AuditLogs() {
-  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const stats = [
+    { label: 'Open Flags', value: String(flags.length - resolved.length), detail: 'pending review', icon: AlertTriangle, tone: 'amber' as const },
+    { label: 'High Risk', value: String(flags.filter(f => f.severity === 'high' && !resolved.includes(f.id)).length), detail: 'needs immediate attention', icon: XCircle, tone: 'red' as const },
+    { label: 'Media Queue', value: String(flags.filter(f => f.queue === 'Media' && !resolved.includes(f.id)).length), detail: 'publish review', icon: Camera, tone: 'blue' as const },
+    { label: 'Resolved', value: String(resolved.length), detail: 'actions taken this session', icon: CheckCircle, tone: 'emerald' as const },
+  ];
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetchAuditLogsApi();
-      setLogs(res);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load audit logs');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const typeBadge = (action: string) => {
-    const actionLower = action.toLowerCase();
-    if (actionLower.includes('create') || actionLower.includes('generat')) return 'bg-emerald-50 text-emerald-600';
-    if (actionLower.includes('update') || actionLower.includes('change') || actionLower.includes('edit')) return 'bg-amber-50 text-amber-600';
-    if (actionLower.includes('delet') || actionLower.includes('remov') || actionLower.includes('suspend')) return 'bg-red-50 text-red-600';
-    if (actionLower.includes('login') || actionLower.includes('logout')) return 'bg-blue-50 text-blue-600';
-    return 'bg-slate-100 text-slate-600';
-  };
-
-  const formatAuditDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const handleAction = (id: string, action: 'approve' | 'remove' | 'warn') => {
+    setFlags(prev => prev.map(f => f.id === id ? { ...f, action: action === 'approve' ? 'Approved' as const : action === 'remove' ? 'Removed' as const : 'Warned' as const } : f));
+    setResolved(prev => [...prev, id]);
   };
 
   return (
     <div className="space-y-4">
-      {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>
+      <DashboardCommandCenter title="Moderation Queue" subtitle="Review flagged content, user reports, and media before publishing." signals={stats} />
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search flags..."
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-red/40 transition-all" />
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {(['all', 'high', 'medium', 'low'] as const).map(level => (
+            <button key={level} onClick={() => setFilter(level)}
+              className={`rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all ${filter === level ? 'bg-slate-900 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-500 hover:text-slate-900'}`}>
+              {level}
+            </button>
+          ))}
+          <div className="w-px h-5 bg-slate-200 mx-1" />
+          {(['all', 'Forum', 'Community', 'Media'] as const).map(q => (
+            <button key={q} onClick={() => setQueueFilter(q)}
+              className={`rounded-xl px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${queueFilter === q ? 'bg-brand-blue text-white' : 'text-slate-400 hover:text-slate-600'}`}>
+              {q}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {visible.map(f => {
+        const isSelected = selectedFlag === f.id;
+        return (
+          <motion.div key={f.id} layout className={`bg-white border rounded-xl overflow-hidden transition-all ${isSelected ? 'border-brand-red/40 shadow-md' : 'border-slate-200 hover:border-slate-300'}`}>
+            <div className="p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedFlag(isSelected ? null : f.id)}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-sm sm:text-base text-slate-900">{f.title}</h3>
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${queueColor[f.queue]}`}>{f.queue}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${severityColor[f.severity]}`}>{f.severity}</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">in <span className="font-medium text-slate-700">{f.post}</span></p>
+
+                  <AnimatePresence>
+                    {isSelected && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                        <div className="mt-3 rounded-lg bg-slate-50 border border-slate-100 p-3">
+                          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{f.excerpt}</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-slate-400">
+                          <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Flagged by <strong className="text-slate-600">{f.reporter}</strong></span>
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {f.date}</span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="flex shrink-0 flex-col gap-1.5">
+                  <button onClick={() => handleAction(f.id, 'approve')}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-[11px] font-bold hover:bg-emerald-100 transition-all whitespace-nowrap">
+                    <CheckCircle className="w-3.5 h-3.5" /> Approve
+                  </button>
+                  <button onClick={() => handleAction(f.id, 'remove')}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-[11px] font-bold hover:bg-red-100 transition-all whitespace-nowrap">
+                    <XCircle className="w-3.5 h-3.5" /> Remove
+                  </button>
+                  <button onClick={() => handleAction(f.id, 'warn')}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 text-amber-600 rounded-lg text-[11px] font-bold hover:bg-amber-100 transition-all whitespace-nowrap">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Warn
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })}
+
+      {visible.length === 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="rounded-xl border border-slate-200 bg-white p-10 text-center">
+          <CheckCircle className="w-10 h-10 mx-auto mb-3 text-emerald-400" />
+          <p className="text-sm font-semibold text-slate-700">All clear!</p>
+          <p className="text-xs text-slate-400 mt-1">No pending moderation items match your filters.</p>
+        </motion.div>
       )}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-400">{logs.length} entries</span>
-        <button onClick={load} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Refresh"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
-      </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left"><tr><th className="px-4 py-3 font-semibold text-slate-600">Action</th><th className="px-4 py-3 font-semibold text-slate-600">Actor</th><th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Resource</th><th className="px-4 py-3 font-semibold text-slate-600 hidden lg:table-cell">Date</th><th className="px-4 py-3 font-semibold text-slate-600">IP</th></tr></thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />Loading audit logs...</td></tr>
-            ) : logs.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">No audit log entries found</td></tr>
-            ) : logs.map(l => (
-              <tr key={l.id} className="hover:bg-slate-50/50">
-                <td className="px-4 py-3 font-medium text-slate-900">{l.action}</td>
-                <td className="px-4 py-3 text-slate-600">{l.actor?.full_name || 'System'}</td>
-                <td className="px-4 py-3 text-slate-500 hidden md:table-cell">
-                  <span className="text-xs">{l.resource_type}</span>
-                  {l.resource_id && <span className="text-[10px] text-slate-400 ml-1">#{l.resource_id.slice(0, 8)}</span>}
-                </td>
-                <td className="px-4 py-3 text-slate-500 hidden lg:table-cell text-xs">{formatAuditDate(l.created_at)}</td>
-                <td className="px-4 py-3"><span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${typeBadge(l.action)}`}>{l.ip_address || '—'}</span></td>
-              </tr>
+
+      {resolved.length > 0 && (
+        <details className="rounded-xl border border-slate-200 bg-white">
+          <summary className="px-4 py-3 text-xs font-bold text-slate-500 cursor-pointer hover:text-slate-700 transition-colors select-none">
+            Resolved ({resolved.length}) — click to expand
+          </summary>
+          <div className="px-4 pb-3 space-y-1">
+            {flags.filter(f => resolved.includes(f.id)).map(f => (
+              <div key={f.id} className="flex items-center justify-between py-1.5 border-t border-slate-100 first:border-0">
+                <span className="text-xs text-slate-600">{f.title}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  f.action === 'Approved' ? 'bg-emerald-50 text-emerald-600' :
+                  f.action === 'Warned' ? 'bg-amber-50 text-amber-600' :
+                  'bg-red-50 text-red-600'
+                }`}>{f.action}</span>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </details>
+      )}
     </div>
   );
 }
 
 function NotificationsPanel() {
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
-  const notifs = [
-    { id: 'n1', title: 'System Update', message: 'Platform v2.1.0 will be deployed tonight at 2 AM EST.', time: '1 hour ago', read: false },
-    { id: 'n2', title: 'New Registration', message: 'Kidus G. registered for Advanced Robotics Program', time: '3 hours ago', read: false },
-    { id: 'n3', title: 'Certificate Generated', message: 'Certificate #AWRD-00006 generated for Hana M.', time: '1 day ago', read: true },
-    { id: 'n4', title: 'Backup Complete', message: 'Weekly database backup completed successfully.', time: '2 days ago', read: true },
-  ];
-  const filtered = activeTab === 'unread' ? notifs.filter(n => !n.read) : notifs;
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getNotifications()
+      .then(setNotifications)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = activeTab === 'unread' ? notifications.filter(n => !n.read) : notifications;
+
+  const handleDismiss = async (id: string) => {
+    const { dismissNotification } = await import('@/src/domains/notification/model/notificationApi');
+    await dismissNotification(id);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const timeAgo = (ts: string) => {
+    if (!ts.startsWith('20')) return ts;
+    const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <button onClick={() => setActiveTab('all')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'all' ? 'bg-brand-red text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>All</button>
-        <button onClick={() => setActiveTab('unread')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'unread' ? 'bg-brand-red text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Unread</button>
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          <button onClick={() => setActiveTab('all')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'all' ? 'bg-brand-red text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>All</button>
+          <button onClick={() => setActiveTab('unread')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'unread' ? 'bg-brand-red text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Unread</button>
+        </div>
+        <span className="text-xs text-slate-400">{notifications.length} total</span>
       </div>
-      {filtered.map(n => (
-        <div key={n.id} className={`bg-white border ${n.read ? 'border-slate-200' : 'border-brand-red/20 bg-brand-red/[0.02]'} rounded-xl p-4 sm:p-5`}>
+      {loading ? (
+        <div className="flex items-center justify-center py-10 text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
+          <BellOff className="w-8 h-8 text-slate-300" />
+          <span className="text-xs font-semibold text-slate-500">All caught up!</span>
+        </div>
+      ) : filtered.map(n => (
+        <div key={n.id} className={`group bg-white border ${n.read ? 'border-slate-200' : 'border-brand-red/20 bg-brand-red/[0.02]'} rounded-xl p-4 sm:p-5`}>
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h3 className="font-semibold text-sm sm:text-base text-slate-900">{n.title}</h3>{!n.read && <span className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}</div><p className="text-sm text-slate-500 mt-1">{n.message}</p><p className="text-xs text-slate-400 mt-1.5">{n.time}</p></div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm sm:text-base text-slate-900">{n.title}</h3>
+                {!n.read && <span className="w-2 h-2 rounded-full bg-brand-red shrink-0" />}
+              </div>
+              <p className="text-sm text-slate-500 mt-1">{n.message}</p>
+              <p className="text-xs text-slate-400 mt-1.5">{n.timestamp.startsWith('20') ? timeAgo(n.timestamp) : n.timestamp}</p>
+            </div>
+            <button
+              onClick={() => handleDismiss(n.id)}
+              className="p-1 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-all shrink-0"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       ))}
@@ -1399,67 +1860,221 @@ function PartnerSponsorshipPanel() {
   );
 }
 
+/* ─── VEX ROLES ADMIN ─── */
+
+const ROLE_OPTIONS = [
+  { value: 'Driver', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'Programmer', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { value: 'Builder', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { value: 'Captain', color: 'bg-brand-red/10 text-brand-red border-brand-red/20' },
+  { value: 'Notebook Lead', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { value: 'Scout', color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
+  { value: 'Pit Manager', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+];
+
 function VexRolesAdmin() {
-  const roles = [
+  const [teams, setTeams] = useState([
     { team: 'VEX-001', members: [{ name: 'Abebe K.', role: 'Driver' }, { name: 'Selam B.', role: 'Programmer' }, { name: 'Kidus G.', role: 'Builder' }] },
     { team: 'VEX-002', members: [{ name: 'Hana M.', role: 'Driver' }, { name: 'Yonas D.', role: 'Programmer' }] },
-  ];
-  return (
-    <div className="space-y-6">
-      {roles.map(r => (
-        <div key={r.team} className="bg-white border border-slate-200 rounded-xl p-5">
-          <h3 className="font-bold text-base text-slate-900 mb-4 flex items-center gap-2"><Cpu className="w-4 h-4 text-brand-red" /> {r.team}</h3>
-          <div className="space-y-3">{r.members.map(m => <div key={m.name} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600">{m.name.charAt(0)}</div><span className="text-sm font-medium text-slate-900">{m.name}</span></div><span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">{m.role}</span></div>)}</div>
-          <div className="flex gap-2 mt-4">{['Driver', 'Programmer', 'Builder'].map(rr => <button key={rr} className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-dashed border-slate-300 text-slate-500 hover:border-brand-blue hover:text-brand-blue"><Plus className="w-3 h-3 inline mr-1" />{rr}</button>)}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
+  ]);
+  const [showAdd, setShowAdd] = useState<{ team: string } | null>(null);
+  const [newMember, setNewMember] = useState({ name: '', role: 'Driver' });
+  const [editingRole, setEditingRole] = useState<{ team: string; member: string } | null>(null);
 
-function MaintenancePanel() {
-  const metrics = [
-    { label: 'Server Uptime', value: '99.97%', status: 'healthy' },
-    { label: 'Database Size', value: '2.4 GB', status: 'healthy' },
-    { label: 'API Response', value: '124ms avg', status: 'healthy' },
-    { label: 'Error Rate', value: '0.02%', status: 'healthy' },
-    { label: 'Queue Depth', value: '14 tasks', status: 'warning' },
-    { label: 'Cache Hit Rate', value: '87%', status: 'healthy' },
-  ];
+  const handleAdd = () => {
+    if (!showAdd || !newMember.name.trim()) return;
+    setTeams(prev => prev.map(t => t.team === showAdd.team ? { ...t, members: [...t.members, { name: newMember.name.trim(), role: newMember.role }] } : t));
+    setNewMember({ name: '', role: 'Driver' });
+    setShowAdd(null);
+  };
+
+  const handleRoleChange = (teamName: string, memberName: string, newRole: string) => {
+    setTeams(prev => prev.map(t => t.team === teamName ? { ...t, members: t.members.map(m => m.name === memberName ? { ...m, role: newRole } : m) } : t));
+    setEditingRole(null);
+  };
+
+  const handleDelete = (teamName: string, memberName: string) => {
+    setTeams(prev => prev.map(t => t.team === teamName ? { ...t, members: t.members.filter(m => m.name !== memberName) } : t));
+  };
+
+  const roleBadge = (role: string) => ROLE_OPTIONS.find(r => r.value === role)?.color || 'bg-slate-100 text-slate-600 border-slate-200';
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {metrics.map(m => <div key={m.label} className={`bg-white border rounded-xl p-4 ${m.status === 'warning' ? 'border-amber-200' : 'border-slate-200'}`}><p className="text-xs text-slate-500">{m.label}</p><p className="text-lg font-bold text-slate-900 mt-1">{m.value}</p><span className={`inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${m.status === 'healthy' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{m.status}</span></div>)}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-black text-lg text-slate-900">VEX Team Roles</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Manage team members and their roles across all VEX teams.</p>
+        </div>
+        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">Demo Mode</span>
       </div>
-      <div className="flex gap-3">
-        <button className="flex items-center gap-1.5 px-4 py-2 bg-brand-blue text-white rounded-lg text-sm font-semibold hover:bg-brand-blue-dark"><RefreshCw className="w-4 h-4" /> Run Backup</button>
-        <button className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"><Download className="w-4 h-4" /> Export Logs</button>
-        <button className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-red-600 hover:bg-red-50"><Trash2 className="w-4 h-4" /> Clear Cache</button>
+
+      <div className="grid gap-5">
+        {teams.map(t => (
+          <div key={t.team} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="bg-gradient-to-r from-brand-red/5 to-white px-5 py-3 flex items-center justify-between border-b border-slate-100">
+              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-brand-red" /> {t.team}
+                <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{t.members.length} members</span>
+              </h3>
+              <button onClick={() => setShowAdd({ team: t.team })}
+                className="flex items-center gap-1 text-xs font-bold text-brand-red bg-brand-red/5 border border-brand-red/20 px-2.5 py-1.5 rounded-lg hover:bg-brand-red/10 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Add Member
+              </button>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {t.members.length === 0 ? (
+                <div className="px-5 py-6 text-center">
+                  <Users className="w-6 h-6 text-slate-300 mx-auto mb-1" />
+                  <p className="text-xs text-slate-400">No members in this team yet.</p>
+                </div>
+              ) : t.members.map(m => (
+                <div key={m.name} className="flex items-center justify-between px-5 py-2.5 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-red to-brand-red-dark flex items-center justify-center text-white font-black text-xs">
+                      {m.name.charAt(0)}
+                    </div>
+                    <span className="text-sm font-medium text-slate-900">{m.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {editingRole?.team === t.team && editingRole?.member === m.name ? (
+                      <select value={m.role} onChange={e => handleRoleChange(t.team, m.name, e.target.value)}
+                        className="text-[10px] font-bold px-1.5 py-1 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-brand-red"
+                        autoFocus
+                        onBlur={() => setEditingRole(null)}
+                      >
+                        {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.value}</option>)}
+                      </select>
+                    ) : (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleBadge(m.role)}`}>{m.role}</span>
+                    )}
+                    <button onClick={() => setEditingRole({ team: t.team, member: m.name })} className="p-1 rounded text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-colors">
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => handleDelete(t.team, m.name)} className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-1.5">
+          <Shield className="w-3.5 h-3.5 text-brand-red" /> Available Roles
+        </h3>
+        <div className="flex flex-wrap gap-1.5">
+          {ROLE_OPTIONS.map(r => (
+            <span key={r.value} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${r.color}`}>{r.value}</span>
+          ))}
+        </div>
+      </div>
+      <AnimatePresence>
+        {showAdd && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => { setShowAdd(null); setNewMember({ name: '', role: 'Driver' }); }}
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+            />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm">
+                <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                  <h3 className="font-bold text-base text-slate-900">Add Team Member</h3>
+                  <button onClick={() => { setShowAdd(null); setNewMember({ name: '', role: 'Driver' }); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-600 mb-1 block">Member Name</label>
+                    <input value={newMember.name} onChange={e => setNewMember(p => ({ ...p, name: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-brand-red"
+                      placeholder="e.g. Kidus G."
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-600 mb-1 block">Role</label>
+                    <select value={newMember.role} onChange={e => setNewMember(p => ({ ...p, role: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-brand-red"
+                    >
+                      {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.value}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-100">
+                  <button onClick={() => { setShowAdd(null); setNewMember({ name: '', role: 'Driver' }); }} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                  <button onClick={handleAdd} disabled={!newMember.name.trim()}
+                    className="bg-brand-red text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+                    Add Member
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 function AdminRegistrations() {
-  const registrations = [
-    { id: 'R-001', name: 'Kidus G.', program: 'Advanced Robotics', date: 'Jun 20, 2026', status: 'confirmed', amount: '12,500 ETB' },
-    { id: 'R-002', name: 'Hana M.', program: 'VEX Competition Prep', date: 'Jun 19, 2026', status: 'pending', amount: '8,000 ETB' },
-    { id: 'R-003', name: 'Yonas D.', program: 'Robotics 101', date: 'Jun 18, 2026', status: 'confirmed', amount: '5,000 ETB' },
-    { id: 'R-004', name: 'Tigist K.', program: 'Advanced Robotics', date: 'Jun 17, 2026', status: 'cancelled', amount: '12,500 ETB' },
-  ];
+  const [registrations, setRegistrations] = useState<Enrollment[]>([]);
+  const [payments, setPayments] = useState<EnrollmentPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([fetchEnrollmentsApi(), fetchPaymentsApi()])
+      .then(([enrollmentData, paymentData]) => {
+        setRegistrations(enrollmentData);
+        setPayments(paymentData);
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Could not load enrollments.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const paymentByEnrollment = useMemo(() => {
+    return payments.reduce<Record<string, EnrollmentPayment>>((map, payment) => {
+      map[payment.enrollment] = payment;
+      return map;
+    }, {});
+  }, [payments]);
+
+  const statusClass = (status: string) => {
+    if (status === 'ACTIVE' || status === 'COMPLETED') return 'bg-emerald-50 text-emerald-600';
+    if (status === 'PENDING_PAYMENT') return 'bg-amber-50 text-amber-600';
+    return 'bg-red-50 text-red-600';
+  };
+
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle className="w-4 h-4" /> {error}
+        </div>
+      )}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left"><tr><th className="px-4 py-3 font-semibold text-slate-600">Student</th><th className="px-4 py-3 font-semibold text-slate-600">Program</th><th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Date</th><th className="px-4 py-3 font-semibold text-slate-600">Status</th><th className="px-4 py-3 font-semibold text-slate-600 hidden lg:table-cell">Amount</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
           <tbody className="divide-y divide-slate-100">
+            {loading && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
+            )}
+            {!loading && registrations.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">No enrollments found.</td></tr>
+            )}
             {registrations.map(r => (
               <tr key={r.id} className="hover:bg-slate-50/50">
-                <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
-                <td className="px-4 py-3 text-slate-600">{r.program}</td>
-                <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{r.date}</td>
-                <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-lg ${r.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : r.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>{r.status}</span></td>
-                <td className="px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">{r.amount}</td>
+                <td className="px-4 py-3 font-medium text-slate-900">{r.student_name || r.student_email || 'Student'}</td>
+                <td className="px-4 py-3 text-slate-600">{r.class_name || r.sub_program_name || 'Class'}</td>
+                <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{r.enrolled_at?.slice(0, 10) || '—'}</td>
+                <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusClass(r.status)}`}>{r.status.replace('_', ' ')}</span></td>
+                <td className="px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} ETB` : '—'}</td>
                 <td className="px-4 py-3"><div className="flex gap-1"><button className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5"><Eye className="w-3.5 h-3.5" /></button><button className="p-1.5 rounded-lg text-slate-400 hover:text-brand-red hover:bg-brand-red/5"><Edit3 className="w-3.5 h-3.5" /></button></div></td>
               </tr>
             ))}
@@ -1470,303 +2085,22 @@ function AdminRegistrations() {
   );
 }
 
-function SchoolManagementSection() {
-  const [branches, setBranches] = useState<BranchResponse[]>([]);
-  const [users, setUsers] = useState<AdminUserResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingBranch, setEditingBranch] = useState<BranchResponse | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '', code: '', email: '', phone_number: '', address: '', city: '', state_region: '', country: 'Ethiopia',
-  });
-  const [assignManager, setAssignManager] = useState<{ branchId: string; userId: string } | null>(null);
-
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [branchArr, userRes] = await Promise.all([
-        branchesApi.list().catch(() => null),
-        fetchUsersApi().catch(() => null),
-      ]);
-      if (branchArr) setBranches(branchArr);
-      if (userRes) setUsers(userRes.results);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load schools');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const handleCreate = async () => {
-    try {
-      await branchesApi.create(formData);
-      setShowAddModal(false);
-      setFormData({ name: '', code: '', email: '', phone_number: '', address: '', city: '', state_region: '', country: 'Ethiopia' });
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create school');
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (!editingBranch) return;
-    setActionLoading(editingBranch.id);
-    try {
-      await branchesApi.update(editingBranch.id, {
-        name: editingBranch.name,
-        code: editingBranch.code,
-        email: editingBranch.email,
-        phone_number: editingBranch.phone_number,
-        address: editingBranch.address,
-        city: editingBranch.city,
-        state_region: editingBranch.state_region,
-        country: editingBranch.country,
-      });
-      setEditingBranch(null);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update school');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleToggleStatus = async (b: BranchResponse) => {
-    setActionLoading(b.id);
-    try {
-      await branchesApi.toggleActive(b.id, b.status === 'Active');
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update status');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleArchive = async (b: BranchResponse) => {
-    setActionLoading(b.id);
-    try {
-      await branchesApi.archive(b.id);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to archive school');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleAssignManager = async () => {
-    if (!assignManager) return;
-    setActionLoading(assignManager.branchId);
-    try {
-      await branchesApi.assignManager(assignManager.branchId, assignManager.userId);
-      setAssignManager(null);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to assign manager');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const filtered = branches.filter(b =>
-    b.name.toLowerCase().includes(search.toLowerCase()) ||
-    b.code.toLowerCase().includes(search.toLowerCase()) ||
-    b.city?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const statusColor = (s: string) => {
-    const map: Record<string, string> = { Active: 'bg-emerald-50 text-emerald-600', Inactive: 'bg-amber-50 text-amber-600', Archived: 'bg-slate-100 text-slate-500' };
-    return map[s] || 'bg-slate-100 text-slate-600';
-  };
-
-  const managerOptions = users.filter(u =>
-    u.assignments?.some(a => a.role === 'branch_manager' && a.is_active !== false)
-  );
-
-  return (
-    <div className="space-y-4">
-      {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-4 h-4" /></button>
-        </div>
-      )}
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schools..." className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" />
-        </div>
-        <div className="flex gap-2 items-center">
-          <span className="text-xs text-slate-400">{branches.length} schools</span>
-          <button onClick={load} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Refresh"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
-          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark"><Plus className="w-3.5 h-3.5" /> Add School</button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left">
-            <tr>
-              <th className="px-4 py-3 font-semibold text-slate-600">School</th>
-              <th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Code</th>
-              <th className="px-4 py-3 font-semibold text-slate-600 hidden lg:table-cell">Location</th>
-              <th className="px-4 py-3 font-semibold text-slate-600 hidden xl:table-cell">Contact</th>
-              <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
-              <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />Loading schools...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No schools found</td></tr>
-            ) : filtered.map(b => (
-              <tr key={b.id} className="hover:bg-slate-50/50">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center text-sm shrink-0"><Building className="w-4 h-4 text-brand-blue" /></div>
-                    <div className="min-w-0"><div className="font-medium text-slate-900">{b.name}</div><div className="text-xs text-slate-400">{b.code}</div></div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-slate-600 font-mono text-xs hidden md:table-cell">{b.code}</td>
-                <td className="px-4 py-3 text-slate-500 hidden lg:table-cell">{b.city || '—'}{b.state_region ? `, ${b.state_region}` : ''}</td>
-                <td className="px-4 py-3 text-slate-500 hidden xl:table-cell">
-                  <div className="text-xs">{b.email && <div>{b.email}</div>}{b.phone_number && <div>{b.phone_number}</div>}</div>
-                </td>
-                <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusColor(b.status)}`}>{b.status}</span></td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    <button onClick={() => setEditingBranch(b)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50"><Edit3 className="w-3.5 h-3.5" /></button>
-                    {managerOptions.length > 0 && (
-                      <button onClick={() => setAssignManager({ branchId: b.id, userId: '' })}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5" title="Assign manager">
-                        <UserCog className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {b.status !== 'Archived' && (
-                      <>
-                        <button onClick={() => handleToggleStatus(b)} disabled={actionLoading === b.id}
-                          className={`p-1.5 rounded-lg ${actionLoading === b.id ? 'text-slate-300' : b.status === 'Active' ? 'text-amber-400 hover:text-amber-600 hover:bg-amber-50' : 'text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
-                          {actionLoading === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : b.status === 'Active' ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                        </button>
-                        <button onClick={() => handleArchive(b)} disabled={actionLoading === b.id}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
-                          {actionLoading === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Add School Modal */}
-      {showAddModal && (
-        <Modal title="Add School" onClose={() => setShowAddModal(false)}>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Name</label><input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Code</label><input value={formData.code} onChange={e => setFormData(p => ({ ...p, code: e.target.value.toUpperCase() }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. AAMIN" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={formData.phone_number} onChange={e => setFormData(p => ({ ...p, phone_number: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            </div>
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Address</label><input value={formData.address} onChange={e => setFormData(p => ({ ...p, address: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">City</label><input value={formData.city} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">State</label><input value={formData.state_region} onChange={e => setFormData(p => ({ ...p, state_region: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Country</label><input value={formData.country} onChange={e => setFormData(p => ({ ...p, country: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowAddModal(false)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleCreate} disabled={!formData.name || !formData.code} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark disabled:opacity-50">Create</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Edit School Modal */}
-      {editingBranch && (
-        <Modal title="Edit School" onClose={() => setEditingBranch(null)}>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Name</label><input value={editingBranch.name} onChange={e => setEditingBranch(p => p ? { ...p, name: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Code</label><input value={editingBranch.code} onChange={e => setEditingBranch(p => p ? { ...p, code: e.target.value.toUpperCase() } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Email</label><input value={editingBranch.email || ''} onChange={e => setEditingBranch(p => p ? { ...p, email: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Phone</label><input value={editingBranch.phone_number || ''} onChange={e => setEditingBranch(p => p ? { ...p, phone_number: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            </div>
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Address</label><input value={editingBranch.address || ''} onChange={e => setEditingBranch(p => p ? { ...p, address: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">City</label><input value={editingBranch.city || ''} onChange={e => setEditingBranch(p => p ? { ...p, city: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">State</label><input value={editingBranch.state_region || ''} onChange={e => setEditingBranch(p => p ? { ...p, state_region: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-              <div><label className="text-xs font-medium text-slate-500 mb-1 block">Country</label><input value={editingBranch.country} onChange={e => setEditingBranch(p => p ? { ...p, country: e.target.value } : p)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" /></div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setEditingBranch(null)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleUpdate} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark">Save</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Assign Manager Modal */}
-      {assignManager && (
-        <Modal title="Assign Manager" onClose={() => setAssignManager(null)}>
-          <div className="space-y-3">
-            <div><label className="text-xs font-medium text-slate-500 mb-1 block">Manager</label>
-              <select value={assignManager.userId} onChange={e => setAssignManager(p => p ? { ...p, userId: e.target.value } : p)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30 bg-white">
-                <option value="">Select manager</option>
-                {managerOptions.map(u => (
-                  <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setAssignManager(null)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleAssignManager} disabled={!assignManager.userId} className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark disabled:opacity-50">Assign</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
 /* ─── MAIN ─── */
 export default function AdminDashboard({ currentUser, onLogout }: Props) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
 
   const renderPage = () => {
     switch (activeSection) {
-      case 'overview': return <Overview />;
-      case 'users': return <UserManagement userRole={currentUser.role} />;
+      case 'overview': return <AdminOverviewDashboard />;
+      case 'users': return <UserManagementPanel title="User Management" />;
       case 'roles': return <RolesPermissions />;
-      case 'partners': return <PartnerSponsorshipPanel />;
-      case 'vex-roles': return <VexRolesAdmin />;
-      case 'schools': return <SchoolManagementSection />;
-      case 'moderation': return <ContentModeration />;
-      case 'audit': return <AuditLogs />;
-      case 'notifications': return <NotificationsPanel />;
-      case 'settings': return <SystemSettings />;
-      case 'maintenance': return <MaintenancePanel />;
+      case 'academics': return <AcademicCatalogManager role="Admin" />;
+      case 'branches': return <BranchSectionShell />;
+      case 'audit': return <SystemLogs />;
+      case 'account': return <AdminAccount currentUser={currentUser} />;
       case 'registrations': return <AdminRegistrations />;
-      default: return <Overview />;
+      case 'cms': return <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-200 shadow-sm"><CmsDashboard /></div>;
+      default: return <UserManagementPanel title="User Management" />;
     }
   };
 

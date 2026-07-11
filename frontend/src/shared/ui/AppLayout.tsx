@@ -76,7 +76,7 @@ export function AppLayout({ sidebar, topNavbar, onLogout, children }: AppLayoutP
   }, []);
 
   return (
-    <div className="app-layout">
+    <div className="app-layout bg-brand-surface">
       <Sidebar
         items={sidebar.items}
         activeSection={sidebar.activeSection}
@@ -97,9 +97,9 @@ export function AppLayout({ sidebar, topNavbar, onLogout, children }: AppLayoutP
         <TopNavbar
           title={topNavbar.title}
           subtitle={topNavbar.subtitle}
-          onSearch={topNavbar.onSearch}
-          searchValue={topNavbar.searchValue}
-          actions={topNavbar.actions}
+          userName={sidebar.userName}
+          userRole={sidebar.userRole}
+          onLogout={onLogout}
         />
 
         <main className="main-area">

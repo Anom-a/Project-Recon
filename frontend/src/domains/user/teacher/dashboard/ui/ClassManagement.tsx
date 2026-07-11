@@ -1,44 +1,118 @@
 import React, { useState } from 'react';
-import { Users, Search, X, CheckCircle2, Clock, UserCheck, AlertCircle } from 'lucide-react';
+import { Users, Search, X, CheckCircle2, Clock, UserCheck, AlertCircle, Calendar, Loader2, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
 import { motion } from 'motion/react';
-
-interface Student {
-  id: number; name: string; course: string; status: string; attended: boolean;
-}
+import { createAttendanceSessionApi, recordBulkAttendanceApi, fetchAttendanceSessionsApi } from '@/src/domains/learning/academics/api/academicApi';
 
 interface Props {
-  students: Student[];
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
-  filteredStudents: Student[];
-  onToggleAttendance: (id: number) => void;
-  totalCount: number;
-  attendedCount: number;
+  students: any[];
+  enrollments: any[];
 }
 
-export default function ClassManagement({
-  students, searchQuery, onSearchChange, filteredStudents,
-  onToggleAttendance, totalCount, attendedCount,
-}: Props) {
-  const [selectedDate] = useState(new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+export default function ClassManagement({ students, enrollments }: Props) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [attended, setAttended] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyDate, setHistoryDate] = useState(new Date().toISOString().slice(0, 10));
+
+  const selectedDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const toggleAttendance = (id: string) => {
+    setAttended(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    setSaved(false);
+  };
+
+  const markAllPresent = () => {
+    const enrolledIds = students.filter(s => enrollments.some(e => e.student === s.id)).map(s => s.id);
+    setAttended(new Set(enrolledIds));
+    setSaved(false);
+  };
+
+  const clearAttendance = () => {
+    setAttended(new Set());
+    setSaved(false);
+  };
+
+  const recordAttendance = async () => {
+    const enrolledStudents = students.filter(s => enrollments.some(e => e.student === s.id));
+    if (enrolledStudents.length === 0) return;
+    setSaving(true);
+    try {
+      const session = await createAttendanceSessionApi({
+        enrolled_class: enrollments[0]?.enrolled_class || '',
+        session_date: todayStr,
+        topic: 'Daily Attendance',
+      });
+      const records = Array.from(attended).map(studentId => {
+        const enrollment = enrollments.find(e => e.student === studentId);
+        return { enrollment: enrollment?.id || '', status: 'PRESENT' };
+      });
+      if (records.length > 0) {
+        await recordBulkAttendanceApi(session.id, records);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      console.error('Failed to record attendance', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const sessions = await fetchAttendanceSessionsApi(enrollments[0]?.enrolled_class || '');
+      const arr = Array.isArray(sessions) ? sessions : [];
+      setHistoryData(arr.filter(s => s.session_date?.startsWith(historyDate.slice(0, 7))));
+    } catch {
+      setHistoryData([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const viewHistory = async () => {
+    setShowHistory(true);
+    await loadHistory();
+  };
+
+  const displayList = students.map(s => ({
+    id: s.id,
+    name: `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email,
+    course: enrollments.find(e => e.student === s.id)?.class_name || '—',
+    status: s.is_active ? 'Active' : 'Inactive',
+    attended: attended.has(s.id),
+  }));
+
+  const filtered = searchQuery.trim()
+    ? displayList.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : displayList;
+
+  const totalCount = displayList.length;
+  const attendedCount = attended.size;
   const absentCount = totalCount - attendedCount;
   const attendancePct = totalCount > 0 ? Math.round((attendedCount / totalCount) * 100) : 0;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Summary Stats Row */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Students', value: totalCount, icon: Users, color: 'text-[#2563EB]', bg: 'bg-blue-50', border: 'border-blue-200' },
+          { label: 'Total Students', value: totalCount, icon: Users, color: 'text-brand-blue', bg: 'bg-blue-50', border: 'border-blue-200' },
           { label: 'Present Today', value: attendedCount, icon: UserCheck, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200' },
           { label: 'Absent', value: absentCount, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
-          { label: 'Attendance Rate', value: `${attendancePct}%`, icon: CheckCircle2, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
+          { label: 'Attendance Rate', value: `${attendancePct}%`, icon: TrendingUp, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
         ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
             className={`bg-white rounded-2xl p-5 shadow-sm border ${stat.border} flex items-center gap-3`}
           >
             <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center shrink-0`}>
@@ -52,10 +126,14 @@ export default function ClassManagement({
         ))}
       </div>
 
-      {/* Attendance Table Card */}
-      <div className="bg-white rounded-2xl border border-[#e1e2ed]/60 shadow-sm overflow-hidden">
-        {/* Card Header */}
-        <div className="px-6 py-5 border-b border-[#e1e2ed]/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {saved && (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-xs text-emerald-700">
+          <CheckCircle2 className="w-4 h-4" /> Attendance recorded successfully
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-brand-border-light/60 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-brand-border-light/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h3 className="font-display font-bold text-lg text-slate-900">Attendance Roster</h3>
             <div className="flex items-center gap-1.5 mt-1">
@@ -63,52 +141,67 @@ export default function ClassManagement({
               <span className="font-sans text-xs text-slate-500">{selectedDate}</span>
             </div>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text" placeholder="Search students..." value={searchQuery}
-              onChange={e => onSearchChange(e.target.value)}
-              className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-[#e1e2ed] rounded-xl text-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 transition-all"
-            />
-            {searchQuery && (
-              <button onClick={() => onSearchChange('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
-                <X className="w-4 h-4" />
-              </button>
-            )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Bulk Actions */}
+            <button onClick={markAllPresent} disabled={totalCount === 0}
+              className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg hover:bg-emerald-200 disabled:opacity-50 transition-colors">
+              All Present
+            </button>
+            <button onClick={clearAttendance} disabled={attendedCount === 0}
+              className="text-[10px] font-bold bg-slate-100 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors">
+              Clear
+            </button>
+            <button onClick={viewHistory}
+              className="text-[10px] font-bold bg-brand-blue/10 text-brand-blue px-3 py-2 rounded-lg hover:bg-brand-blue/20 transition-colors flex items-center gap-1">
+              <Calendar className="w-3 h-3" /> History
+            </button>
+            <div className="relative w-full sm:w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input type="text" placeholder="Search students..." value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-brand-border-light rounded-xl text-sm focus:outline-none focus:border-brand-blue-bright focus:ring-2 focus:ring-brand-blue-bright/20 transition-all"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <button onClick={recordAttendance} disabled={saving || attendedCount === 0}
+              className="flex items-center gap-1.5 text-xs font-bold bg-emerald-500 text-white px-3 py-2 rounded-xl hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Calendar className="w-3.5 h-3.5" />}
+              {saving ? 'Saving...' : 'Record'}
+            </button>
           </div>
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-slate-50/80 border-b border-[#e1e2ed]/40">
+              <tr className="bg-slate-50/80 border-b border-brand-border-light/40">
                 <th className="px-6 py-3 text-left font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider w-10">#</th>
                 <th className="px-6 py-3 text-left font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">Student Name</th>
-                <th className="px-6 py-3 text-left font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">Track</th>
-                <th className="px-6 py-3 text-center font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">Standing</th>
+                <th className="px-6 py-3 text-left font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">Class</th>
                 <th className="px-6 py-3 text-center font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-center font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">Attendance</th>
                 <th className="px-6 py-3 text-right font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#e1e2ed]/30">
-              {filteredStudents.length === 0 && (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-400">No students match your search.</td></tr>
+            <tbody className="divide-y divide-brand-border-light/30">
+              {filtered.length === 0 && (
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-400">No students found.</td></tr>
               )}
-              {filteredStudents.map((st, idx) => (
-                <motion.tr
-                  key={st.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: idx * 0.04 }}
+              {filtered.map((st, idx) => (
+                <motion.tr key={st.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.04 }}
                   className={`transition-colors ${st.attended ? 'bg-emerald-50/50' : 'hover:bg-slate-50/50'}`}
                 >
                   <td className="px-6 py-3.5 font-mono text-xs text-slate-400">{idx + 1}</td>
                   <td className="px-6 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                        st.attended ? 'bg-emerald-500 text-slate-900' : 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600'
+                        st.attended ? 'bg-emerald-500 text-white' : 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600'
                       }`}>
                         {st.attended ? <CheckCircle2 className="w-4 h-4" /> : st.name.charAt(0)}
                       </div>
@@ -116,15 +209,13 @@ export default function ClassManagement({
                     </div>
                   </td>
                   <td className="px-6 py-3.5">
-                    <span className="font-mono text-xs font-semibold bg-blue-50 text-[#2563EB] px-2.5 py-1 rounded-md border border-blue-100">
-                      {st.course}
-                    </span>
+                    <span className="font-mono text-xs font-semibold bg-brand-blue/10 text-brand-blue px-2.5 py-1 rounded-md border border-blue-100">{st.course}</span>
                   </td>
                   <td className="px-6 py-3.5 text-center">
                     <span className={`inline-flex items-center gap-1 font-mono text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                      st.status === 'Good' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-amber-50 text-amber-600 border border-amber-200'
+                      st.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-amber-50 text-amber-600 border border-amber-200'
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${st.status === 'Good' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${st.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                       {st.status}
                     </span>
                   </td>
@@ -138,12 +229,11 @@ export default function ClassManagement({
                     )}
                   </td>
                   <td className="px-6 py-3.5 text-right">
-                    <button
-                      onClick={() => onToggleAttendance(st.id)}
+                    <button onClick={() => toggleAttendance(st.id)}
                       className={`text-[11px] font-bold px-4 py-2 rounded-lg transition-all active:scale-95 ${
                         st.attended
                           ? 'bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-200'
-                          : 'bg-[#2563EB] text-slate-900 hover:bg-blue-700 shadow-sm'
+                          : 'bg-brand-red text-white hover:bg-brand-red-dark shadow-sm'
                       }`}
                     >
                       {st.attended ? 'Undo' : 'Mark Present'}
@@ -155,24 +245,74 @@ export default function ClassManagement({
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50/50 border-t border-[#e1e2ed]/40 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-50/50 border-t border-brand-border-light/40 flex items-center justify-between">
           <span className="font-sans text-xs text-slate-500">
-            Showing <strong className="text-slate-800">{filteredStudents.length}</strong> of {totalCount} students
+            Showing <strong className="text-slate-800">{filtered.length}</strong> of {totalCount} students
           </span>
           <div className="flex items-center gap-3">
             <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${attendancePct}%` }}
-                transition={{ duration: 0.8 }}
-                className="h-full bg-emerald-500 rounded-full"
-              />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${attendancePct}%` }} transition={{ duration: 0.8 }}
+                className="h-full bg-emerald-500 rounded-full" />
             </div>
             <span className="font-mono text-xs font-bold text-emerald-600">{attendedCount}/{totalCount}</span>
           </div>
         </div>
       </div>
+
+      {/* Attendance History Modal */}
+      {showHistory && (
+        <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={() => setShowHistory(false)} className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" />
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-brand-blue" /> Attendance History
+                </h3>
+                <button onClick={() => setShowHistory(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="p-4 border-b border-slate-100">
+                <input type="month" value={historyDate} onChange={e => { setHistoryDate(e.target.value); }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue-bright" />
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {historyLoading ? (
+                  <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>
+                ) : historyData.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">
+                    <Calendar className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-xs">No attendance records for this month</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {historyData.map((s: any, i: number) => (
+                      <div key={s.id || i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{s.topic || 'Attendance'}</p>
+                          <p className="text-[10px] text-slate-500">{s.session_date?.slice(0, 10) || '—'}</p>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          {(s.records_count || s.students_present || 0)} present
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="p-3 border-t border-slate-100 flex justify-end">
+                <button onClick={loadHistory} disabled={historyLoading}
+                  className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 flex items-center gap-1">
+                  {historyLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
     </div>
   );
 }

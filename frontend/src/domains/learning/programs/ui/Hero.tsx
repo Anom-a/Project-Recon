@@ -4,7 +4,7 @@ import { ArrowRight, Globe, Award, ShoppingBag, Sparkles } from 'lucide-react';
 import Robotics3DShowcase from '../../../store/products/ui/Robotics3DShowcase';
 import BrandLogo from '@/src/shared/ui/BrandLogo';
 
-import untitledLogo from '@/src/assets/Untitled.png';
+import untitledLogo from '@/assets/Untitled.png';
 import sliderImg1 from '@/assets/slider/faj.jpg';
 import sliderImg2 from '@/assets/slider/photo_2026-06-15_14-40-10.jpg';
 import sliderImg3 from '@/assets/slider/photo_2026-06-15_18-51-59.jpg';
@@ -13,6 +13,8 @@ import sliderImg5 from '@/assets/slider/photo_2026-06-15_18-52-07.jpg';
 import sliderImg6 from '@/assets/slider/photo_2026-06-15_18-52-11.jpg';
 import sliderImg7 from '@/assets/slider/photo_2026-06-15_18-52-21.jpg';
 import sliderImg8 from '@/assets/slider/photo_2026-06-15_18-52-25.jpg';
+
+import { cmsPublicApi, type HeroBannerResponse } from '../../../cms/public/api/cmsPublicApi';
 
 const SLIDER_IMAGES = [
   sliderImg1, sliderImg2, sliderImg3, sliderImg4,
@@ -36,15 +38,28 @@ interface HeroProps {
 export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore }: HeroProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mounted, setMounted] = useState(false);
-
+  const [banners, setBanners] = useState<HeroBannerResponse[]>([]);
+  const [activeImages, setActiveImages] = useState<string[]>(SLIDER_IMAGES);
+  
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
+    const abort = new AbortController();
+    cmsPublicApi.getHeroBanners(abort.signal).then((data) => {
+      if (data && data.length > 0) {
+        setBanners(data);
+        setActiveImages(data.map((b, i) => b.image || SLIDER_IMAGES[i % SLIDER_IMAGES.length]));
+      }
+    }).catch(err => { if (err.name !== 'AbortError') console.error(err); });
+    return () => abort.abort();
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % SLIDER_IMAGES.length);
+      setCurrentSlide((prev) => (prev + 1) % activeImages.length);
     }, SLIDE_DURATION);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeImages.length]);
 
   return (
     <section
@@ -56,8 +71,8 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
         <AnimatePresence mode="popLayout">
           <motion.img
             key={currentSlide}
-            src={SLIDER_IMAGES[currentSlide]}
-            alt="Ethio Robotics community and competition moments"
+            src={activeImages[currentSlide]}
+            alt={banners[currentSlide]?.title || "Ethio Robotics community and competition moments"}
             className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition: 'center top' }}
             initial={{ opacity: 0, scale: 1.08 }}
@@ -113,7 +128,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
 
       {/* Slide indicator dots */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
-        {SLIDER_IMAGES.map((_, idx) => (
+        {activeImages.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrentSlide(idx)}
@@ -145,7 +160,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
             {/* Badge */}
             <motion.div
               {...stagger(0.15)}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 border border-slate-200 text-white rounded-full"
+              className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-full"
               id="hero-tag"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -159,20 +174,29 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
               style={{ fontSize: 'clamp(32px, 6vw, 64px)', lineHeight: '1.1' }}
               id="hero-title"
             >
-              ETHIO ROBOTICS <br />
-              <span className="text-[#ed1c24] drop-shadow-[0_2px_14px_rgba(237,28,36,0.45)]">builds future engineers</span> <br />
-              through real robots.
+              {banners[currentSlide]?.title ? (
+                <>{banners[currentSlide].title}</>
+              ) : (
+                <>ETHIO ROBOTICS <br />
+                <span className="text-[#ed1c24] drop-shadow-[0_2px_14px_rgba(237,28,36,0.45)]">builds future engineers</span> <br />
+                through real robots.</>
+              )}
             </motion.h1>
 
-            {/* Quote */}
-            <motion.p
-              {...stagger(0.35)}
-              className="font-display font-semibold text-white/90 italic tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
-              style={{ fontSize: 'clamp(14px, 2vw, 20px)' }}
-              id="hero-quote"
-            >
-              "Encouraging creativity through Competition."
-            </motion.p>
+            {/* Subtitle / Quote */}
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={banners[currentSlide]?.subtitle || 'default-subtitle'}
+                {...stagger(0.35)}
+                className="font-display font-semibold text-white/90 italic tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+                style={{ fontSize: 'clamp(14px, 2vw, 20px)' }}
+                id="hero-quote"
+              >
+                {banners[currentSlide]?.subtitle 
+                  ? `"${banners[currentSlide].subtitle}"` 
+                  : '"Encouraging creativity through Competition."'}
+              </motion.p>
+            </AnimatePresence>
 
             {/* Description */}
             <motion.p
@@ -244,16 +268,29 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
               className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-4"
               id="hero-actions"
             >
-              <button
-                onClick={onDiscoverPrograms}
-                className="group relative inline-flex items-center justify-center font-sans font-semibold text-sm bg-gradient-to-r from-[#ed1c24] to-[#b5121b] text-white px-8 py-4 rounded-xl shadow-[0_4px_15px_-2px_rgba(237,28,36,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(237,28,36,0.45)] hover:-translate-y-1 active:scale-[0.97] transition-all duration-300 overflow-hidden"
-                id="btn-discover-programs"
-              >
-                <span className="relative z-[1] flex items-center gap-2">
-                  Explore Competitions
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </button>
+              {banners[currentSlide]?.button_text && banners[currentSlide]?.button_url ? (
+                <a
+                  href={banners[currentSlide].button_url!}
+                  target="_blank" rel="noopener noreferrer"
+                  className="group relative inline-flex items-center justify-center font-sans font-semibold text-sm bg-gradient-to-r from-[#ed1c24] to-[#b5121b] text-white px-8 py-4 rounded-xl shadow-[0_4px_15px_-2px_rgba(237,28,36,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(237,28,36,0.45)] hover:-translate-y-1 active:scale-[0.97] transition-all duration-300 overflow-hidden"
+                >
+                  <span className="relative z-[1] flex items-center gap-2">
+                    {banners[currentSlide].button_text}
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </a>
+              ) : (
+                <button
+                  onClick={onDiscoverPrograms}
+                  className="group relative inline-flex items-center justify-center font-sans font-semibold text-sm bg-gradient-to-r from-[#ed1c24] to-[#b5121b] text-white px-8 py-4 rounded-xl shadow-[0_4px_15px_-2px_rgba(237,28,36,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(237,28,36,0.45)] hover:-translate-y-1 active:scale-[0.97] transition-all duration-300 overflow-hidden"
+                  id="btn-discover-programs"
+                >
+                  <span className="relative z-[1] flex items-center gap-2">
+                    Explore Programs
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </button>
+              )}
 
               <button
                 onClick={onJoinCommunity}

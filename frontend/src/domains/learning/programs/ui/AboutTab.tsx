@@ -24,6 +24,8 @@ import imgUsa from '@/assets/0M6A6519.00_25_12_08.Still037.jpg';
 import imgCanada from '@/assets/photo_2026-06-15_14-39-23.jpg';
 import imgChina from '@/assets/photo_2026-06-15_14-39-40.jpg';
 
+import { cmsPublicApi, type AboutUsResponse, type CmsPartnerResponse } from '../../../cms/public/api/cmsPublicApi';
+
 interface MapNode {
   id: string;
   city: string;
@@ -43,6 +45,13 @@ export default function AboutTab() {
   const [activeTab, setActiveTabTab] = useState<'mission' | 'vision'>('mission');
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0, lat: "8.9806° N", lng: "38.7578° E" });
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [aboutData, setAboutData] = useState<AboutUsResponse[]>([]);
+  const [partners, setPartners] = useState<CmsPartnerResponse[]>([]);
+
+  useEffect(() => {
+    cmsPublicApi.getAboutUs().then(data => setAboutData(data.filter(a => a.is_active))).catch(console.error);
+    cmsPublicApi.getPartners().then(data => setPartners(data.filter(p => p.is_active))).catch(console.error);
+  }, []);
 
   // Strategic Global Instances
   const mapNodes: MapNode[] = [
@@ -142,7 +151,7 @@ export default function AboutTab() {
 
   const adbNode = mapNodes[0]; // Addis Ababa coordinates
   return (
-    <div className="bg-[#faf8ff] text-[#191b23] relative border-y border-[#e1e2ed]/80 py-16 overflow-hidden" id="about-mission">
+    <div className="bg-[#faf8ff] text-[#191b23] relative border-y border-brand-border-light/80 py-16 overflow-hidden" id="about-mission">
       {/* Blueprint background grid overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
@@ -159,7 +168,7 @@ export default function AboutTab() {
           <div 
             ref={mapContainerRef}
             onMouseMove={handleMouseMove}
-            className="w-full relative bg-[#f6f7fb] overflow-hidden border border-[#e2e4ed] rounded-2xl cursor-crosshair group flex items-center justify-center select-none shadow-sm"
+            className="w-full relative bg-brand-surface overflow-hidden border border-[#e2e4ed] rounded-2xl cursor-crosshair group flex items-center justify-center select-none shadow-sm"
           >
             <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.015)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none z-10" />
             
@@ -238,7 +247,7 @@ export default function AboutTab() {
               })}
             </div>
 
-            <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md rounded-xl border border-[#e1e2ed] p-2.5 text-[#191b23] z-30 shadow-md text-left font-mono max-w-[240px] hidden sm:block">
+            <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md rounded-xl border border-brand-border-light p-2.5 text-[#191b23] z-30 shadow-md text-left font-mono max-w-[240px] hidden sm:block">
               <span className="text-[8px] uppercase tracking-widest font-bold text-[#25338d] block mb-1 flex items-center gap-1">
                 <Compass className="w-3 h-3 text-[#25338d] animate-spin" style={{ animationDuration: '6s' }} />
                 <span>COORDINATE TERMINAL</span>
@@ -303,15 +312,31 @@ export default function AboutTab() {
           <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#1a2670] bg-blue-50 px-3 py-1 rounded-full border border-blue-100 mb-4 inline-block shadow-sm">
             ABOUT ETHIO ROBOTICS:
           </span>
-          <h2 className="font-display font-bold text-slate-900 tracking-tight leading-tight mb-5 text-[28px] md:text-[34px]">
-            Who We Are & Our Vision
-          </h2>
-          <p className="font-sans text-sm md:text-base text-[#434655] leading-relaxed mb-5">
-            Ethio Robo Robotics is the premier education-focused organization in Ethiopia specializing in STEM, advanced robotics training, and high-impact competitions. We build the next generation of African innovators by fostering technical skills and leadership.
-          </p>
-          <p className="font-sans text-sm md:text-base text-[#434655] leading-relaxed mb-8">
-            From organizing the landmark <strong>African Robotics Championship (ARC)</strong> to coaching teams for the <strong>USA VEX Robotics Competition</strong> and <strong>ENJOY AI Global</strong>, we bridge the gap between theoretical knowledge and practical hardware execution. Our hands-on curriculums, mentorship programs, and retail toolkits empower students from elementary to university levels.
-          </p>
+          {aboutData.length > 0 ? (
+            aboutData.map((section, idx) => (
+              <div key={section.id} className="mb-6">
+                <h2 className="font-display font-bold text-slate-900 tracking-tight leading-tight mb-4 text-[24px] md:text-[30px]">
+                  {section.title}
+                </h2>
+                <div 
+                  className="font-sans text-sm md:text-base text-brand-muted-dark leading-relaxed mb-5 about-content"
+                  dangerouslySetInnerHTML={{ __html: section.content }} 
+                />
+              </div>
+            ))
+          ) : (
+            <>
+              <h2 className="font-display font-bold text-slate-900 tracking-tight leading-tight mb-5 text-[28px] md:text-[34px]">
+                Who We Are & Our Vision
+              </h2>
+              <p className="font-sans text-sm md:text-base text-brand-muted-dark leading-relaxed mb-5">
+                Ethio Robo Robotics is the premier education-focused organization in Ethiopia specializing in STEM, advanced robotics training, and high-impact competitions. We build the next generation of African innovators by fostering technical skills and leadership.
+              </p>
+              <p className="font-sans text-sm md:text-base text-brand-muted-dark leading-relaxed mb-8">
+                From organizing the landmark <strong>African Robotics Championship (ARC)</strong> to coaching teams for the <strong>USA VEX Robotics Competition</strong> and <strong>ENJOY AI Global</strong>, we bridge the gap between theoretical knowledge and practical hardware execution. Our hands-on curriculums, mentorship programs, and retail toolkits empower students from elementary to university levels.
+              </p>
+            </>
+          )}
           
           <div className="font-display font-extrabold tracking-tight text-3xl md:text-4xl leading-none mb-8 text-transparent bg-clip-text bg-gradient-to-r from-[#b5852a] to-[#d6a54a] uppercase drop-shadow-sm">
             INNOVATION FIRST
@@ -357,10 +382,18 @@ export default function AboutTab() {
             <p className="text-slate-600 mt-4 max-w-2xl mx-auto">Collaborating with industry leaders to bring world-class STEM education to Ethiopia.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-12 items-center opacity-70 hover:opacity-100 transition-opacity">
-            <img src="https://ethiorobotics.org/images/partners/minstry%20of%20inovation%20and%20technology.png" alt="Ministry of Innovation" className="h-16 object-contain" />
-            <img src="https://ethiorobotics.org/images/partners/vex.webp" alt="VEX Robotics" className="h-16 object-contain" />
-            <img src="https://ethiorobotics.org/images/partners/ethiopian_airlines.png" alt="Ethiopian Airlines" className="h-16 object-contain" />
-            <img src="https://ethiorobotics.org/images/partners/aau.png" alt="Addis Ababa University" className="h-16 object-contain" />
+            {partners.length > 0 ? (
+              partners.map(partner =>
+                  partner.image ? <img key={partner.id} src={partner.image} alt={partner.title} className="h-16 object-contain" /> : null
+                )
+            ) : (
+              <>
+                <img src="https://ethiorobotics.org/images/partners/minstry%20of%20inovation%20and%20technology.png" alt="Ministry of Innovation" className="h-16 object-contain" />
+                <img src="https://ethiorobotics.org/images/partners/vex.webp" alt="VEX Robotics" className="h-16 object-contain" />
+                <img src="https://ethiorobotics.org/images/partners/ethiopian_airlines.png" alt="Ethiopian Airlines" className="h-16 object-contain" />
+                <img src="https://ethiorobotics.org/images/partners/aau.png" alt="Addis Ababa University" className="h-16 object-contain" />
+              </>
+            )}
           </div>
         </div>
       </section>

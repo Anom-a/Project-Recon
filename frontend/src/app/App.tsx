@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import Navbar from '../shared/ui/Navbar';
@@ -18,16 +18,17 @@ import DashboardPage from '../pages/dashboard/DashboardPage';
 import StorePage from '../pages/store/StorePage';
 import CompetitionPage from '../pages/competition/CompetitionPage';
 import CommunityPage from '../pages/community/CommunityPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 
 import { useAuth } from '../shared/hooks/useAuth';
 import { useCart } from '../shared/hooks/useCart';
 import { useNavigation } from '../shared/hooks/useNavigation';
+import { hasPermission } from '../shared/auth/permissions';
 
-import { ActiveTab, CartItem, Program, UserProfile } from '../shared/types';
+import { ActiveTab, CartItem, UserProfile } from '../shared/types';
 
 const LoginView = React.lazy(() => import('../domains/auth/login/ui/LoginView'));
 const AuthModal = React.lazy(() => import('../domains/auth/modal/ui/AuthModal'));
-const AiTutor = React.lazy(() => import('../domains/ai/tutor/ui/AiTutor'));
 
 export default function App() {
   const {
@@ -42,25 +43,22 @@ export default function App() {
     getCartTotal, getCartItemsCount, openCart, closeCart,
   } = useCart();
 
-  const { activeTab, handleTabChange } = useNavigation(currentUser);
+  const { activeTab, handleTabChange, forceNavigate } = useNavigation(currentUser);
 
-  const handleLogoutAndNavigate = () => {
-    handleLogout();
-    handleTabChange('home');
+  const handleLogoutAndNavigate = async () => {
+    await handleLogout();
+    forceNavigate('login');
   };
 
-  const [selectedProgramSpec, setSelectedProgramSpec] = useState<Program | null>(null);
+  const [selectedProgramSpec, setSelectedProgramSpec] = useState<any>(null);
 
-  const handleEnrollInProgram = (programId: string) => {
+  const handleEnrollInProgram = (_programId: string) => {
     if (!currentUser) {
       handleTabChange('login');
       return;
     }
-    const alreadyEnrolled = currentUser.enrolledPrograms.includes(programId);
-    if (alreadyEnrolled) return;
     const updatedUser: UserProfile = {
       ...currentUser,
-      enrolledPrograms: [...currentUser.enrolledPrograms, programId],
       xpPoints: currentUser.xpPoints + 50,
       badges: currentUser.badges.includes('Class Pioneer')
         ? currentUser.badges
@@ -91,8 +89,21 @@ export default function App() {
 
   const onAuthSuccess = (userProfile: UserProfile) => {
     handleAuthSuccess(userProfile);
-    handleTabChange('dashboard');
   };
+
+  const prevUser = useRef(currentUser);
+  useEffect(() => {
+    if (currentUser && !prevUser.current) {
+      handleTabChange('dashboard');
+    }
+    prevUser.current = currentUser;
+  }, [currentUser, handleTabChange]);
+
+  useEffect(() => {
+    const onLogout = () => handleLogoutAndNavigate();
+    window.addEventListener('auth:logout', onLogout);
+    return () => window.removeEventListener('auth:logout', onLogout);
+  }, []);
 
   if (activeTab === 'login' || activeTab === 'register') {
     return (
@@ -101,27 +112,38 @@ export default function App() {
           onAuthSuccess={onAuthSuccess}
           onNavigateHome={() => handleTabChange('home')}
           onNavigateRegister={() => handleTabChange('registration')}
+          onNavigateForgotPassword={() => handleTabChange('forgot-password')}
           initialView={activeTab}
         />
       </React.Suspense>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#f7f8ff] text-[#101426] flex flex-col font-sans animated-grid-bg relative overflow-x-hidden" id="applet-viewport">
-      <AnimatedParticles />
-
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={handleTabChange}
-        currentUser={currentUser}
-        onLogout={handleLogoutAndNavigate}
-        onOpenAuth={(mode) => {
-          handleTabChange(mode === 'register' ? 'registration' : 'login');
-        }}
-        cartCount={getCartItemsCount()}
-        onOpenCart={openCart}
+  if (activeTab === 'forgot-password') {
+    return (
+      <ForgotPasswordPage
+        onNavigateHome={() => handleTabChange('home')}
+        onNavigateLogin={() => handleTabChange('login')}
       />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-brand-paper text-brand-ink flex flex-col font-sans relative overflow-x-hidden" id="applet-viewport">
+
+      {activeTab !== 'dashboard' && (
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          currentUser={currentUser}
+          onLogout={handleLogoutAndNavigate}
+          onOpenAuth={(mode) => {
+            handleTabChange(mode === 'register' ? 'registration' : 'login');
+          }}
+          cartCount={getCartItemsCount()}
+          onOpenCart={openCart}
+        />
+      )}
 
       <main className={`flex-grow ${activeTab !== 'dashboard' && activeTab !== 'command-center' ? 'pt-[64px]' : ''}`}>
         <AnimatePresence mode="wait">
@@ -161,10 +183,6 @@ export default function App() {
             <CompetitionPage currentUser={currentUser} />
           )}
 
-          {activeTab === 'community' && (
-            <CommunityPage />
-          )}
-
           {activeTab === 'consultancy' && (
             <motion.div key="consultancy-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
               <LabConsultancy />
@@ -180,12 +198,6 @@ export default function App() {
           {activeTab === 'dashboard' && currentUser && (
             <motion.div key="dashboard-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
               <DashboardPage currentUser={currentUser} onLogout={handleLogoutAndNavigate} />
-            </motion.div>
-          )}
-
-          {activeTab === 'command-center' && currentUser && (currentUser.role === 'Manager' || currentUser.role === 'Admin') && (
-            <motion.div key="command-center-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-              <EventCommandCenter currentUser={currentUser} onLogout={handleLogoutAndNavigate} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -218,9 +230,8 @@ export default function App() {
         onAuthSuccess={onAuthSuccess}
       />
 
-      <Footer onNavigate={handleTabChange} />
+      {!currentUser && <Footer onNavigate={handleTabChange} />}
 
-      <AiTutor />
     </div>
   );
 }

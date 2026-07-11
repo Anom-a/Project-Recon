@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.shared',
     'apps.cms',
+    'apps.academic',
 
 ]
 
@@ -90,7 +91,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'static'
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
@@ -111,6 +112,8 @@ AUTH_MAX_OTP_RESENDS = env.int("AUTH_MAX_OTP_RESENDS", default=3)
 AUTH_MAX_LOGIN_ATTEMPTS = env.int("AUTH_MAX_LOGIN_ATTEMPTS", default=5)
 AUTH_ACCOUNT_LOCK_MINUTES = env.int("AUTH_ACCOUNT_LOCK_MINUTES", default=15)
 
+REPORT_INSTITUTE_NAME = env("REPORT_INSTITUTE_NAME", default="Institute")
+
 from datetime import timedelta
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESS_TOKEN_MINUTES", default=15)),
@@ -120,9 +123,6 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": True,
 }
 
-# ─── Integration configs (provider selection + credentials) ───
-from config.integrations.email import *  # noqa: F401,F403
-from config.integrations.payment import *  # noqa: F401,F403
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -147,3 +147,8 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
+
+
+# ─── Integration configs (provider selection + credentials) ───
+from config.integrations.email import *  # noqa: F401,F403
+from config.integrations.payment import *  # noqa: F401,F403

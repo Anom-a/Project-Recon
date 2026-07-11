@@ -74,10 +74,11 @@ export interface AssignmentResponse {
 
 /* ─── ROLE HELPERS ─── */
 
-const ROLE_PRIORITY = ['super_admin', 'branch_manager', 'instructor', 'student'];
+const ROLE_PRIORITY = ['super_admin', 'branch_manager', 'secretary', 'instructor', 'student'];
 const ROLE_LABEL: Record<string, string> = {
   super_admin: 'Admin',
   branch_manager: 'Manager',
+  secretary: 'Secretary',
   instructor: 'Instructor',
   student: 'Student',
 };
@@ -161,6 +162,16 @@ export async function createStaffApi(data: {
   role?: string;
 }): Promise<void> {
   await http.post('/accounts/users/staff/', data);
+}
+
+export async function createBranchManagerApi(data: {
+  email: string;
+  first_name: string;
+  last_name: string;
+  password: string;
+  branch_id: string;
+}): Promise<void> {
+  await http.post('/accounts/users/branch-managers/', data);
 }
 
 /* ─── AUDIT API ─── */

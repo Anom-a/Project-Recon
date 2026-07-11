@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Image, FileText, Handshake, ShoppingBag, MessageSquare, DollarSign, PanelLeftClose, PanelLeftOpen,
   Calendar, Bell, X, UserPlus, BarChart3, TrendingUp, TrendingDown, Users, Zap, Award,
   Clock, CheckCircle, CheckCircle2, AlertCircle, ChevronRight, Activity, MapPin, Trophy, Building, Sparkles, Download,
   Cpu, Swords, Medal, BookOpen, Hash, Star, Target, Wrench, Camera, Search, RefreshCw, Monitor, Filter, Globe,
-  UserCog, Eye, Shield, Edit3, Trash2, Plus, LogOut
+  UserCog, Eye, Shield, Edit3, Trash2, Plus, LogOut, User, Settings, Loader2
 } from 'lucide-react';
-import { UserProfile, VexRobot } from '@/src/shared/types';
-import { MOCK_ANALYTICS, MOCK_NOTIFICATIONS, MOCK_TOURNAMENTS, MOCK_WORKSHOPS, MOCK_VEX_TEAM, MOCK_VEX_ROBOTS, MOCK_VEX_AWARDS, MOCK_VEX_NOTEBOOK, MOCK_VEX_MATCHES } from '@/src/shared/constants/mock-data';
+import { UserProfile, VexRobot, AppNotification, Enrollment, EnrollmentPayment } from '@/src/shared/types';
+import { MOCK_ANALYTICS, MOCK_TOURNAMENTS, MOCK_WORKSHOPS, MOCK_VEX_TEAM, MOCK_VEX_ROBOTS, MOCK_VEX_AWARDS, MOCK_VEX_NOTEBOOK, MOCK_VEX_MATCHES } from '@/src/shared/constants/mock-data';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import { NavItem } from '@/src/shared/ui/Sidebar';
-import MediaContent from './MediaContent';
-import CmsDashboard from '@/src/domains/cms/admin/ui/CmsDashboard';
+import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
 import SponsorManagement from './SponsorManagement';
 import OnlineStoreHub from './OnlineStoreHub';
 import CommunicationsCenter from './CommunicationsCenter';
@@ -22,49 +21,77 @@ import AnnouncementsManager from './AnnouncementsManager';
 import WalkInRegistration from './WalkInRegistration';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import SchoolManagement from './SchoolManagement';
+import AcademicCatalogManager from '@/src/domains/learning/academics/ui/AcademicCatalogManager';
+import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
+import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/src/domains/learning/academics/api/academicApi';
 
 interface Props {
   currentUser: UserProfile;
   onLogout: () => void;
 }
 
-type SectionId = 'overview' | 'analytics' | 'media' | 'cms' | 'sponsors' | 'store' | 'events' | 'tournaments' | 'workshops' | 'participants' | 'announcements' | 'communications' | 'payments' | 'walkin' | 'reports' | 'vex-overview' | 'vex-robots' | 'vex-awards' | 'vex-matches' | 'vex-notebook' | 'vex-roles' | 'schools' | 'registrations';
+type SectionId = 'overview' | 'analytics' | 'academic-catalog' | 'sponsors' | 'store' | 'events' | 'tournaments' | 'workshops' | 'participants' | 'announcements' | 'communications' | 'payments' | 'walkin' | 'reports' | 'vex-overview' | 'vex-robots' | 'vex-awards' | 'vex-matches' | 'vex-notebook' | 'vex-roles' | 'schools' | 'registrations' | 'account';
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: Activity, group: 'main' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, group: 'main' },
-  { id: 'store', label: 'Store & Inventory', icon: ShoppingBag, group: 'main' },
+  { id: 'registrations', label: 'Registrations', icon: UserPlus, group: 'main' },
+  { id: 'academic-catalog', label: 'Academic Catalog', icon: BookOpen, group: 'main' },
+  { id: 'schools', label: 'Branches', icon: Building, group: 'main' },
   { id: 'payments', label: 'Payments & Sales', icon: DollarSign, group: 'main' },
   { id: 'reports', label: 'Reports & Data', icon: BarChart3, group: 'main' },
-  { id: 'media', label: 'Media & Content', icon: Image, group: 'main' },
-  { id: 'cms', label: 'CMS & Branding', icon: FileText, group: 'main' },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, group: 'main' },
+  { id: 'store', label: 'Store & Inventory', icon: ShoppingBag, group: 'main' },
   { id: 'sponsors', label: 'Sponsors & Partners', icon: Handshake, group: 'main' },
-  { id: 'schools', label: 'Schools', icon: Building, group: 'main' },
-  { id: 'registrations', label: 'Registrations', icon: UserPlus, group: 'main' },
-  { id: 'walkin', label: 'Walk-In Registration', icon: Edit3, group: 'main' },
-  { id: 'announcements', label: 'Announcements', icon: Bell, group: 'main' },
-  { id: 'communications', label: 'Communications', icon: MessageSquare, group: 'main' },
   { id: 'events', label: 'Events Calendar', icon: Calendar, group: 'main' },
   { id: 'tournaments', label: 'Tournaments', icon: Trophy, group: 'main' },
   { id: 'workshops', label: 'Workshops', icon: Building, group: 'main' },
   { id: 'participants', label: 'Participants', icon: Users, group: 'main' },
+  { id: 'announcements', label: 'Announcements', icon: Bell, group: 'main' },
+  { id: 'communications', label: 'Communications', icon: MessageSquare, group: 'main' },
+  { id: 'walkin', label: 'Walk-In Registration', icon: Edit3, group: 'main' },
   { id: 'vex-overview', label: 'Team Overview', icon: Cpu, group: 'vex' },
   { id: 'vex-robots', label: 'Robots', icon: Wrench, group: 'vex' },
   { id: 'vex-awards', label: 'Awards', icon: Medal, group: 'vex' },
   { id: 'vex-matches', label: 'Matches', icon: Swords, group: 'vex' },
   { id: 'vex-notebook', label: 'Notebook', icon: BookOpen, group: 'vex' },
   { id: 'vex-roles', label: 'VEX Roles', icon: UserCog, group: 'vex' },
+  { id: 'account', label: 'My Account', icon: User, group: 'system' },
 ];
 
 export default function ManagerDashboard({ currentUser, onLogout }: Props) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
+  const [students, setStudents] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refreshData = () => {
+    setLoading(true);
+    Promise.all([
+      fetchStudentsApi(),
+      fetchEnrollmentsApi(),
+      fetchPaymentsApi(),
+      fetchProgramsApi(),
+    ]).then(([stu, enr, pay, pro]) => {
+      setStudents(Array.isArray(stu) ? stu : []);
+      setEnrollments(Array.isArray(enr) ? enr : []);
+      setPayments(Array.isArray(pay) ? pay : []);
+      setPrograms(Array.isArray(pro) ? pro : []);
+    }).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { refreshData(); }, []);
+
+  const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
+  const pendingPayments = enrollments.filter(e => e.status === 'PENDING_PAYMENT');
+  const paidPayments = payments.filter(p => p.status === 'PAID');
 
   const renderPage = () => {
     switch (activeSection) {
-      case 'overview': return <OverviewPage currentUser={currentUser} onNavigate={setActiveSection} />;
+      case 'overview': return <OverviewPage currentUser={currentUser} onNavigate={setActiveSection} students={students} enrollments={enrollments} payments={payments} programs={programs} />;
       case 'analytics': return <AnalyticsDashboard />;
-      case 'media': return <MediaContent />;
-      case 'cms': return <CmsDashboard />;
+      case 'academic-catalog': return <AcademicCatalogManager />;
       case 'sponsors': return <SponsorManagement />;
       case 'schools': return <SchoolManagement />;
       case 'registrations': return <RegistrationSection />;
@@ -84,6 +111,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'vex-matches': return <VexMatchesSection />;
       case 'vex-notebook': return <VexNotebookSection />;
       case 'vex-roles': return <VexRolesSection />;
+      case 'account': return <AdminAccount currentUser={currentUser} />;
     }
   };
 
@@ -106,23 +134,51 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       }}
       onLogout={onLogout}
     >
+      <DashboardCommandCenter
+        title="Operations Command Center"
+        subtitle="Branch activity, CMS work, payments, events, and registration queues."
+        signals={[
+          { label: 'Students', value: String(students.length), detail: 'registered', icon: Users, tone: 'blue' },
+          { label: 'Active Enrollments', value: String(activeEnrollments.length), detail: 'in progress', icon: UserPlus, tone: 'emerald' },
+          { label: 'Payments', value: String(paidPayments.length), detail: 'completed', icon: DollarSign, tone: 'emerald' },
+          { label: 'Programs', value: String(programs.length), detail: 'active offers', icon: BookOpen, tone: 'amber' },
+        ]}
+      />
       {renderPage()}
     </AppLayout>
   );
 }
 
-function OverviewPage({ currentUser, onNavigate }: { currentUser: UserProfile; onNavigate: (id: SectionId) => void }) {
-  const d = MOCK_ANALYTICS;
-  const unreadNotifications = MOCK_NOTIFICATIONS.filter(n => !n.read);
-  const upcomingCount = MOCK_TOURNAMENTS.filter(t => t.date > '2026-06-20').length + MOCK_WORKSHOPS.filter(w => w.date > '2026-06-20').length;
+function OverviewPage({ currentUser, onNavigate, students, enrollments, payments, programs }: {
+  currentUser: UserProfile;
+  onNavigate: (id: SectionId) => void;
+  students: any[];
+  enrollments: any[];
+  payments: any[];
+  programs: any[];
+}) {
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  useEffect(() => {
+    import('@/src/domains/notification/model/notificationApi').then(m =>
+      m.getNotifications().then(setNotifications)
+    );
+  }, []);
+  const unreadNotifications = notifications.filter(n => !n.read);
 
   const quickActions: { id: SectionId; label: string; desc: string; icon: React.ElementType; color: string }[] = [
-    { id: 'analytics', label: 'View Analytics', desc: 'Business performance metrics', icon: BarChart3, color: 'from-blue-500 to-blue-600' },
+    { id: 'academic-catalog', label: 'Academic Catalog', desc: 'Programs & classes', icon: BookOpen, color: 'from-blue-500 to-blue-600' },
+    { id: 'registrations', label: 'Registrations', desc: 'View all registrations', icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
+    { id: 'payments', label: 'Payment Reports', desc: 'Track transactions', icon: DollarSign, color: 'from-cyan-500 to-cyan-600' },
+    { id: 'reports', label: 'Download Reports', desc: 'PDF reports & data', icon: FileText, color: 'from-rose-500 to-rose-600' },
     { id: 'events', label: 'Events Calendar', desc: 'Manage all events', icon: Calendar, color: 'from-purple-500 to-purple-600' },
     { id: 'tournaments', label: 'Tournaments', desc: 'Manage competitions', icon: Trophy, color: 'from-rose-500 to-rose-600' },
     { id: 'workshops', label: 'Workshops', desc: 'Schedule workshops', icon: Building, color: 'from-emerald-500 to-emerald-600' },
     { id: 'store', label: 'Store Inventory', desc: 'Manage products & stock', icon: ShoppingBag, color: 'from-amber-500 to-amber-600' },
-    { id: 'payments', label: 'Payment Reports', desc: 'Track transactions', icon: DollarSign, color: 'from-cyan-500 to-cyan-600' },
+    { id: 'analytics', label: 'View Analytics', desc: 'Business performance metrics', icon: BarChart3, color: 'from-blue-500 to-blue-600' },
+    { id: 'schools', label: 'Branches', desc: 'Manage branches', icon: Building, color: 'from-sky-500 to-blue-600' },
+    { id: 'sponsors', label: 'Sponsors', desc: 'Manage partners', icon: Handshake, color: 'from-indigo-500 to-purple-600' },
+    { id: 'announcements', label: 'Announcements', desc: 'Create & publish', icon: Bell, color: 'from-rose-500 to-pink-600' },
+    { id: 'communications', label: 'Communications', desc: 'View messages', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
   ];
 
   return (
@@ -140,17 +196,25 @@ function OverviewPage({ currentUser, onNavigate }: { currentUser: UserProfile; o
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        {d.topMetrics.map((m, i) => (
-          <motion.div key={m.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-            className="bg-white border border-slate-200 rounded-xl p-3 hover:shadow-sm transition-all"
-          >
-            <p className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{m.label}</p>
-            <p className="font-display font-extrabold text-2xl text-slate-900 mb-0.5">{m.value}</p>
-            <div className={`flex items-center gap-1 text-sm font-semibold ${m.trend === 'up' ? 'text-emerald-500' : 'text-red-400'}`}>
-              {m.trend === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}{m.change}
-            </div>
-          </motion.div>
-        ))}
+        {[
+          { label: 'Students', value: String(students.length), icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Programs', value: String(programs.length), icon: Award, color: 'text-purple-500', bg: 'bg-purple-50' },
+          { label: 'Revenue', value: payments.reduce((s, p) => s + (p.status === 'PAID' ? Number(p.amount) : 0), 0).toLocaleString() + ' ETB', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Active Enrollments', value: String(enrollments.filter(e => e.status === 'ACTIVE').length), icon: Calendar, color: 'text-amber-500', bg: 'bg-amber-50' },
+        ].map((m, i) => {
+          const MIcon = m.icon;
+          return (
+            <motion.div key={m.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              className="bg-white border border-slate-200 rounded-xl p-3 hover:shadow-sm transition-all"
+            >
+              <div className={`w-8 h-8 rounded-lg ${m.bg} flex items-center justify-center mb-1.5`}>
+                <MIcon className={`w-4 h-4 ${m.color}`} />
+              </div>
+              <p className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{m.label}</p>
+              <p className="font-display font-extrabold text-2xl text-slate-900">{m.value}</p>
+            </motion.div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -218,7 +282,7 @@ function OverviewPage({ currentUser, onNavigate }: { currentUser: UserProfile; o
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              {MOCK_NOTIFICATIONS.slice(0, 4).map((n, i) => (
+              {notifications.slice(0, 4).map((n, i) => (
                 <motion.div key={n.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
                   className={`flex items-start gap-2 p-2 rounded-lg text-sm transition-all ${n.read ? 'text-slate-500' : 'bg-brand-red/5 border border-brand-red/10 text-slate-900'}`}
                 >
@@ -240,14 +304,14 @@ function OverviewPage({ currentUser, onNavigate }: { currentUser: UserProfile; o
           <div className="bg-white border border-slate-200 rounded-2xl p-3">
             <h4 className="font-black text-sm text-slate-900 mb-2 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Events Summary
+              Quick Stats
             </h4>
             <div className="grid grid-cols-4 gap-1.5">
               {[
-                { label: 'Tnmnts', value: MOCK_TOURNAMENTS.length, color: 'text-purple-700', bg: 'bg-purple-50' },
-                { label: 'Wkshps', value: MOCK_WORKSHOPS.length, color: 'text-emerald-700', bg: 'bg-emerald-50' },
-                { label: 'Upcoming', value: upcomingCount, color: 'text-amber-700', bg: 'bg-amber-50' },
-                { label: 'Parts', value: MOCK_TOURNAMENTS.reduce((s, t) => s + t.maxTeams * 3, 0) + MOCK_WORKSHOPS.reduce((s, w) => s + w.capacity, 0), color: 'text-blue-700', bg: 'bg-blue-50' },
+                { label: 'Active', value: String(enrollments.filter(e => e.status === 'ACTIVE').length), color: 'text-emerald-700', bg: 'bg-emerald-50' },
+                { label: 'Pending', value: String(enrollments.filter(e => e.status === 'PENDING_PAYMENT').length), color: 'text-amber-700', bg: 'bg-amber-50' },
+                { label: 'Total', value: String(enrollments.length), color: 'text-blue-700', bg: 'bg-blue-50' },
+                { label: 'Students', value: String(students.length), color: 'text-purple-700', bg: 'bg-purple-50' },
               ].map((s, i) => (
                 <div key={i} className={`${s.bg} rounded-lg p-2 text-center`}>
                   <p className={`font-black text-xl ${s.color}`}>{s.value}</p>
@@ -260,55 +324,50 @@ function OverviewPage({ currentUser, onNavigate }: { currentUser: UserProfile; o
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="px-3 py-2.5 border-b border-slate-100">
-            <h4 className="font-black text-sm text-slate-900 flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-amber-500" />
-              Recent Transactions
-            </h4>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50">
-                  {['Student', 'Type', 'Amount', 'Date', 'Status'].map(h => (
-                    <th key={h} className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 px-2 py-1.5 text-left">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {d.recentTransactions.slice(0, 4).map((tx, i) => (
-                  <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
-                    className="border-b border-slate-50 hover:bg-slate-50/50"
-                  >
-                    <td className="px-2 py-2 text-sm font-medium text-slate-800">{tx.student}</td>
-                    <td className="px-2 py-2 text-[11px] text-slate-500">{tx.type}</td>
-                    <td className="px-2 py-2 font-mono font-bold text-sm text-slate-900">{tx.amount.toLocaleString()} ETB</td>
-                    <td className="px-2 py-2 text-[11px] text-slate-400">{tx.date}</td>
-                    <td className="px-2 py-2">
-                      <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${tx.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                        {tx.status}
-                      </span>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-4">
+          <h4 className="font-black text-sm text-slate-900 flex items-center gap-1.5 mb-3">
+            <Activity className="w-3.5 h-3.5 text-brand-red" />
+            Management Tools
+          </h4>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Academic Catalog', desc: 'Programs & classes', id: 'academic-catalog' as SectionId, icon: BookOpen, color: 'from-blue-500 to-blue-600' },
+              { label: 'Registrations', desc: 'Student enrollments', id: 'registrations' as SectionId, icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
+              { label: 'Branches', desc: 'Branch management', id: 'schools' as SectionId, icon: Building, color: 'from-sky-500 to-cyan-600' },
+              { label: 'Sponsors', desc: 'Partner management', id: 'sponsors' as SectionId, icon: Handshake, color: 'from-indigo-500 to-purple-600' },
+              { label: 'Announcements', desc: 'Create & publish', id: 'announcements' as SectionId, icon: Bell, color: 'from-rose-500 to-pink-600' },
+              { label: 'Communications', desc: 'Message center', id: 'communications' as SectionId, icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
+            ].map((tool, i) => {
+              const TIcon = tool.icon;
+              return (
+                <button key={tool.id} onClick={() => onNavigate(tool.id)}
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all text-left"
+                >
+                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${tool.color} flex items-center justify-center shrink-0`}>
+                    <TIcon className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-slate-900">{tool.label}</p>
+                    <p className="text-[10px] text-slate-500">{tool.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="lg:col-span-5 flex flex-col gap-2">
           <div className="bg-white border border-slate-200 rounded-2xl p-3">
-            <h4 className="font-black text-sm text-slate-900 flex items-center gap-1.5 mb-2">
-              <Activity className="w-3.5 h-3.5 text-brand-red" />
+            <h4 className="font-black text-sm text-slate-900 mb-2 flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5 text-brand-red" />
               Platform Summary
             </h4>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'Total Students', value: '460', icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
-                { label: 'Programs', value: '24', icon: Award, color: 'text-purple-500', bg: 'bg-purple-50' },
-                { label: 'Monthly Revenue', value: '890K ETB', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                { label: 'Pending Tasks', value: '12', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
+                { label: 'Students', value: students.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
+                { label: 'Programs', value: programs.length, icon: Award, color: 'text-purple-500', bg: 'bg-purple-50' },
+                { label: 'Enrollments', value: enrollments.length, icon: Building, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                { label: 'Payments', value: payments.length, icon: Handshake, color: 'text-amber-500', bg: 'bg-amber-50' },
               ].map((stat, i) => {
                 const StatIcon = stat.icon;
                 return (
@@ -316,7 +375,7 @@ function OverviewPage({ currentUser, onNavigate }: { currentUser: UserProfile; o
                     <div className={`w-6 h-6 rounded-lg ${stat.bg} flex items-center justify-center mb-1`}>
                       <StatIcon className={`w-3.5 h-3.5 ${stat.color}`} />
                     </div>
-                    <p className="font-black text-xl text-slate-900">{stat.value}</p>
+                    <p className="text-lg font-bold text-slate-900">{stat.value}</p>
                     <p className="text-[10px] text-slate-500 font-medium">{stat.label}</p>
                   </div>
                 );
@@ -324,20 +383,11 @@ function OverviewPage({ currentUser, onNavigate }: { currentUser: UserProfile; o
             </div>
           </div>
 
-          <button onClick={() => onNavigate('analytics')}
-            className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between hover:shadow-sm transition-all group"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-brand-red/10 flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-brand-red" />
-              </div>
-              <div className="text-left">
-                <p className="font-bold text-sm text-slate-900">Full Analytics Dashboard</p>
-                <p className="text-[10px] text-slate-500">View detailed charts and reports</p>
-              </div>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-red transition-colors" />
-          </button>
+          <div className="bg-gradient-to-br from-brand-blue to-brand-blue-dark rounded-2xl p-3 text-white">
+            <p className="text-[10px] font-medium text-white/70 mb-0.5">All tools are connected</p>
+            <p className="text-sm font-bold">Backend-ready sections are live</p>
+            <p className="text-[11px] text-white/70 mt-1">Other sections will be enabled when APIs are ready.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -449,83 +499,96 @@ function ParticipantsSection() {
 
 function ReportsSection() {
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [students, setStudents] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
 
-  const downloadCSV = (title: string, rows: string[][]) => {
-    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  useEffect(() => {
+    Promise.all([
+      fetchStudentsApi(),
+      fetchClassesApi(),
+      fetchProgramsApi(),
+      fetchEnrollmentsApi(),
+    ]).then(([stu, cls, pro, enr]) => {
+      setStudents(Array.isArray(stu) ? stu : []);
+      setClasses(Array.isArray(cls) ? cls : []);
+      setPrograms(Array.isArray(pro) ? pro : []);
+      setEnrollments(Array.isArray(enr) ? enr : []);
+    }).catch(() => {});
+  }, []);
+
+  const doDownload = async (key: string, fn: () => Promise<void>) => {
+    setDownloading(key);
+    try { await fn(); } catch {}
+    setTimeout(() => setDownloading(null), 1000);
   };
 
-  const reports: { title: string; desc: string; icon: React.ElementType; color: string; bg: string; generate: () => string[][] }[] = [
-    {
-      title: 'Event Participation', desc: 'Attendance rates across all events', icon: BarChart3, color: 'text-blue-500', bg: 'bg-blue-50',
-      generate: () => {
-        const header = ['Event', 'Date', 'Capacity', 'Registered', 'Attendance Rate'];
-        const rows = MOCK_TOURNAMENTS.map(t => [t.name, t.date, t.maxTeams.toString(), Math.floor(t.maxTeams * 0.85).toString(), '85%']);
-        return [header, ...rows];
-      },
-    },
-    {
-      title: 'Tournament Results', desc: 'Scores, rankings, and outcomes', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50',
-      generate: () => {
-        const header = ['Event', 'Round', 'Opponent', 'Score', 'Result'];
-        const rows = MOCK_VEX_MATCHES.map(m => [m.event, m.round, m.opponent, m.score, m.result]);
-        return [header, ...rows];
-      },
-    },
-    {
-      title: 'Revenue Report', desc: 'Ticket sales and registration fees', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50',
-      generate: () => {
-        const d = MOCK_ANALYTICS;
-        const header = ['Student', 'Type', 'Amount', 'Date', 'Status'];
-        const rows = d.recentTransactions.map((tx: { student: string; type: string; amount: number; date: string; status: string }) => [tx.student, tx.type, tx.amount.toLocaleString() + ' ETB', tx.date, tx.status]);
-        return [header, ...rows];
-      },
-    },
-    {
-      title: 'Participant Demographics', desc: 'Age, school, and location', icon: Users, color: 'text-amber-500', bg: 'bg-amber-50',
-      generate: () => {
-        const d = MOCK_ANALYTICS as any;
-        const header = ['Category', 'Type', 'Count'];
-        const progRows = d.programDistribution?.map((p: { name: string; students: number }) => ['Program', p.name, p.students.toString()]) ?? [];
-        return [header, ...progRows, ['Metric', 'Total Students', '460'], ['Metric', 'Active Programs', '24']];
-      },
-    },
+  const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
+  const paid = enrollments.filter(e => e.status === 'COMPLETED');
+
+  const reports = [
+    { key: 'student-report', title: 'Student Academic Report', desc: 'Full academic profile, enrollments, attendance, progress & certificates', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-50', download: () => students[0] && doDownload('student-report', () => downloadStudentReportPdf(students[0].id)) },
+    { key: 'enrollment-report', title: 'Enrollment Report', desc: 'Enrollment history across all branches and programs', icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50', download: () => students[0] && doDownload('enrollment-report', () => downloadEnrollmentReportPdf(students[0].id)) },
+    { key: 'attendance-report', title: 'Attendance Report', desc: 'Attendance summary per student with present/absent counts', icon: BarChart3, color: 'text-emerald-500', bg: 'bg-emerald-50', download: () => students[0] && doDownload('attendance-report', () => downloadAttendanceReportPdf(students[0].id)) },
+    { key: 'progress-report', title: 'Progress Report', desc: 'Learning milestone progress per student', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50', download: () => students[0] && doDownload('progress-report', () => downloadProgressReportPdf(students[0].id)) },
+    { key: 'certificate-report', title: 'Certificate Report', desc: 'All issued certificates with numbers and dates', icon: Trophy, color: 'text-rose-500', bg: 'bg-rose-50', download: () => students[0] && doDownload('certificate-report', () => downloadCertificateReportPdf(students[0].id)) },
+    { key: 'class-report', title: 'Class Report', desc: 'Class details with enrolled students and attendance sessions', icon: Users, color: 'text-cyan-500', bg: 'bg-cyan-50', download: () => classes[0] && doDownload('class-report', () => downloadClassReportPdf(classes[0].id)) },
+    { key: 'subprogram-report', title: 'Sub-Program Report', desc: 'Sub-program info with class list and enrollment counts', icon: Building, color: 'text-indigo-500', bg: 'bg-indigo-50', download: () => programs[0] && doDownload('subprogram-report', () => downloadSubProgramReportPdf(programs[0].id)) },
+    { key: 'program-report', title: 'Program Report', desc: 'Complete program overview with sub-programs and totals', icon: Activity, color: 'text-brand-red', bg: 'bg-brand-red/5', download: () => programs[0] && doDownload('program-report', () => downloadProgramReportPdf(programs[0].id)) },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-      {reports.map((r, i) => {
-        const ReportIcon = r.icon;
-        const isDownloading = downloading === r.title;
-        return (
-          <motion.div key={r.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className="bg-white border border-slate-200 rounded-xl p-3 hover:shadow-sm transition-all"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className={`w-8 h-8 rounded-lg ${r.bg} flex items-center justify-center`}>
-                <ReportIcon className={`w-4 h-4 ${r.color}`} />
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-sm text-slate-900">{r.title}</p>
-                <p className="text-[11px] text-slate-500">{r.desc}</p>
-              </div>
-            </div>
-            <button onClick={() => { setDownloading(r.title); setTimeout(() => { downloadCSV(r.title, r.generate()); setDownloading(null); }, 400); }}
-              disabled={isDownloading}
-              className="w-full text-[11px] font-bold text-brand-red bg-brand-red/10 px-2 py-1.5 rounded-lg hover:bg-brand-red/20 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Students', value: students.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Classes', value: classes.length, icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
+          { label: 'Active Enrollments', value: activeEnrollments.length, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Programs', value: programs.length, icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
+        ].map((s, i) => {
+          const SIcon = s.icon;
+          return (
+            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              className="bg-white border border-slate-200 rounded-xl p-3"
             >
-              <Download className={`w-2.5 h-2.5 ${isDownloading ? 'animate-bounce' : ''}`} />
-              {isDownloading ? 'Generating...' : 'Download CSV'}
-            </button>
-          </motion.div>
-        );
-      })}
+              <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-1.5`}>
+                <SIcon className={`w-4 h-4 ${s.color}`} />
+              </div>
+              <p className="font-bold text-xl text-slate-900">{s.value}</p>
+              <p className="text-[10px] text-slate-500">{s.label}</p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {reports.map((r, i) => {
+          const ReportIcon = r.icon;
+          const isDl = downloading === r.key;
+          return (
+            <motion.div key={r.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+              className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-sm transition-all"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-9 h-9 rounded-lg ${r.bg} flex items-center justify-center`}>
+                  <ReportIcon className={`w-4 h-4 ${r.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-900">{r.title}</p>
+                  <p className="text-[11px] text-slate-500">{r.desc}</p>
+                </div>
+              </div>
+              <button onClick={r.download} disabled={isDl}
+                className="w-full text-[11px] font-bold text-brand-red bg-brand-red/10 px-2 py-1.5 rounded-lg hover:bg-brand-red/20 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+              >
+                <Download className={`w-3 h-3 ${isDl ? 'animate-bounce' : ''}`} />
+                {isDl ? 'Generating PDF...' : 'Download PDF'}
+              </button>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -547,7 +610,7 @@ function VexOverviewSection({ onNavigate }: { onNavigate: (id: SectionId) => voi
             <div className="text-4xl">{team.avatar}</div>
             <div className="flex-1">
               <div className="flex items-center gap-1.5 mb-0.5">
-                <h2 className="font-black text-2xl text-white tracking-tight">{team.name}</h2>
+                <h2 className="font-black text-2xl text-slate-900 tracking-tight">{team.name}</h2>
                 <span className="text-sm font-mono bg-brand-red/10 text-brand-red px-2 py-0.5 rounded-lg">#{team.number}</span>
               </div>
               <p className="text-sm text-slate-500 font-medium">{team.bio}</p>
@@ -583,7 +646,7 @@ function VexOverviewSection({ onNavigate }: { onNavigate: (id: SectionId) => voi
               <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mb-1.5">
                 <StatIcon className={`w-4 h-4 ${stat.color}`} />
               </div>
-              <p className="font-black text-xl text-white tracking-tight">{stat.value}</p>
+              <p className="font-black text-xl text-slate-900 tracking-tight">{stat.value}</p>
               <p className="text-[11px] text-slate-500 font-medium mt-0.5">{stat.label}</p>
             </motion.div>
           );
@@ -1032,33 +1095,47 @@ function VexRolesSection() {
   }
 
 function RegistrationSection() {
-  const [registrations] = useState([
-    { id: 'r1', student: 'Biruk A.', age: 14, grade: '8', school: 'Bole Prep', program: 'VEX IQ Summer Camp', amount: 3500, date: 'Jun 18, 2026', source: 'online' as const, status: 'confirmed' as const },
-    { id: 'r2', student: 'Meron D.', age: 12, grade: '7', school: 'Lideta Catholic', program: 'Enjoy AI Workshop', amount: 2500, date: 'Jun 17, 2026', source: 'online' as const, status: 'confirmed' as const },
-    { id: 'r3', student: 'Yonas T.', age: 10, grade: '5', school: 'Bole Prep', program: 'STEM Foundations', amount: 1800, date: 'Jun 16, 2026', source: 'walk-in' as const, status: 'pending' as const },
-    { id: 'r4', student: 'Hana K.', age: 15, grade: '10', school: 'St. Joseph\'s', program: 'Arduino Advanced', amount: 4000, date: 'Jun 15, 2026', source: 'online' as const, status: 'confirmed' as const },
-    { id: 'r5', student: 'Samson G.', age: 11, grade: '6', school: 'AAIT', program: 'VEX IQ Summer Camp', amount: 3500, date: 'Jun 14, 2026', source: 'walk-in' as const, status: 'cancelled' as const },
-    { id: 'r6', student: 'Selamawit B.', age: 13, grade: '8', school: 'Bole Prep', program: 'Coding Basics', amount: 2000, date: 'Jun 12, 2026', source: 'online' as const, status: 'confirmed' as const },
-  ]);
-
+  const [registrations, setRegistrations] = useState<Enrollment[]>([]);
+  const [payments, setPayments] = useState<EnrollmentPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sourceFilter, setSourceFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+
+  useEffect(() => {
+    Promise.all([fetchEnrollmentsApi(), fetchPaymentsApi()])
+      .then(([enrollmentData, paymentData]) => {
+        setRegistrations(enrollmentData);
+        setPayments(paymentData);
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Could not load registrations'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const paymentByEnrollment = payments.reduce<Record<string, EnrollmentPayment>>((map, payment) => {
+    map[payment.enrollment] = payment;
+    return map;
+  }, {});
 
   const filtered = registrations.filter(r => {
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-    const matchesSource = sourceFilter === 'all' || r.source === sourceFilter;
-    return matchesStatus && matchesSource;
+    const payment = paymentByEnrollment[r.id];
+    const paymentStatus = payment?.status || r.payment_status || 'PENDING';
+    const matchesPayment = paymentFilter === 'all' || paymentStatus === paymentFilter;
+    return matchesStatus && matchesPayment;
   });
 
-  const totalRevenue = registrations.filter(r => r.status === 'confirmed').reduce((s, r) => s + r.amount, 0);
+  const totalRevenue = payments.filter(p => p.status === 'PAID').reduce((s, p) => s + Number(p.amount), 0);
+  const confirmedCount = registrations.filter(r => r.status === 'ACTIVE' || r.status === 'COMPLETED').length;
+  const pendingCount = registrations.filter(r => r.status === 'PENDING_PAYMENT').length;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Registrations', value: registrations.length, icon: UserPlus, color: 'text-sky-600', bg: 'bg-sky-50' },
-          { label: 'Confirmed', value: registrations.filter(r => r.status === 'confirmed').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Pending', value: registrations.filter(r => r.status === 'pending').length, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Confirmed', value: confirmedCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Pending', value: pendingCount, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Revenue', value: `${(totalRevenue / 1000).toFixed(1)}K ETB`, icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((stat, i) => {
           const SIcon = stat.icon;
@@ -1085,16 +1162,19 @@ function RegistrationSection() {
               className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:border-brand-red"
             >
               <option value="all">All Status</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="pending">Pending</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="ACTIVE">Active</option>
+              <option value="PENDING_PAYMENT">Pending Payment</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
-            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
+            <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}
               className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:border-brand-red"
             >
-              <option value="all">All Sources</option>
-              <option value="online">Online</option>
-              <option value="walk-in">Walk-In</option>
+              <option value="all">All Payments</option>
+              <option value="PAID">Paid</option>
+              <option value="PENDING">Pending</option>
+              <option value="FAILED">Failed</option>
+              <option value="REFUNDED">Refunded</option>
             </select>
           </div>
         </div>
@@ -1102,41 +1182,47 @@ function RegistrationSection() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                {['Student', 'Program', 'School', 'Amount', 'Date', 'Source', 'Status'].map(h => (
+                {['Student', 'Program', 'Branch', 'Amount', 'Date', 'Payment', 'Status'].map(h => (
                   <th key={h} className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5 text-left">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
+              {loading && (
+                <tr><td colSpan={7} className="py-10 text-center text-slate-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
+              )}
+              {error && (
+                <tr><td colSpan={7} className="py-8 text-center text-sm text-red-500">{error}</td></tr>
+              )}
               {filtered.map((r, i) => (
                 <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
                   className="border-b border-slate-100 hover:bg-sky-50/30 transition-colors"
                 >
                   <td className="px-3 py-2.5">
                     <div>
-                      <p className="text-sm font-medium text-slate-800">{r.student}</p>
-                      <p className="text-[11px] text-slate-400">Grade {r.grade} · Age {r.age}</p>
+                      <p className="text-sm font-medium text-slate-800">{r.student_name || r.student_email || 'Student'}</p>
+                      <p className="text-[11px] text-slate-400">{r.student_email || r.student}</p>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-sm text-slate-600">{r.program}</td>
-                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.school}</td>
-                  <td className="px-3 py-2.5 text-sm font-bold text-slate-700">{r.amount.toLocaleString()} ETB</td>
-                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.date}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-600">{r.class_name || r.sub_program_name || 'Class'}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.branch_name || '—'}</td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-slate-700">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} ETB` : '—'}</td>
+                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.enrolled_at?.slice(0, 10) || '—'}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${r.source === 'online' ? 'bg-sky-50 text-sky-600' : 'bg-purple-50 text-purple-600'}`}>
-                      {r.source}
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${paymentByEnrollment[r.id]?.status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {paymentByEnrollment[r.id]?.status || r.payment_status || 'PENDING'}
                     </span>
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={`flex items-center gap-1 text-[11px] font-bold ${
-                      r.status === 'confirmed' ? 'text-emerald-600' :
-                      r.status === 'pending' ? 'text-amber-600' : 'text-red-500'
+                      r.status === 'ACTIVE' || r.status === 'COMPLETED' ? 'text-emerald-600' :
+                      r.status === 'PENDING_PAYMENT' ? 'text-amber-600' : 'text-red-500'
                     }`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${
-                        r.status === 'confirmed' ? 'bg-emerald-500' :
-                        r.status === 'pending' ? 'bg-amber-500' : 'bg-red-500'
+                        r.status === 'ACTIVE' || r.status === 'COMPLETED' ? 'bg-emerald-500' :
+                        r.status === 'PENDING_PAYMENT' ? 'bg-amber-500' : 'bg-red-500'
                       }`} />
-                      {r.status}
+                      {r.status.replace('_', ' ')}
                     </span>
                   </td>
                 </motion.tr>
