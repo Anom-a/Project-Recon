@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, Gamepad2, Clock, Trash2, CheckCircle, XCircle, Swords, Users, Trophy, Activity, BarChart3, Calendar, Wand2, Layers, Target, Medal, TrendingUp, Play, Flag, Shield, Zap } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, Gamepad2, Clock, Trash2, CheckCircle, XCircle, Swords, Users, Trophy, Activity, BarChart3, Calendar, Wand2, Layers, Target, Medal, TrendingUp, Play, Flag, Shield, Zap, AlertTriangle, Info, Timer } from 'lucide-react';
 import * as eventsApi from '../api/eventsApi';
 import type { BackendMatch, BackendTournamentTeam, SideType, BackendStanding } from '../api/eventsApi';
 import AdminMatchCard from '../shared/AdminMatchCard';
@@ -97,6 +97,9 @@ function generateKnockoutPairs(seededTeams: string[]): [string, string][] {
   return pairs;
 }
 
+type ToastType = { id: number; type: 'success' | 'error' | 'info'; message: string; title?: string };
+type ConfirmAction = { title: string; message: string; onConfirm: () => void; confirmLabel?: string; variant?: 'danger' | 'primary' };
+
 export default function MatchManager() {
   const [matches, setMatches] = useState<BackendMatch[]>([]);
   const [tournaments, setTournaments] = useState<any[]>([]);
@@ -114,6 +117,45 @@ export default function MatchManager() {
   const [assignForm, setAssignForm] = useState({ side: 'SIDE_A' as SideType, tournament_team: '' });
   const [scoreForm, setScoreForm] = useState(defaultScoreForm);
   const [showDashboard, setShowDashboard] = useState(true);
+
+  /* Toast system */
+  const [toasts, setToasts] = useState<ToastType[]>([]);
+  const toastId = useRef(0);
+  const addToast = useCallback((type: ToastType['type'], message: string, title?: string) => {
+    const id = ++toastId.current;
+    setToasts(prev => [...prev, { id, type, message, title }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  }, []);
+  const removeToast = useCallback((id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  /* Confirm modal */
+  const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
+
+  /* Match timer state */
+  const [elapsedMap, setElapsedMap] = useState<Record<string, string>>({});
+  const timerInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    const live = matches.filter(m => m.status === 'LIVE');
+    if (live.length === 0) { if (timerInterval.current) clearInterval(timerInterval.current); timerInterval.current = null; return; }
+    const tick = () => {
+      const next: Record<string, string> = {};
+      for (const m of live) {
+        if (m.started_at) {
+          const diff = Date.now() - new Date(m.started_at).getTime();
+          const mmin = Math.floor(diff / 60000);
+          const ssec = Math.floor((diff % 60000) / 1000);
+          next[m.id] = `${String(mmin).padStart(2, '0')}:${String(ssec).padStart(2, '0')}`;
+        }
+      }
+      setElapsedMap(next);
+    };
+    tick();
+    timerInterval.current = setInterval(tick, 1000);
+    return () => { if (timerInterval.current) clearInterval(timerInterval.current); };
+  }, [matches]);
+
 
   /* Auto-generate state */
   const [showAutoGen, setShowAutoGen] = useState(false);
@@ -149,73 +191,106 @@ export default function MatchManager() {
   const openEdit = (m: BackendMatch) => { setEditingId(m.id); setForm({ tournament: m.tournament, round: m.round, scheduled_at: m.scheduled_at?.slice(0, 16) || '' }); setShowForm(true); };
 
   const handleSave = async () => {
-    if (!form.tournament || !form.round || !form.scheduled_at) { setError('All fields required'); return; }
-    setSaving(true); setError(null);
+    if (!form.tournament || !form.round || !form.scheduled_at) { addToast('error', 'All fields are required to create a match'); return; }
+    setSaving(true);
     try {
-      if (editingId) { await eventsApi.adminUpdateMatch(editingId, form as any); }
-      else { await eventsApi.adminCreateMatch(form as any); }
+      if (editingId) { await eventsApi.adminUpdateMatch(editingId, form as any); addToast('success', `Match "${form.round}" updated`); }
+      else { await eventsApi.adminCreateMatch(form as any); addToast('success', `Match "${form.round}" created successfully`); }
       setShowForm(false); load();
-    } catch (err: any) { setError(err.message); } finally { setSaving(false); }
+    } catch (err: any) { addToast('error', err.message || 'Failed to save match'); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this match?')) return;
-    try { await eventsApi.adminDeleteMatch(id); load(); } catch (err: any) { setError(err.message); }
+    setConfirm({
+      title: 'Delete Alliance Match',
+      message: 'This will permanently remove this match and all team assignments. This action cannot be undone.',
+      confirmLabel: 'Delete Match',
+      variant: 'danger',
+      onConfirm: async () => {
+        try { await eventsApi.adminDeleteMatch(id); load(); addToast('success', 'Match deleted successfully'); } catch (err: any) { addToast('error', err.message || 'Failed to delete match'); }
+      },
+    });
   };
 
   const handleAssign = async () => {
     if (!selectedMatch || !assignForm.tournament_team) return;
+    const teamName = teams.find(t => t.id === assignForm.tournament_team)?.team_name || '';
     try {
       await eventsApi.adminAssignTeamToMatch(selectedMatch.id, assignForm);
       setAssignForm({ side: 'SIDE_A', tournament_team: '' });
+      addToast('success', `${teamName} assigned to ${sideLabel(assignForm.side)} alliance`);
       load();
       const updated = await eventsApi.adminGetMatch(selectedMatch.id);
       setSelectedMatch(updated);
-    } catch (err: any) { setError(`Assign failed: ${err.message}`); load(); }
+    } catch (err: any) { addToast('error', `Assign failed: ${err.message}`); load(); }
   };
 
   const handleRemoveTeam = async (side: SideType, teamId: string) => {
     if (!selectedMatch) return;
+    const teamName = teams.find(t => t.id === teamId)?.team_name || '';
     try {
       await eventsApi.adminRemoveTeamFromMatch(selectedMatch.id, { side, tournament_team: teamId });
+      addToast('info', `${teamName} removed from ${sideLabel(side)} alliance`);
       load();
       const updated = await eventsApi.adminGetMatch(selectedMatch.id);
       setSelectedMatch(updated);
     } catch (err: any) {
-      setError(`Remove team failed: ${err.message}`);
+      addToast('error', `Remove failed: ${err.message}`);
       load();
     }
   };
 
   const handleRecordScores = async () => {
     if (!selectedMatch) return;
+    const { side_a_score, side_b_score } = scoreForm;
     try {
       await eventsApi.adminRecordMatchScores(selectedMatch.id, scoreForm);
+      addToast('success', `${VEX_ALLIANCE_CONFIG.redLabel} ${side_a_score} : ${side_b_score} ${VEX_ALLIANCE_CONFIG.blueLabel} — Scores recorded!`);
       load();
       const updated = await eventsApi.adminGetMatch(selectedMatch.id);
       setSelectedMatch(updated);
-    } catch (err: any) { setError(`Scores failed: ${err.message}`); load(); }
+    } catch (err: any) { addToast('error', `Scores failed: ${err.message}`); load(); }
   };
 
   const handleComplete = async () => {
     if (!selectedMatch) return;
-    try {
-      await eventsApi.adminCompleteMatch(selectedMatch.id);
-      load();
-      const updated = await eventsApi.adminGetMatch(selectedMatch.id);
-      setSelectedMatch(updated);
-    } catch (err: any) { setError(`Complete failed: ${err.message}`); load(); }
+    setConfirm({
+      title: 'Complete Alliance Match',
+      message: `Finalize "${selectedMatch.round}"? Scores will be locked and standings updated.`,
+      confirmLabel: 'Complete Match',
+      variant: 'primary',
+      onConfirm: async () => {
+        try {
+          await eventsApi.adminCompleteMatch(selectedMatch.id);
+          addToast('success', `"${selectedMatch.round}" is now complete! Standings updated.`);
+          load();
+          const updated = await eventsApi.adminGetMatch(selectedMatch.id);
+          setSelectedMatch(updated);
+        } catch (err: any) { addToast('error', `Complete failed: ${err.message}`); load(); }
+      },
+    });
   };
 
   const handleStartMatch = async (id: string) => {
-    try {
-      await eventsApi.adminUpdateMatch(id, { status: 'LIVE' as any });
-      load();
-      if (selectedMatch?.id === id) {
-        const updated = await eventsApi.adminGetMatch(id);
-        setSelectedMatch(updated);
-      }
-    } catch (err: any) { setError(`Start failed: ${err.message}`); }
+    const match = matches.find(m => m.id === id);
+    if (!match) return;
+    setConfirm({
+      title: 'Start Alliance Match',
+      message: `Start "${match.round}"? The match timer will begin and the field will go LIVE.`,
+      confirmLabel: 'Start Match',
+      variant: 'primary',
+      onConfirm: async () => {
+        try {
+          await eventsApi.adminUpdateMatch(id, { status: 'LIVE' as any });
+          addToast('success', `"${match.round}" is LIVE! Timer started.`);
+          load();
+          if (selectedMatch?.id === id) {
+            const updated = await eventsApi.adminGetMatch(id);
+            setSelectedMatch(updated);
+          }
+        } catch (err: any) { addToast('error', `Start failed: ${err.message}`); }
+      },
+    });
   };
 
   /* ─── Auto Generate ─── */
@@ -310,11 +385,11 @@ export default function MatchManager() {
         }
       }
 
-      setGenProgress(`Done! Created ${created} alliance matches.`);
+      addToast('success', `Auto-generated ${created} alliance matches for the tournament!`, 'Generation Complete');
       setShowAutoGen(false);
       load();
     } catch (err: any) {
-      setError(err.message);
+      addToast('error', err.message || 'Failed to auto-generate matches');
     } finally {
       setGenLoading(false);
     }
@@ -353,6 +428,42 @@ export default function MatchManager() {
   return (
     <div className="flex flex-col gap-6">
       {error && (<div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700"><AlertCircle className="w-4 h-4 shrink-0" /><span>{error}</span><button onClick={() => setError(null)} className="ml-auto"><X className="w-3.5 h-3.5" /></button></div>)}
+
+      {/* Toast container */}
+      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+        <AnimatePresence>
+          {toasts.map(t => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, x: 80, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 80, scale: 0.9, transition: { duration: 0.2 } }}
+              className={`rounded-2xl p-4 shadow-2xl border flex items-start gap-3 ${
+                t.type === 'success' ? 'bg-emerald-50 border-emerald-200' :
+                t.type === 'error' ? 'bg-red-50 border-red-200' :
+                'bg-blue-50 border-blue-200'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                t.type === 'success' ? 'bg-emerald-500' :
+                t.type === 'error' ? 'bg-red-500' :
+                'bg-blue-500'
+              }`}>
+                {t.type === 'success' ? <CheckCircle className="w-4 h-4 text-white" /> :
+                 t.type === 'error' ? <AlertCircle className="w-4 h-4 text-white" /> :
+                 <Info className="w-4 h-4 text-white" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                {t.title && <p className="text-xs font-black text-slate-800">{t.title}</p>}
+                <p className="text-[11px] text-slate-600 mt-0.5">{t.message}</p>
+              </div>
+              <button onClick={() => removeToast(t.id)} className="shrink-0 p-1 rounded-lg hover:bg-black/5 text-slate-400">
+                <X className="w-3 h-3" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* Dashboard Stats */}
       {showDashboard && (
@@ -411,41 +522,81 @@ export default function MatchManager() {
       </div>
 
       {/* Live matches bar */}
-      {liveCount > 0 && (
-        <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-4 text-white">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            <span className="text-xs font-black uppercase">{liveCount} Alliance Match{liveCount > 1 ? 'es' : ''} LIVE</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {matches.filter(m => m.status === 'LIVE').slice(0, 4).map(m => (
-              <button key={m.id} onClick={() => { setSelectedMatch(m); setScoreForm({ side_a_score: m.sides?.find(s => s.side === 'SIDE_A')?.score ?? 0, side_b_score: m.sides?.find(s => s.side === 'SIDE_B')?.score ?? 0 }); }}
-                className="bg-white/10 hover:bg-white/20 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all">
-                {m.round} — {getSideTeamNames(m.sides?.find(s => s.side === 'SIDE_A')?.participants).join(' & ') || 'RED'} vs {getSideTeamNames(m.sides?.find(s => s.side === 'SIDE_B')?.participants).join(' & ') || 'BLUE'}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {liveCount > 0 && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-4 text-white overflow-hidden"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span className="text-xs font-black uppercase">{liveCount} Alliance Match{liveCount > 1 ? 'es' : ''} LIVE</span>
+              <span className="text-[9px] text-white/60 ml-auto">Click to score & manage</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {matches.filter(m => m.status === 'LIVE').slice(0, 4).map(m => (
+                <motion.button
+                  key={m.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => { setSelectedMatch(m); setScoreForm({ side_a_score: m.sides?.find(s => s.side === 'SIDE_A')?.score ?? 0, side_b_score: m.sides?.find(s => s.side === 'SIDE_B')?.score ?? 0 }); }}
+                  className="bg-white/10 hover:bg-white/20 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{m.round}</span>
+                    {elapsedMap[m.id] && (
+                      <span className="shrink-0 flex items-center gap-1 text-[9px] font-mono text-white/80 bg-white/10 px-1.5 py-0.5 rounded">
+                        <Timer className="w-3 h-3" /> {elapsedMap[m.id]}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-white/70 mt-0.5">
+                    {getSideTeamNames(m.sides?.find(s => s.side === 'SIDE_A')?.participants).join(' & ') || 'RED'} vs {getSideTeamNames(m.sides?.find(s => s.side === 'SIDE_B')?.participants).join(' & ') || 'BLUE'}
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white border border-brand-border rounded-2xl"><Gamepad2 className="w-10 h-10 text-slate-300 mx-auto mb-2" /><p className="font-bold text-slate-600">No matches</p></div>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20 bg-white border border-brand-border rounded-2xl">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.1 }}>
+            <Gamepad2 className="w-14 h-14 text-slate-200 mx-auto mb-3" />
+          </motion.div>
+          <p className="font-bold text-slate-500 text-lg">No matches yet</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Create your first alliance match or auto-generate a full tournament schedule.</p>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <button onClick={openCreate} className="px-4 py-2 bg-brand-red text-white text-xs font-black rounded-xl flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> New Match</button>
+            <button onClick={() => setShowAutoGen(true)} className="px-4 py-2 bg-emerald-50 text-emerald-700 text-xs font-black rounded-xl border border-emerald-200 flex items-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> Auto Generate</button>
+          </div>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map(m => (
-            <AdminMatchCard
-              key={m.id}
-              match={m}
-              onClick={() => {
-                const sideA = m.sides?.find(s => s.side === 'SIDE_A');
-                const sideB = m.sides?.find(s => s.side === 'SIDE_B');
-                setSelectedMatch(m);
-                setScoreForm({ side_a_score: sideA?.score ?? 0, side_b_score: sideB?.score ?? 0 });
-              }}
-              onStart={m.status === 'SCHEDULED' ? () => handleStartMatch(m.id) : undefined}
-            />
-          ))}
-        </div>
+        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((m, i) => (
+              <motion.div
+                key={m.id}
+                layout
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25, delay: i * 0.03 }}
+              >
+                <AdminMatchCard
+                  match={m}
+                  onClick={() => {
+                    const sideA = m.sides?.find(s => s.side === 'SIDE_A');
+                    const sideB = m.sides?.find(s => s.side === 'SIDE_B');
+                    setSelectedMatch(m);
+                    setScoreForm({ side_a_score: sideA?.score ?? 0, side_b_score: sideB?.score ?? 0 });
+                  }}
+                  onStart={m.status === 'SCHEDULED' ? () => handleStartMatch(m.id) : undefined}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       <AnimatePresence>
@@ -485,9 +636,30 @@ export default function MatchManager() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <Gamepad2 className="w-5 h-5 text-brand-red" />
+                    <motion.div
+                      animate={selectedMatch.status === 'LIVE' ? { rotate: [0, 5, -5, 0] } : {}}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    >
+                      <Gamepad2 className="w-5 h-5 text-brand-red" />
+                    </motion.div>
                     <h3 className="font-black text-lg text-slate-900">{selectedMatch.round}</h3>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${statusBadge(selectedMatch.status)}`}>{selectedMatch.status}</span>
+                    <motion.span
+                      key={selectedMatch.status}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${statusBadge(selectedMatch.status)}`}
+                    >
+                      {selectedMatch.status}
+                    </motion.span>
+                    {selectedMatch.status === 'LIVE' && elapsedMap[selectedMatch.id] && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -5 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-[9px] font-mono font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full flex items-center gap-1"
+                      >
+                        <Timer className="w-3 h-3" /> {elapsedMap[selectedMatch.id]}
+                      </motion.span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500">{selectedMatch.tournament_title}</p>
                 </div>
@@ -509,16 +681,22 @@ export default function MatchManager() {
               </div>
 
               {/* VEX Alliance Display */}
-              {(() => {
-                const sideAData = selectedMatch.sides?.find(s => s.side === 'SIDE_A');
-                const sideBData = selectedMatch.sides?.find(s => s.side === 'SIDE_B');
-                const sides = [
-                  { side: 'SIDE_A' as const, score: sideAData?.score ?? null, teams: getSideTeamNames(sideAData?.participants) },
-                  { side: 'SIDE_B' as const, score: sideBData?.score ?? null, teams: getSideTeamNames(sideBData?.participants) },
-                ];
-                const { sideA, sideB } = sidesFromMatch(sides);
-                return (
-                  <div className="mb-6">
+              <motion.div
+                key={selectedMatch.status + selectedMatch.id}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                className="mb-6"
+              >
+                {(() => {
+                  const sideAData = selectedMatch.sides?.find(s => s.side === 'SIDE_A');
+                  const sideBData = selectedMatch.sides?.find(s => s.side === 'SIDE_B');
+                  const sides = [
+                    { side: 'SIDE_A' as const, score: sideAData?.score ?? null, teams: getSideTeamNames(sideAData?.participants) },
+                    { side: 'SIDE_B' as const, score: sideBData?.score ?? null, teams: getSideTeamNames(sideBData?.participants) },
+                  ];
+                  const { sideA, sideB } = sidesFromMatch(sides);
+                  return (
                     <VexAllianceDisplay
                       sideA={sideA}
                       sideB={sideB}
@@ -526,126 +704,290 @@ export default function MatchManager() {
                       variant="broadcast"
                       isLive={selectedMatch.status === 'LIVE'}
                     />
-                  </div>
-                );
-              })()}
+                  );
+                })()}
+              </motion.div>
 
               {/* Alliance team slots */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <motion.div layout className="grid grid-cols-2 gap-4 mb-6">
                 {(['SIDE_A', 'SIDE_B'] as SideType[]).map(sideKey => {
                   const side = selectedMatch.sides?.find(s => s.side === sideKey);
                   const count = side?.participants?.length || 0;
                   const isRed = sideKey === 'SIDE_A';
+                  const isReady = count >= TEAMS_PER_ALLIANCE;
                   return (
-                    <div key={sideKey} className={`rounded-2xl p-4 border-2 ${isRed ? 'border-red-200 bg-red-50/50' : 'border-blue-200 bg-blue-50/50'}`}>
+                    <motion.div
+                      key={sideKey}
+                      layout
+                      initial={{ opacity: 0, x: isRed ? -10 : 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`rounded-2xl p-4 border-2 transition-colors ${
+                        isRed
+                          ? `${isReady ? 'border-red-300 bg-red-50' : 'border-red-200/50 bg-red-50/30'}`
+                          : `${isReady ? 'border-blue-300 bg-blue-50' : 'border-blue-200/50 bg-blue-50/30'}`
+                      }`}
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${isRed ? 'text-red-600' : 'text-blue-600'}`}>
-                          {sideLabel(sideKey)}
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${isRed ? 'text-red-600' : 'text-blue-600'}`}>
+                            {sideLabel(sideKey)}
+                          </span>
+                          {isReady && <CheckCircle className={`w-3 h-3 ${isRed ? 'text-red-500' : 'text-blue-500'}`} />}
+                        </div>
+                        <span className={`text-[9px] font-bold ${count >= TEAMS_PER_ALLIANCE ? 'text-emerald-600' : 'text-slate-400'}`}>
+                          {count}/{TEAMS_PER_ALLIANCE}
                         </span>
-                        <span className="text-[9px] font-bold text-slate-400">{count}/{TEAMS_PER_ALLIANCE} teams</span>
                       </div>
-                      {[0, 1].map(slot => {
-                        const p = side?.participants?.[slot];
-                        return (
-                          <div key={slot} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 mb-1.5 border border-slate-100">
-                            {p ? (
-                              <>
-                                <span className="text-xs font-bold text-slate-900">{p.team_name || p.tournament_team_name}</span>
-                                {selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' && (
-                                  <button onClick={() => handleRemoveTeam(sideKey, p.tournament_team)} className="text-slate-400 hover:text-red-500"><X className="w-3 h-3" /></button>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-xs text-slate-400 italic">Team {slot + 1} — slot open</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                      <AnimatePresence mode="popLayout">
+                        {[0, 1].map(slot => {
+                          const p = side?.participants?.[slot];
+                          return (
+                            <motion.div
+                              key={slot}
+                              layout
+                              initial={{ opacity: 0, x: -8, height: 0 }}
+                              animate={{ opacity: 1, x: 0, height: 'auto' }}
+                              exit={{ opacity: 0, x: 8, height: 0 }}
+                              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                              className="flex items-center justify-between bg-white rounded-lg px-3 py-2 mb-1.5 border border-slate-100"
+                            >
+                              {p ? (
+                                <>
+                                  <span className="text-xs font-bold text-slate-900">{p.team_name || p.tournament_team_name}</span>
+                                  {selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' && (
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={() => handleRemoveTeam(sideKey, p.tournament_team)}
+                                      className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </motion.button>
+                                  )}
+                                </>
+                              ) : selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' ? (
+                                <span className="text-xs text-slate-400 italic flex items-center gap-1.5">
+                                  <Users className="w-3 h-3" /> Slot {slot + 1} — open
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
+                      {selectedMatch.status === 'SCHEDULED' && !isReady && (
+                        <p className="text-[9px] text-amber-600 mt-1.5 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> Need {TEAMS_PER_ALLIANCE - count} more team{TEAMS_PER_ALLIANCE - count > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
 
               {/* Times */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <motion.div layout className="grid grid-cols-3 gap-3 mb-6">
                 {[
                   { icon: Calendar, label: 'Scheduled', value: selectedMatch.scheduled_at?.slice(0, 16) || '—' },
-                  { icon: Clock, label: 'Started', value: selectedMatch.started_at?.slice(0, 16) || '—' },
+                  { icon: selectedMatch.status === 'LIVE' ? Timer : Clock, label: 'Started', value: selectedMatch.started_at?.slice(0, 16) || '—' },
                   { icon: CheckCircle, label: 'Completed', value: selectedMatch.completed_at?.slice(0, 16) || '—' },
-                ].map((m, i) => (
-                  <div key={i} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <m.icon className="w-4 h-4 text-brand-red mb-1" />
-                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">{m.label}</p>
-                    <p className="text-xs font-bold text-slate-900 mt-0.5">{m.value}</p>
-                  </div>
-                ))}
-              </div>
+                ].map((m, i) => {
+                  const MIcon = m.icon;
+                  const isActive = (i === 1 && selectedMatch.status === 'LIVE') || (i === 2 && selectedMatch.status === 'COMPLETED');
+                  return (
+                    <motion.div
+                      key={m.label}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`rounded-xl p-3 border transition-colors ${
+                        isActive
+                          ? i === 1 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'
+                          : 'bg-slate-50 border-slate-100'
+                      }`}
+                    >
+                      <MIcon className={`w-4 h-4 mb-1 ${isActive ? (i === 1 ? 'text-red-500' : 'text-emerald-500') : 'text-brand-red'}`} />
+                      <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">{m.label}</p>
+                      <p className="text-xs font-bold text-slate-900 mt-0.5">
+                        {m.value}
+                        {i === 1 && selectedMatch.status === 'LIVE' && elapsedMap[selectedMatch.id] && (
+                          <span className="ml-1.5 text-red-600 font-mono">({elapsedMap[selectedMatch.id]})</span>
+                        )}
+                      </p>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
 
               <div className="flex flex-col gap-4">
                 {/* Assign Teams */}
                 {selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' && (
-                  <div className="bg-slate-50 rounded-2xl p-4">
-                    <h4 className="font-bold text-xs text-slate-700 mb-3 flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" /> Assign to Alliance
-                      <span className="text-[9px] text-slate-400 font-normal">(max {TEAMS_PER_ALLIANCE} per side)</span>
-                    </h4>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-slate-50 rounded-2xl p-4 border border-slate-200"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-xs text-slate-700 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5" /> Assign to Alliance
+                        <span className="text-[9px] text-slate-400 font-normal">(max {TEAMS_PER_ALLIANCE} per side)</span>
+                      </h4>
+                      <span className="text-[9px] text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        {teams.filter(t => t.tournament === selectedMatch.tournament).length} available
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <select value={assignForm.side} onChange={e => setAssignForm(p => ({ ...p, side: e.target.value as SideType }))} className="px-3 py-2 bg-white border border-brand-border rounded-lg text-xs">
-                        <option value="SIDE_A">{VEX_ALLIANCE_CONFIG.redLabel}</option>
-                        <option value="SIDE_B">{VEX_ALLIANCE_CONFIG.blueLabel}</option>
-                      </select>
-                      <select value={assignForm.tournament_team} onChange={e => setAssignForm(p => ({ ...p, tournament_team: e.target.value }))} className="flex-1 min-w-[140px] px-3 py-2 bg-white border border-brand-border rounded-lg text-xs">
-                        <option value="">Select team...</option>
+                      <div className="flex items-center gap-1.5 bg-white rounded-lg border border-slate-200 px-3 py-1.5">
+                        <span className="text-[9px] font-bold uppercase text-slate-400">Side</span>
+                        <select value={assignForm.side} onChange={e => setAssignForm(p => ({ ...p, side: e.target.value as SideType }))} className="text-xs bg-transparent border-0 focus:outline-none">
+                          <option value="SIDE_A">🔴 {VEX_ALLIANCE_CONFIG.redLabel}</option>
+                          <option value="SIDE_B">🔵 {VEX_ALLIANCE_CONFIG.blueLabel}</option>
+                        </select>
+                      </div>
+                      <select value={assignForm.tournament_team} onChange={e => setAssignForm(p => ({ ...p, tournament_team: e.target.value }))} className="flex-1 min-w-[160px] px-3 py-2 bg-white border border-brand-border rounded-lg text-xs">
+                        <option value="">Pick a team...</option>
                         {teams.filter(t => t.tournament === selectedMatch.tournament).map(t => <option key={t.id} value={t.id}>{t.team_name}</option>)}
                       </select>
-                      <button
+                      <motion.button
+                        whileHover={assignForm.tournament_team ? { scale: 1.03 } : {}}
+                        whileTap={assignForm.tournament_team ? { scale: 0.97 } : {}}
                         onClick={handleAssign}
                         disabled={!assignForm.tournament_team || !canAddTeamToSide(
                           selectedMatch.sides?.find(s => s.side === assignForm.side)?.participants?.length || 0
                         )}
-                        className="px-4 py-2 bg-brand-red text-white text-xs font-bold rounded-lg hover:bg-brand-red-dark disabled:opacity-50"
+                        className="px-5 py-2 bg-gradient-to-r from-brand-red to-brand-red-dark text-white text-xs font-black rounded-lg shadow-lg shadow-brand-red/25 disabled:opacity-40 disabled:shadow-none"
                       >
                         Assign
-                      </button>
+                      </motion.button>
                     </div>
-                  </div>
+                    {!canAddTeamToSide(selectedMatch.sides?.find(s => s.side === assignForm.side)?.participants?.length || 0) && (
+                      <p className="text-[9px] text-amber-600 mt-1.5 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Selected alliance side is full ({TEAMS_PER_ALLIANCE}/{TEAMS_PER_ALLIANCE})
+                      </p>
+                    )}
+                  </motion.div>
                 )}
 
                 {/* Record Scores */}
                 {selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' && (
-                  <div className="bg-slate-50 rounded-2xl p-4">
-                    <h4 className="font-bold text-xs text-slate-700 mb-3">Record Alliance Scores</h4>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <label className="text-[10px] font-bold text-red-600 block mb-1">{VEX_ALLIANCE_CONFIG.redLabel}</label>
-                        <input type="number" value={scoreForm.side_a_score} onChange={e => setScoreForm(p => ({ ...p, side_a_score: parseInt(e.target.value) || 0 }))}
-                          className="w-full px-3 py-2 bg-white border border-red-200 rounded-lg text-sm font-black" />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border-2 border-slate-200"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold text-xs text-slate-700 flex items-center gap-1.5">
+                        <Trophy className="w-3.5 h-3.5 text-amber-500" /> Record Alliance Scores
+                      </h4>
+                      <div className="flex items-center gap-1 text-[9px] text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                        <Info className="w-3 h-3" /> {selectedMatch.status === 'LIVE' ? 'Live scoring' : 'Pre-match scoring'}
                       </div>
-                      <span className="font-black text-2xl text-slate-300 mt-5">:</span>
-                      <div className="flex-1">
-                        <label className="text-[10px] font-bold text-blue-600 block mb-1">{VEX_ALLIANCE_CONFIG.blueLabel}</label>
-                        <input type="number" value={scoreForm.side_b_score} onChange={e => setScoreForm(p => ({ ...p, side_b_score: parseInt(e.target.value) || 0 }))}
-                          className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm font-black" />
-                      </div>
-                      <button onClick={handleRecordScores} className="px-4 py-2 bg-brand-red text-white text-xs font-bold rounded-lg hover:bg-brand-red-dark mt-5">Save Scores</button>
                     </div>
-                  </div>
+
+                    {/* Animated scoreboard */}
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex-1 text-center">
+                        <div className="text-[9px] font-black uppercase tracking-wider text-red-600 mb-1">{VEX_ALLIANCE_CONFIG.redLabel} Alliance</div>
+                        <div className="relative">
+                          <div className="w-full bg-red-50 border-2 border-red-200 rounded-2xl overflow-hidden">
+                            <input type="number" value={scoreForm.side_a_score}
+                              onChange={e => setScoreForm(p => ({ ...p, side_a_score: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="w-full text-center text-4xl font-black py-4 bg-transparent text-red-700 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
+                          </div>
+                          <motion.div
+                            key={scoreForm.side_a_score}
+                            initial={{ scale: 1.3, opacity: 0.5 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow-lg"
+                          >
+                            {scoreForm.side_a_score}
+                          </motion.div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center gap-1 mt-6">
+                        <span className="font-black text-3xl text-slate-300">:</span>
+                      </div>
+
+                      <div className="flex-1 text-center">
+                        <div className="text-[9px] font-black uppercase tracking-wider text-blue-600 mb-1">{VEX_ALLIANCE_CONFIG.blueLabel} Alliance</div>
+                        <div className="relative">
+                          <div className="w-full bg-blue-50 border-2 border-blue-200 rounded-2xl overflow-hidden">
+                            <input type="number" value={scoreForm.side_b_score}
+                              onChange={e => setScoreForm(p => ({ ...p, side_b_score: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="w-full text-center text-4xl font-black py-4 bg-transparent text-blue-700 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
+                          </div>
+                          <motion.div
+                            key={scoreForm.side_b_score}
+                            initial={{ scale: 1.3, opacity: 0.5 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow-lg"
+                          >
+                            {scoreForm.side_b_score}
+                          </motion.div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                        <span className={`w-2 h-2 rounded-full ${selectedMatch.status === 'LIVE' ? 'bg-red-500 animate-pulse' : 'bg-slate-300'}`} />
+                        {selectedMatch.status === 'LIVE' ? 'Match in progress — scores update live' : 'Set scores before completing'}
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={handleRecordScores}
+                        className="px-6 py-2.5 bg-gradient-to-r from-brand-red to-brand-red-dark text-white text-xs font-black rounded-xl shadow-lg shadow-brand-red/25 flex items-center gap-1.5"
+                      >
+                        <CheckCircle className="w-4 h-4" /> Save Scores
+                      </motion.button>
+                    </div>
+                  </motion.div>
                 )}
 
                 {selectedMatch.status === 'COMPLETED' && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center">
-                    <CheckCircle className="w-6 h-6 text-emerald-500 mx-auto mb-1" />
-                    <p className="text-xs font-bold text-emerald-700">Match Completed</p>
-                    <p className="text-[10px] text-emerald-600 mt-0.5">No further changes allowed.</p>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-2 border-emerald-200 rounded-2xl p-6 text-center"
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 300, delay: 0.1 }}
+                    >
+                      <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+                    </motion.div>
+                    <p className="text-sm font-black text-emerald-800">Match Completed</p>
+                    <p className="text-[10px] text-emerald-600 mt-1">Scores are locked. Results recorded to standings.</p>
+                    <div className="flex items-center justify-center gap-4 mt-3 text-[10px]">
+                      <span className="flex items-center gap-1 font-bold text-emerald-700">
+                        <Trophy className="w-3 h-3" /> Winner: {selectedMatch.winning_side_label || selectedMatch.winning_side || '—'}
+                      </span>
+                    </div>
+                  </motion.div>
                 )}
 
                 {selectedMatch.status === 'CANCELLED' && (
-                  <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
-                    <XCircle className="w-6 h-6 text-red-500 mx-auto mb-1" />
-                    <p className="text-xs font-bold text-red-700">Match Cancelled</p>
-                    <p className="text-[10px] text-red-600 mt-0.5">No further changes allowed.</p>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-gradient-to-br from-red-50 to-red-100/50 border-2 border-red-200 rounded-2xl p-6 text-center"
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 300, delay: 0.1 }}
+                    >
+                      <XCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
+                    </motion.div>
+                    <p className="text-sm font-black text-red-800">Match Cancelled</p>
+                    <p className="text-[10px] text-red-600 mt-1">This match has been voided. No further changes allowed.</p>
+                  </motion.div>
                 )}
               </div>
             </motion.div>
@@ -670,10 +1012,30 @@ export default function MatchManager() {
               </div>
 
               {genLoading ? (
-                <div className="flex flex-col items-center py-12 gap-4">
-                  <Loader2 className="w-10 h-10 animate-spin text-emerald-500" />
-                  <p className="text-sm font-medium text-slate-700">{genProgress}</p>
-                </div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center py-12 gap-4"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                  >
+                    <Wand2 className="w-10 h-10 text-emerald-500" />
+                  </motion.div>
+                  <div className="flex flex-col items-center gap-1">
+                    <p className="text-sm font-medium text-slate-700">{genProgress}</p>
+                    <p className="text-[10px] text-slate-400">Generating alliance schedule...</p>
+                  </div>
+                  <div className="w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
+                    <motion.div
+                      initial={{ x: '-100%' }}
+                      animate={{ x: '200%' }}
+                      transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+                      className="w-1/3 h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full"
+                    />
+                  </div>
+                </motion.div>
               ) : (
                 <div className="flex flex-col gap-4">
                   <div>
@@ -890,6 +1252,40 @@ export default function MatchManager() {
                   </div>
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+        {/* Confirm Modal */}
+        {confirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setConfirm(null)} className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+              className="relative bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 z-10"
+            >
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${
+                confirm.variant === 'danger' ? 'bg-red-100' : 'bg-emerald-100'
+              }`}>
+                {confirm.variant === 'danger'
+                  ? <AlertTriangle className="w-6 h-6 text-red-600" />
+                  : <Play className="w-6 h-6 text-emerald-600" />
+                }
+              </div>
+              <h3 className="font-black text-lg text-slate-900 mb-1">{confirm.title}</h3>
+              <p className="text-sm text-slate-600 mb-6">{confirm.message}</p>
+              <div className="flex items-center justify-end gap-3">
+                <button onClick={() => setConfirm(null)} className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl">
+                  Cancel
+                </button>
+                <button onClick={() => { confirm.onConfirm(); setConfirm(null); }}
+                  className={`px-5 py-2.5 text-xs font-black text-white rounded-xl shadow-lg flex items-center gap-1.5 ${
+                    confirm.variant === 'danger'
+                      ? 'bg-red-500 hover:bg-red-600 shadow-red-500/25'
+                      : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-500/25'
+                  }`}
+                >
+                  {confirm.confirmLabel || 'Confirm'}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

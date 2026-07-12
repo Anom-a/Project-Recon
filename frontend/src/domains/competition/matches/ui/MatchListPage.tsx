@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { getAllPublicMatches, type MatchDetail } from '../../api/competitionApi';
 import MatchCard from './MatchCard';
+import VexMatchArena from '../../shared/VexMatchArena';
+import { sidesFromMatch } from '../../shared/VexAllianceDisplay';
 
 interface MatchListPageProps {
   onSelectMatch: (matchId: string) => void;
@@ -47,15 +49,26 @@ export default function MatchListPage({ onSelectMatch }: MatchListPageProps) {
   const [statusTab, setStatusTab] = useState<StatusTab>('all');
   const [tournamentFilter, setTournamentFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const perPage = 12;
 
-  useEffect(() => {
-    setLoading(true);
+  const fetchMatches = (isInitial = false) => {
+    if (isInitial) setLoading(true);
     setError(null);
     getAllPublicMatches()
-      .then(setMatches)
+      .then(data => {
+        setMatches(data);
+        setLastRefresh(new Date());
+      })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchMatches(true); }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => fetchMatches(false), 10000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => { setPage(1); }, [statusTab, search, tournamentFilter]);
@@ -117,36 +130,42 @@ export default function MatchListPage({ onSelectMatch }: MatchListPageProps) {
         <p className="text-xs text-slate-500 mt-1">Track live scores, results, and upcoming matches</p>
       </div>
 
-      {/* Live matches highlight */}
+      {/* Live matches highlight — alliance cards */}
       {liveMatches.length > 0 && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-5 mb-6 text-white shadow-xl shadow-red-200"
+          className="bg-gradient-to-br from-red-600 via-red-700 to-red-800 rounded-2xl p-5 mb-6 text-white shadow-xl shadow-red-200"
         >
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-wider">
-              {liveMatches.length} Live Match{liveMatches.length > 1 ? 'es' : ''} Now
-            </span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+              <span className="text-xs font-black uppercase tracking-wider">
+                {liveMatches.length} Live Alliance Match{liveMatches.length > 1 ? 'es' : ''}
+              </span>
+            </div>
+            <span className="text-[9px] text-white/60">Updated {lastRefresh.toLocaleTimeString()}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {liveMatches.slice(0, 4).map(m => {
-              const sideA = m.sides.find(s => s.side === 'SIDE_A');
-              const sideB = m.sides.find(s => s.side === 'SIDE_B');
+              const { sideA, sideB } = sidesFromMatch(m.sides);
               return (
                 <button key={m.id} onClick={() => onSelectMatch(m.id)}
-                  className="flex items-center justify-between bg-white/10 hover:bg-white/20 rounded-xl px-4 py-3 transition-all text-left"
+                  className="bg-white/10 hover:bg-white/20 rounded-xl p-4 transition-all text-left border border-white/10"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold truncate">{m.tournamentName}</p>
-                    <p className="text-[10px] text-white/70">{m.round}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-bold text-white/70 truncate">{m.tournamentName}</p>
+                    <Video className="w-4 h-4 shrink-0 text-white/70" />
                   </div>
-                  <div className="text-center mx-3 shrink-0">
-                    <p className="text-sm font-black">{sideA?.score ?? 0} : {sideB?.score ?? 0}</p>
-                  </div>
-                  <div className="text-right min-w-0 flex-1">
-                    <p className="text-xs font-bold truncate">{sideA?.teams[0] || '—'} vs {sideB?.teams[0] || '—'}</p>
-                  </div>
-                  <Video className="w-4 h-4 ml-2 shrink-0 text-white/70" />
+                  <p className="text-[9px] font-black uppercase tracking-wider text-white/50 mb-2">{m.round}</p>
+                  <VexMatchArena
+                    sideA={sideA}
+                    sideB={sideB}
+                    status="LIVE"
+                    round={m.round}
+                    tournamentName={m.tournamentName}
+                    winningSide={m.winningSide}
+                    startedAt={m.startedAt}
+                    size="card"
+                  />
                 </button>
               );
             })}

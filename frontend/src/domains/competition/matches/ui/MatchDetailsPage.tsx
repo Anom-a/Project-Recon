@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
-  ArrowLeft, Clock, Calendar, Gamepad2, Loader2, AlertCircle,
+  ArrowLeft, Clock, Calendar, Loader2, AlertCircle,
   CheckCircle, Trophy, RefreshCw,
 } from 'lucide-react';
-import { getPublicMatchById, type MatchDetail } from '../../api/competitionApi';
-import VexAllianceDisplay, { sidesFromMatch } from '../../shared/VexAllianceDisplay';
+import { getPublicMatchById } from '../../api/competitionApi';
+import { sidesFromMatch } from '../../shared/VexAllianceDisplay';
+import VexMatchArena from '../../shared/VexMatchArena';
 import { VEX_ALLIANCE_CONFIG } from '../../shared/vexConstants';
 
 interface MatchDetailsPageProps {
@@ -14,7 +15,7 @@ interface MatchDetailsPageProps {
 }
 
 export default function MatchDetailsPage({ matchId, onBack }: MatchDetailsPageProps) {
-  const [match, setMatch] = useState<MatchDetail | null>(null);
+  const [match, setMatch] = useState<Awaited<ReturnType<typeof getPublicMatchById>>>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,16 +57,6 @@ export default function MatchDetailsPage({ matchId, onBack }: MatchDetailsPagePr
 
   const { sideA, sideB } = sidesFromMatch(match.sides);
   const isLive = match.status === 'LIVE';
-  const isCompleted = match.status === 'COMPLETED';
-
-  const statusBadgeClass = () => {
-    switch (match.status) {
-      case 'SCHEDULED': return 'bg-blue-100 text-blue-700';
-      case 'LIVE': return 'bg-red-100 text-red-700 animate-pulse';
-      case 'COMPLETED': return 'bg-emerald-100 text-emerald-700';
-      case 'CANCELLED': return 'bg-slate-100 text-slate-500';
-    }
-  };
 
   const winnerLabel = match.winningSide === 'SIDE_A'
     ? VEX_ALLIANCE_CONFIG.redLabel
@@ -79,80 +70,89 @@ export default function MatchDetailsPage({ matchId, onBack }: MatchDetailsPagePr
         <ArrowLeft className="w-4 h-4" /> Back to Live View
       </button>
 
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <div className={`rounded-3xl border p-6 md:p-8 mb-6 relative overflow-hidden ${
-          isLive
-            ? 'bg-gradient-to-br from-slate-900 via-red-950 to-slate-900 border-red-500/40 text-white shadow-xl shadow-red-500/20'
-            : isCompleted
-              ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 text-white'
-              : 'bg-white border-slate-200'
-        }`}>
-          {isLive && (
-            <div className="absolute inset-0 opacity-[0.03]" style={{
-              backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-              backgroundSize: '32px 32px',
-            }} />
-          )}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        <VexMatchArena
+          sideA={sideA}
+          sideB={sideB}
+          status={match.status}
+          round={match.round}
+          tournamentName={match.tournamentName}
+          winningSide={match.winningSide}
+          scheduledAt={match.scheduledAt}
+          startedAt={match.startedAt}
+          size="detail"
+        />
 
-          <div className="relative">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <Gamepad2 className={`w-5 h-5 ${isLive || isCompleted ? 'text-white/80' : 'text-brand-red'}`} />
-                  <h2 className={`font-black text-lg md:text-2xl ${isLive || isCompleted ? 'text-white' : 'text-slate-900'}`}>
-                    {match.round || 'Match'}
-                  </h2>
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${statusBadgeClass()}`}>{match.status}</span>
+        {isLive && (
+          <div className="flex justify-end">
+            <button onClick={fetchMatch}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-black uppercase tracking-wider hover:bg-red-700 transition-colors">
+              <RefreshCw className="w-4 h-4" /> Refresh Scores
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-2xl p-4 border-2 border-red-300 bg-gradient-to-br from-red-50 to-white">
+            <p className="text-[10px] font-black uppercase tracking-wider mb-3 text-red-700">
+              {VEX_ALLIANCE_CONFIG.redLabel}
+            </p>
+            <div className="space-y-2">
+              {[0, 1].map(i => (
+                <div key={i} className="flex items-center gap-2 rounded-xl px-3 py-2 bg-white border border-red-100">
+                  <span className="text-[10px] font-black w-6 h-6 rounded-lg flex items-center justify-center bg-red-100 text-red-600">{i + 1}</span>
+                  <span className="text-sm font-bold truncate text-slate-900">
+                    {sideA.teams[i] || 'Open Slot'}
+                  </span>
                 </div>
-                <p className={`text-xs mt-1 ${isLive || isCompleted ? 'text-white/60' : 'text-slate-500'}`}>{match.tournamentName}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {isLive && (
-                  <>
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500 text-white text-[10px] font-black uppercase shadow-lg shadow-red-500/30">
-                      <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                      LIVE
-                    </span>
-                    <button onClick={fetchMatch} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors" title="Refresh">
-                      <RefreshCw className="w-4 h-4 text-white/70" />
-                    </button>
-                  </>
-                )}
-              </div>
+              ))}
             </div>
-
-            <VexAllianceDisplay
-              sideA={sideA}
-              sideB={sideB}
-              winningSide={match.winningSide}
-              variant="broadcast"
-              isLive={isLive}
-            />
-
-            {winnerLabel && (
-              <div className="mt-6 flex items-center justify-center gap-2 text-sm font-black text-amber-400">
-                <Trophy className="w-5 h-5" />
-                {winnerLabel} Wins
-              </div>
+            {sideA.score !== null && (
+              <p className="mt-3 text-2xl font-black tabular-nums text-red-600">{sideA.score}</p>
             )}
-
-            <div className={`grid grid-cols-2 md:grid-cols-3 gap-3 mt-6 ${isLive || isCompleted ? 'text-white/80' : ''}`}>
-              <div className={`rounded-xl p-3 ${isLive || isCompleted ? 'bg-white/5 border border-white/10' : 'bg-slate-50'}`}>
-                <Calendar className={`w-4 h-4 mb-1 ${isLive || isCompleted ? 'text-white/60' : 'text-brand-red'}`} />
-                <p className="text-[9px] font-black uppercase tracking-wider opacity-60">Scheduled</p>
-                <p className="text-xs font-bold mt-0.5">{match.scheduledAt ? new Date(match.scheduledAt).toLocaleString() : '—'}</p>
-              </div>
-              <div className={`rounded-xl p-3 ${isLive || isCompleted ? 'bg-white/5 border border-white/10' : 'bg-slate-50'}`}>
-                <Clock className={`w-4 h-4 mb-1 ${isLive || isCompleted ? 'text-white/60' : 'text-brand-red'}`} />
-                <p className="text-[9px] font-black uppercase tracking-wider opacity-60">Started</p>
-                <p className="text-xs font-bold mt-0.5">{match.startedAt ? new Date(match.startedAt).toLocaleString() : '—'}</p>
-              </div>
-              <div className={`rounded-xl p-3 ${isLive || isCompleted ? 'bg-white/5 border border-white/10' : 'bg-slate-50'}`}>
-                <CheckCircle className={`w-4 h-4 mb-1 ${isLive || isCompleted ? 'text-white/60' : 'text-brand-red'}`} />
-                <p className="text-[9px] font-black uppercase tracking-wider opacity-60">Completed</p>
-                <p className="text-xs font-bold mt-0.5">{match.completedAt ? new Date(match.completedAt).toLocaleString() : '—'}</p>
-              </div>
+          </div>
+          <div className="rounded-2xl p-4 border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-white">
+            <p className="text-[10px] font-black uppercase tracking-wider mb-3 text-blue-700">
+              {VEX_ALLIANCE_CONFIG.blueLabel}
+            </p>
+            <div className="space-y-2">
+              {[0, 1].map(i => (
+                <div key={i} className="flex items-center gap-2 rounded-xl px-3 py-2 bg-white border border-blue-100">
+                  <span className="text-[10px] font-black w-6 h-6 rounded-lg flex items-center justify-center bg-blue-100 text-blue-600">{i + 1}</span>
+                  <span className="text-sm font-bold truncate text-slate-900">
+                    {sideB.teams[i] || 'Open Slot'}
+                  </span>
+                </div>
+              ))}
             </div>
+            {sideB.score !== null && (
+              <p className="mt-3 text-2xl font-black tabular-nums text-blue-600">{sideB.score}</p>
+            )}
+          </div>
+        </div>
+
+        {winnerLabel && (
+          <div className="flex items-center justify-center gap-2 text-sm font-black text-amber-600 bg-amber-50 border border-amber-200 rounded-2xl py-4">
+            <Trophy className="w-5 h-5" />
+            {winnerLabel} Wins
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="rounded-xl p-3 bg-slate-50 border border-slate-100">
+            <Calendar className="w-4 h-4 mb-1 text-brand-red" />
+            <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Scheduled</p>
+            <p className="text-xs font-bold mt-0.5 text-slate-900">{match.scheduledAt ? new Date(match.scheduledAt).toLocaleString() : '—'}</p>
+          </div>
+          <div className="rounded-xl p-3 bg-slate-50 border border-slate-100">
+            <Clock className="w-4 h-4 mb-1 text-brand-red" />
+            <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Started</p>
+            <p className="text-xs font-bold mt-0.5 text-slate-900">{match.startedAt ? new Date(match.startedAt).toLocaleString() : '—'}</p>
+          </div>
+          <div className="rounded-xl p-3 bg-slate-50 border border-slate-100">
+            <CheckCircle className="w-4 h-4 mb-1 text-brand-red" />
+            <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Completed</p>
+            <p className="text-xs font-bold mt-0.5 text-slate-900">{match.completedAt ? new Date(match.completedAt).toLocaleString() : '—'}</p>
           </div>
         </div>
       </motion.div>

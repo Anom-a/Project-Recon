@@ -12,9 +12,11 @@ interface VexAllianceDisplayProps {
   sideA: AllianceSide;
   sideB: AllianceSide;
   winningSide?: string | null;
-  variant?: 'compact' | 'standard' | 'broadcast';
+  variant?: 'compact' | 'standard' | 'broadcast' | 'detailed';
   isLive?: boolean;
   showLabels?: boolean;
+  round?: string;
+  matchNumber?: string;
 }
 
 function AllianceColumn({
@@ -31,14 +33,18 @@ function AllianceColumn({
   score: number | null;
   color: 'red' | 'blue';
   isWinner: boolean;
-  variant: 'compact' | 'standard' | 'broadcast';
+  variant: 'compact' | 'standard' | 'broadcast' | 'detailed';
   align: 'left' | 'right';
 }) {
   const isRed = color === 'red';
   const slots = [
-    teams[0] || 'TBD',
-    teams[1] || (variant === 'broadcast' ? 'Partner TBD' : null),
-  ].filter(Boolean) as string[];
+    teams[0] || null,
+    teams[1] || null,
+  ];
+
+  const displaySlots = variant === 'detailed'
+    ? slots
+    : [teams[0] || 'TBD', teams[1] || (variant === 'broadcast' ? 'Partner TBD' : null)].filter(Boolean) as string[];
 
   const bg = isRed
     ? 'bg-gradient-to-br from-red-600/90 to-red-800/90'
@@ -47,14 +53,59 @@ function AllianceColumn({
   const textAlign = align === 'left' ? 'text-left' : 'text-right';
 
   if (variant === 'compact') {
+    const compactSlots = slots.map(t => t || 'TBD');
     return (
       <div className={`flex-1 min-w-0 ${textAlign}`}>
         <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isRed ? 'text-red-400' : 'text-blue-400'}`}>
           {label}
         </p>
-        {slots.map((t, i) => (
+        {compactSlots.map((t, i) => (
           <p key={i} className={`text-xs font-bold truncate ${isWinner ? 'text-white' : 'text-slate-200'}`}>{t}</p>
         ))}
+      </div>
+    );
+  }
+
+  if (variant === 'detailed') {
+    return (
+      <div className={`flex-1 rounded-2xl border-2 p-3 md:p-4 relative overflow-hidden ${
+        isRed
+          ? 'border-red-300 bg-gradient-to-br from-red-50 via-white to-red-100/50'
+          : 'border-blue-300 bg-gradient-to-br from-blue-50 via-white to-blue-100/50'
+      } ${isWinner ? 'ring-2 ring-amber-400 shadow-md shadow-amber-200/30' : ''}`}>
+        {isWinner && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[8px] font-black uppercase">
+            <Trophy className="w-3 h-3" /> Winner
+          </div>
+        )}
+        <div className={`flex items-center gap-2 mb-3 ${isRed ? 'text-red-700' : 'text-blue-700'}`}>
+          <div className={`w-3 h-3 rounded-full ${isRed ? 'bg-red-600' : 'bg-blue-600'}`} />
+          <p className="text-[10px] font-black uppercase tracking-[0.15em]">{label}</p>
+          {score !== null && (
+            <span className={`ml-auto text-xl font-black tabular-nums ${isRed ? 'text-red-600' : 'text-blue-600'}`}>{score}</span>
+          )}
+        </div>
+        <div className="space-y-2">
+          {displaySlots.map((t, i) => (
+            <div key={i} className={`flex items-center gap-2 rounded-xl px-3 py-2 border ${
+              t
+                ? isRed ? 'bg-white border-red-200' : 'bg-white border-blue-200'
+                : 'bg-slate-50 border-dashed border-slate-200'
+            }`}>
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+                isRed ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+              }`}>
+                {i + 1}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[8px] font-bold text-slate-400 uppercase">Alliance Partner {i + 1}</p>
+                <p className={`text-sm font-black truncate ${t ? 'text-slate-900' : 'text-slate-400 italic'}`}>
+                  {t || 'Open Slot'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -70,7 +121,7 @@ function AllianceColumn({
         {label}
       </p>
       <div className="space-y-2">
-        {slots.map((t, i) => (
+        {displaySlots.map((t, i) => (
           <div key={i} className="bg-black/20 rounded-xl px-3 py-2 border border-white/10">
             <p className="text-[8px] font-bold text-white/50 uppercase">Team {i + 1}</p>
             <p className={`font-black truncate ${variant === 'broadcast' ? 'text-base md:text-lg' : 'text-sm'} text-white`}>{t}</p>
@@ -93,6 +144,8 @@ export default function VexAllianceDisplay({
   variant = 'standard',
   isLive = false,
   showLabels = true,
+  round,
+  matchNumber,
 }: VexAllianceDisplayProps) {
   const scoreA = sideA.score;
   const scoreB = sideB.score;
@@ -116,7 +169,18 @@ export default function VexAllianceDisplay({
   }
 
   return (
-    <div className={`flex items-stretch gap-3 md:gap-4 ${variant === 'broadcast' ? 'md:gap-6' : ''}`}>
+    <div className="space-y-2">
+      {(round || matchNumber) && variant === 'detailed' && (
+        <div className="flex items-center justify-center gap-2">
+          {round && <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">{round}</span>}
+          {isLive && (
+            <span className="flex items-center gap-1 text-[9px] font-black text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> LIVE
+            </span>
+          )}
+        </div>
+      )}
+      <div className={`flex items-stretch gap-3 md:gap-4 ${variant === 'broadcast' ? 'md:gap-6' : ''} ${variant === 'detailed' ? 'flex-col sm:flex-row' : ''}`}>
       <AllianceColumn
         label={VEX_ALLIANCE_CONFIG.redLabel}
         teams={sideA.teams}
@@ -158,6 +222,7 @@ export default function VexAllianceDisplay({
         variant={variant}
         align="right"
       />
+      </div>
     </div>
   );
 }

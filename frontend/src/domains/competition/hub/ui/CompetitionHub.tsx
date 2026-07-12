@@ -4,7 +4,7 @@ import {
   Trophy, MapPin, Users, Calendar, Search, Loader2, AlertCircle,
   Clock, DollarSign, Lock, User, ExternalLink, GraduationCap,
   EyeOff, X, Shield, CheckCircle2, Activity, Zap, Gamepad2, Sparkles,
-  Medal, Award, Swords, ChevronRight, Tv, TrendingUp, RotateCcw,
+  Medal, Swords, ChevronRight, Tv, RotateCcw,
   Maximize2, Minimize2, RefreshCw,
 } from 'lucide-react';
 import { UserProfile, type Tournament, type Workshop } from '@/src/shared/types';
@@ -14,9 +14,9 @@ import {
   getPublicTeams, getAllPublicMatches,
   type PublicRegistrationData, type PublicTeamEntry, type MatchDetail,
 } from '../../api/competitionApi';
-import VexAllianceDisplay, { sidesFromMatch } from '../../shared/VexAllianceDisplay';
+import VexMatchArena from '../../shared/VexMatchArena';
+import { sidesFromMatch } from '../../shared/VexAllianceDisplay';
 import VexRulesPanel from '../../shared/VexRulesPanel';
-import { VEX_SCORING_RULES } from '../../shared/vexConstants';
 import MatchCard from '../../matches/ui/MatchCard';
 
 interface CompetitionHubProps {
@@ -154,9 +154,6 @@ export default function CompetitionHub({ currentUser, onViewTournament, onSelect
 
   const liveMatches = useMemo(() => matches.filter(m => m.status === 'LIVE'), [matches]);
   const upcomingMatches = useMemo(() => matches.filter(m => m.status === 'SCHEDULED').slice(0, 6), [matches]);
-  const sortedTeams = useMemo(() =>
-    [...teams].sort((a, b) => b.points - a.points || b.wins - a.wins || b.totalScore - a.totalScore),
-  [teams]);
 
   const events = eventFilter === 'tournaments' ? tournaments : eventFilter === 'workshops' ? workshops : allEvents;
   const filtered = events.filter(e => {
@@ -173,8 +170,6 @@ export default function CompetitionHub({ currentUser, onViewTournament, onSelect
     live: events.filter(e => e.computedState === 'LIVE').length,
     past: events.filter(e => e.computedState === 'PAST').length,
   };
-
-  const topTeams = useMemo(() => sortedTeams.slice(0, 3), [sortedTeams]);
 
   /* Registration handlers */
   const openRegModal = (id: string, title: string) => {
@@ -409,75 +404,61 @@ export default function CompetitionHub({ currentUser, onViewTournament, onSelect
       </AnimatePresence>
 
       {/* ════════════════════════════════════════ */}
-      {/* LIVE MATCHES + LEADERBOARD — unified view */}
+      {/* LIVE MATCHES — full width (leaderboard in sidebar) */}
       {/* ════════════════════════════════════════ */}
       {!loading && (
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-          {/* Live Matches Column */}
-          <div className="xl:col-span-3 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Tv className="w-5 h-5 text-red-500" />
-                <h2 className="font-black text-base text-slate-900 uppercase tracking-wider">Live Matches</h2>
-                {liveMatchCount > 0 && (
-                  <span className="flex items-center gap-1 text-[9px] font-black text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    {liveMatchCount} LIVE
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] text-slate-400 hidden sm:inline">
-                  Updated {lastRefresh.toLocaleTimeString()}
+        <div id="live-matches" className="space-y-4 scroll-mt-24">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tv className="w-5 h-5 text-red-500" />
+              <h2 className="font-black text-base text-slate-900 uppercase tracking-wider">Live Alliance Matches</h2>
+              {liveMatchCount > 0 && (
+                <span className="flex items-center gap-1 text-[9px] font-black text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  {liveMatchCount} LIVE
                 </span>
-                <button onClick={() => setShowMatchView(true)}
-                  className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-all flex items-center gap-1.5">
-                  <Maximize2 className="w-3 h-3" /> Full Screen
-                </button>
-              </div>
+              )}
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-400 hidden sm:inline">
+                Updated {lastRefresh.toLocaleTimeString()}
+              </span>
+              <button onClick={() => setShowMatchView(true)}
+                className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-all flex items-center gap-1.5">
+                <Maximize2 className="w-3 h-3" /> Full Screen
+              </button>
+            </div>
+          </div>
 
-            {liveMatches.length > 0 ? (
+          {liveMatches.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {liveMatches.map(m => (
+                <MatchCard key={m.id} match={m} onClick={() => onSelectMatch?.(m.id)} />
+              ))}
+            </div>
+          ) : upcomingMatches.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500 font-medium">No live matches — upcoming alliances next:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {liveMatches.map(m => (
+                {upcomingMatches.slice(0, 4).map(m => (
                   <MatchCard key={m.id} match={m} onClick={() => onSelectMatch?.(m.id)} />
                 ))}
               </div>
-            ) : upcomingMatches.length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-xs text-slate-500 font-medium">No live matches — upcoming next:</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {upcomingMatches.slice(0, 4).map(m => (
-                    <MatchCard key={m.id} match={m} onClick={() => onSelectMatch?.(m.id)} />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
-                <Gamepad2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-bold text-slate-500">No matches scheduled yet</p>
-                <p className="text-xs text-slate-400 mt-1">Alliance matches will appear here when scheduled</p>
-              </div>
-            )}
-          </div>
-
-          {/* Leaderboard Column */}
-          <div className="xl:col-span-2">
-            <LeaderboardSection
-              teams={sortedTeams}
-              topTeams={topTeams}
-              loading={loading}
-              onViewTournament={onViewTournament}
-              compact
-            />
-          </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+              <Gamepad2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-500">No matches scheduled yet</p>
+              <p className="text-xs text-slate-400 mt-1">RED vs BLUE alliance matches (2 teams per side) will appear here</p>
+            </div>
+          )}
         </div>
       )}
 
       {/* ════════════════════════════════════════ */}
       {/* ALL EVENTS SECTION */}
       {/* ════════════════════════════════════════ */}
-      <div id="events" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div id="events" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 scroll-mt-24">
         <div className="flex items-center gap-2">
           <Trophy className="w-5 h-5 text-brand-red" />
           <h2 className="font-black text-base text-slate-900 uppercase tracking-wider">All Events</h2>
@@ -737,7 +718,7 @@ export default function CompetitionHub({ currentUser, onViewTournament, onSelect
       {/* ════════════════════════════════════════ */}
       {/* VEX RULES */}
       {/* ════════════════════════════════════════ */}
-      <div id="rules" className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8">
+      <div id="rules" className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 scroll-mt-24">
         <VexRulesPanel />
       </div>
 
@@ -837,179 +818,6 @@ export default function CompetitionHub({ currentUser, onViewTournament, onSelect
           onViewTournament={onViewTournament}
         />
       )}
-    </div>
-  );
-}
-
-/* ───── Leaderboard Section ───── */
-
-function LeaderboardSection({ teams, topTeams, loading, onViewTournament, compact = false }: {
-  teams: PublicTeamEntry[];
-  topTeams: PublicTeamEntry[];
-  loading: boolean;
-  onViewTournament?: (id: string) => void;
-  compact?: boolean;
-}) {
-  const totalTournaments = useMemo(() => new Set(teams.map(t => t.tournamentId)).size, [teams]);
-  const totalPoints = useMemo(() => teams.reduce((a, b) => a + b.points, 0), [teams]);
-
-  if (loading) return <HubSkeleton />;
-
-  if (teams.length === 0) {
-    return (
-      <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-14 flex flex-col items-center text-center">
-        <Medal className="w-14 h-14 text-slate-300 mb-4" />
-        <h3 className="font-black text-xl text-slate-600 mb-1">Leaderboard</h3>
-        <p className="text-sm text-slate-400 max-w-md">
-          Leaderboard will appear once matches begin and standings are published.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Medal className="w-5 h-5 text-amber-500" />
-          <h2 className="font-black text-base text-slate-900 uppercase tracking-wider">Leaderboard</h2>
-          <span className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE
-          </span>
-        </div>
-      </div>
-
-      {!compact && (
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Teams', value: teams.length, icon: Users, color: 'text-brand-blue', bg: 'bg-brand-blue/5' },
-          { label: 'Tournaments', value: totalTournaments, icon: Trophy, color: 'text-brand-red', bg: 'bg-brand-red/5' },
-          { label: 'Total Points', value: totalPoints, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Top Score', value: topTeams[0]?.points || 0, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        ].map(s => (
-          <div key={s.label} className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-            <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-1.5`}>
-              <s.icon className={`w-4 h-4 ${s.color}`} />
-            </div>
-            <p className="font-black text-xl text-slate-900">{s.value}</p>
-            <p className="text-[10px] font-bold text-slate-500">{s.label}</p>
-          </div>
-        ))}
-      </div>
-      )}
-
-      {/* Podium */}
-      {topTeams.length >= 3 && (
-        <div className={`bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl border border-slate-700/60 relative overflow-hidden ${compact ? 'p-4' : 'p-6 md:p-8'}`}>
-          <div className="absolute inset-0 opacity-[0.04]" style={{
-            backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-            backgroundSize: '40px 40px',
-          }} />
-          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-brand-red/5 rounded-full blur-3xl" />
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-6">
-              <Medal className="w-5 h-5 text-amber-400" />
-              <h4 className="font-black text-xs text-amber-400 uppercase tracking-widest">Top Teams</h4>
-            </div>
-            <div className="flex items-end justify-center gap-4 md:gap-8">
-              {[1, 0, 2].map(pos => {
-                const entry = topTeams[pos];
-                if (!entry) return null;
-                const isFirst = pos === 0;
-                return (
-                  <div key={entry.teamName}
-                    className={`flex flex-col items-center gap-2 ${isFirst ? 'order-2' : pos === 0 ? 'order-1' : 'order-3'}`}
-                  >
-                    <div className={`w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center text-lg md:text-2xl ${
-                      pos === 0 ? 'bg-amber-400/20 ring-2 ring-amber-400/40' :
-                      pos === 1 ? 'bg-slate-400/20 ring-2 ring-slate-400/40' :
-                      'bg-orange-400/20 ring-2 ring-orange-400/40'
-                    }`}>
-                      {['🥇', '🥈', '🥉'][pos]}
-                    </div>
-                    <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black ${
-                      pos === 0 ? 'bg-amber-400/20 text-amber-300' :
-                      pos === 1 ? 'bg-slate-400/20 text-slate-300' :
-                      'bg-orange-400/20 text-orange-300'
-                    }`}>
-                      {entry.points} pts
-                    </div>
-                    <div className={`w-20 md:w-28 rounded-t-xl flex flex-col items-center justify-end pb-2 ${
-                      pos === 0 ? 'h-28 md:h-32 bg-gradient-to-t from-amber-500/40 to-amber-500/10' :
-                      pos === 1 ? 'h-20 md:h-24 bg-gradient-to-t from-slate-500/40 to-slate-500/10' :
-                      'h-16 md:h-20 bg-gradient-to-t from-orange-500/40 to-orange-500/10'
-                    }`}>
-                      <span className={`font-black text-lg md:text-xl ${
-                        pos === 0 ? 'text-amber-300' : pos === 1 ? 'text-slate-300' : 'text-orange-300'
-                      }`}>{entry.wins}W</span>
-                    </div>
-                    <span className={`font-black text-sm md:text-base text-center leading-tight max-w-28 truncate ${
-                      pos === 0 ? 'text-white' : 'text-slate-300'
-                    }`}>{entry.teamName}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Full table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider w-14">#</th>
-                <th className="text-left px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">Team</th>
-                <th className="text-left px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider hidden sm:table-cell">Tournament</th>
-                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">MP</th>
-                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">W</th>
-                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">L</th>
-                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">D</th>
-                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">TS</th>
-                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">Pts</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(compact ? teams.slice(0, 10) : teams).map((t, i) => (
-                <tr key={t.id} className={`transition-colors ${i < 3 ? 'bg-amber-50/50' : 'hover:bg-slate-50/80'}`}>
-                  <td className="px-4 py-3 text-center">
-                    {i < 3 ? (
-                      <span className="text-base">{['🥇', '🥈', '🥉'][i]}</span>
-                    ) : (
-                      <span className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-xs font-black bg-slate-100 text-slate-400">{i + 1}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm font-bold text-slate-900">{t.teamName}</span>
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    {onViewTournament ? (
-                      <button onClick={() => onViewTournament(t.tournamentId)}
-                        className="text-xs font-semibold text-brand-blue hover:underline">{t.tournamentName}</button>
-                    ) : (
-                      <span className="text-xs text-slate-500">{t.tournamentName}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center text-xs text-slate-500">{t.matchesPlayed}</td>
-                  <td className="px-4 py-3 text-center text-xs font-bold text-emerald-600">{t.wins}</td>
-                  <td className="px-4 py-3 text-center text-xs font-bold text-red-500">{t.losses}</td>
-                  <td className="px-4 py-3 text-center text-xs text-amber-600">{t.draws}</td>
-                  <td className="px-4 py-3 text-center text-xs font-bold text-slate-600">{t.totalScore}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="text-base font-black text-slate-900">{t.points}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-[9px] text-slate-400 text-center">
-          RP = Win×{VEX_SCORING_RULES.winPoints} + Draw×{VEX_SCORING_RULES.drawPoints} · Tie-break: Total Score
-        </div>
-      </div>
     </div>
   );
 }
@@ -1133,7 +941,6 @@ function EventDetailModal({ event, onClose, currentUser, isRegistered, onRegiste
 
 function MatchCardAnimated({ match, index }: { match: MatchDetail; index: number; key?: string }) {
   const isLive = match.status === 'LIVE';
-  const isCompleted = match.status === 'COMPLETED';
   const { sideA, sideB } = sidesFromMatch(match.sides);
 
   return (
@@ -1152,52 +959,19 @@ function MatchCardAnimated({ match, index }: { match: MatchDetail; index: number
         scale: { duration: 0.4 },
         layout: { duration: 0.5, ease: 'easeInOut' },
       }}
-      className={`relative overflow-hidden rounded-2xl border ${
-        isLive
-          ? 'border-red-500/40 bg-gradient-to-br from-slate-900 via-red-950/50 to-slate-900 shadow-lg shadow-red-500/20'
-          : isCompleted
-            ? 'border-slate-700/40 bg-slate-800/40'
-            : 'border-slate-700/30 bg-slate-800/20'
-      }`}
+      className={isLive ? 'ring-2 ring-red-500/40 rounded-2xl' : 'rounded-2xl'}
     >
-      {isLive && (
-        <motion.div
-          animate={{ x: ['-100%', '100%'] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-          className="absolute inset-y-0 -inset-x-4 w-20 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
-        />
-      )}
-      <div className="p-4 md:p-5 relative">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {isLive ? (
-              <span className="flex items-center gap-1.5 text-[10px] font-black text-red-400 uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Live
-              </span>
-            ) : isCompleted ? (
-              <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Completed</span>
-            ) : (
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Scheduled</span>
-            )}
-          </div>
-          <span className="text-[9px] font-bold text-slate-500">{match.round}</span>
-        </div>
-
-        <VexAllianceDisplay
-          sideA={sideA}
-          sideB={sideB}
-          winningSide={match.winningSide}
-          variant="standard"
-          isLive={isLive}
-        />
-
-        <div className="mt-3 flex items-center justify-between text-[9px] text-slate-500">
-          <span>{match.tournamentName}</span>
-          {isLive && match.startedAt && (
-            <span>Started {new Date(match.startedAt).toLocaleTimeString()}</span>
-          )}
-        </div>
-      </div>
+      <VexMatchArena
+        sideA={sideA}
+        sideB={sideB}
+        status={match.status}
+        round={match.round}
+        tournamentName={match.tournamentName}
+        winningSide={match.winningSide}
+        scheduledAt={match.scheduledAt}
+        startedAt={match.startedAt}
+        size="card"
+      />
     </motion.div>
   );
 }

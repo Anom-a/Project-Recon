@@ -4,11 +4,13 @@ import {
   Users, GraduationCap, Award, DollarSign, BookOpen, Building, ClipboardList,
   Loader2, TrendingUp, Calendar, AlertTriangle, RefreshCw, Shield, Mail,
   Phone, MapPin, Clock, CheckCircle, XCircle, Plus, Star, UserCheck, Activity,
+  Medal, Trophy, Zap, Target,
 } from 'lucide-react';
 import { fetchUsersApi, branchesApi, resolveRole, type AdminUserResponse, type BranchResponse } from '../api/adminApi';
 import {
   fetchProgramsApi, fetchClassesApi, fetchEnrollmentsApi, fetchPaymentsApi,
 } from '@/src/domains/learning/academics/api/academicApi';
+import LiveLeaderboardWidget from '@/src/domains/competition/shared/LiveLeaderboardWidget';
 
 type StatCard = {
   label: string;
@@ -268,6 +270,11 @@ export default function AdminOverviewDashboard() {
 
       {/* Stat cards */}
       <StatCards stats={stats} />
+
+      {/* Live Leaderboard */}
+      <div className="grid grid-cols-1 gap-4">
+        <LiveLeaderboardWidget maxRows={10} pollIntervalMs={20000} />
+      </div>
 
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
