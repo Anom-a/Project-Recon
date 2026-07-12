@@ -37,11 +37,17 @@ export default function TeamManager() {
   const openCreate = () => { setEditingId(null); setForm(defaultForm); setShowForm(true); };
   const openEdit = (t: any) => { setEditingId(t.id); setForm({ tournament: t.tournament || '', team_name: t.team_name || '', organization: t.organization || '', coach_name: t.coach_name || '', contact_email: t.contact_email || '', contact_phone: t.contact_phone || '' }); setShowForm(true); };
 
+  const isTournamentClosed = (id: string) => {
+    const t = tournaments.find(t => t.id === id);
+    return t?.tournament?.is_closed ?? t?.is_closed ?? false;
+  };
+
   const handleSave = async () => {
     if (!form.tournament || !form.team_name) { setError('Tournament and team name are required'); return; }
+    if (isTournamentClosed(form.tournament)) { setError('Cannot modify teams in a closed tournament.'); return; }
     setSaving(true); setError(null);
     try {
-      const payload: Record<string, string> = { tournament: form.tournament, team_name: form.team_name };
+      const payload: Record<string, any> = { tournament: form.tournament, team_name: form.team_name };
       if (editingId) {
         if (form.organization) payload.organization = form.organization;
         if (form.coach_name) payload.coach_name = form.coach_name;
@@ -56,7 +62,7 @@ export default function TeamManager() {
         await eventsApi.adminCreateTeam(payload);
       }
       setShowForm(false); load();
-    } catch (err: any) { setError(err.message); } finally { setSaving(false); }
+    } catch (err: any) { setError(`Team create failed: ${err.message}`); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
@@ -124,7 +130,10 @@ export default function TeamManager() {
           <select value={tournamentFilter} onChange={e => setTournamentFilter(e.target.value)}
             className="px-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red">
             <option value="all">All Tournaments</option>
-            {tournaments.map((t: any) => <option key={t.id} value={t.id}>{t.event_title || t.event}</option>)}
+            {tournaments.map((t: any) => {
+              const closed = t.tournament?.is_closed ?? t?.is_closed ?? false;
+              return <option key={t.id} value={t.id} disabled={closed}>{t.event_title || t.event}{closed ? ' (Closed)' : ''}</option>;
+            })}
           </select>
           <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="w-48 pl-9 pr-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red" /></div>
           <button onClick={openCreate} className="bg-gradient-to-r from-brand-red to-brand-red-dark text-white font-black text-xs px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-brand-red/25"><Plus className="w-4 h-4" /> New Team</button>
@@ -182,7 +191,10 @@ export default function TeamManager() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Tournament *</label>
                   <select value={form.tournament} onChange={e => setForm(p => ({ ...p, tournament: e.target.value }))} className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red">
                     <option value="">Select tournament...</option>
-                    {tournaments.map((t: any) => <option key={t.id} value={t.id}>{t.event_title || t.event}</option>)}
+                    {tournaments.map((t: any) => {
+                      const closed = t.tournament?.is_closed ?? t?.is_closed ?? false;
+                      return <option key={t.id} value={t.id} disabled={closed}>{t.event_title || t.event}{closed ? ' (Closed)' : ''}</option>;
+                    })}
                   </select>
                 </div>
                 <div>

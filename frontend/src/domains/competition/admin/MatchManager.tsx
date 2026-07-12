@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, Gamepad2, Clock, Trash2, CheckCircle, XCircle, Swords, Users, Trophy, Activity, BarChart3, Calendar, Wand2, Layers, Target, Medal, TrendingUp, Play, Flag, Shield, Zap, AlertTriangle, Info, Timer } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, Gamepad2, Clock, Trash2, CheckCircle, XCircle, Swords, Users, Trophy, Activity, BarChart3, Calendar, Wand2, Layers, Target, Medal, TrendingUp, Play, Flag, Shield, Zap, AlertTriangle, Info, Timer, Lock } from 'lucide-react';
 import * as eventsApi from '../api/eventsApi';
 import type { BackendMatch, BackendTournamentTeam, SideType, BackendStanding } from '../api/eventsApi';
 import AdminMatchCard from '../shared/AdminMatchCard';
@@ -110,6 +110,7 @@ export default function MatchManager() {
   const [search, setSearch] = useState('');
   const [tournamentFilter, setTournamentFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showClosed, setShowClosed] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
@@ -498,7 +499,9 @@ export default function MatchManager() {
     const matchesSearch = m.round?.toLowerCase().includes(search.toLowerCase());
     const matchesTournament = tournamentFilter === 'all' || m.tournament === tournamentFilter;
     const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
-    return matchesSearch && matchesTournament && matchesStatus;
+    const tournament = tournaments.find((t: any) => t.id === m.tournament);
+    const matchesClosed = showClosed || !tournament?.is_closed;
+    return matchesSearch && matchesTournament && matchesStatus && matchesClosed;
   });
 
   const totalMatches = matches.length;
@@ -586,8 +589,14 @@ export default function MatchManager() {
           <select value={tournamentFilter} onChange={e => setTournamentFilter(e.target.value)}
             className="px-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red">
             <option value="all">All Tournaments</option>
-            {tournaments.map((t: any) => <option key={t.id} value={t.id}>{t.event_title || t.event || t.id.slice(0, 8)}</option>)}
+            {tournaments.map((t: any) => <option key={t.id} value={t.id}>{t.event_title || t.event || t.id.slice(0, 8)}{t.is_closed ? ' (Closed)' : ''}</option>)}
           </select>
+          <button onClick={() => setShowClosed(p => !p)}
+            className={`text-[10px] font-black tracking-wider px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+              showClosed ? 'bg-slate-700 text-white border border-slate-600' : 'bg-white text-slate-400 border border-slate-200'
+            }`}>
+            <Lock className="w-3 h-3" />{showClosed ? 'Hide Closed' : 'Show Closed'}
+          </button>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
             className="px-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red">
             <option value="all">All Status</option>

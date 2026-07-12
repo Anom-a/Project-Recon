@@ -106,8 +106,7 @@ export async function getTournamentById(id: string): Promise<Tournament | null> 
   try {
     const event = await eventsApi.getPublicEventDetail(id);
     return mapBackendEventToTournament(event);
-  } catch (err) {
-    console.error('getTournamentById failed:', err);
+  } catch {
     return null;
   }
 }

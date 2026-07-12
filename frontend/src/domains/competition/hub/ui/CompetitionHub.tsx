@@ -74,6 +74,7 @@ function HubSkeleton() {
 export default function CompetitionHub({ currentUser, onViewTournament, onSelectMatch }: CompetitionHubProps) {
   const [eventFilter, setEventFilter] = useState<EventFilter>('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [showClosed, setShowClosed] = useState(false);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [teams, setTeams] = useState<PublicTeamEntry[]>([]);
@@ -162,6 +163,7 @@ export default function CompetitionHub({ currentUser, onViewTournament, onSelect
     if (timeFilter === 'live' && e.computedState !== 'LIVE') return false;
     if (timeFilter === 'past' && e.computedState !== 'PAST') return false;
     if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (!showClosed && e.eventType === 'TOURNAMENT' && (e as Tournament).isClosed) return false;
     return true;
   });
 
@@ -505,6 +507,12 @@ export default function CompetitionHub({ currentUser, onViewTournament, onSelect
                 </button>
               );
             })}
+            <button onClick={() => setShowClosed(p => !p)}
+              className={`text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+                showClosed ? 'bg-slate-700 text-white border border-slate-600' : 'bg-white text-slate-400 border border-slate-200'
+              }`}>
+              <Lock className="w-3 h-3" />{showClosed ? 'Hide Closed' : 'Show Closed'}
+            </button>
         </div>
       </div>
 

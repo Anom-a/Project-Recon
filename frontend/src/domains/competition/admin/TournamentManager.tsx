@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, Trophy, Users, DollarSign, Edit3, Trash2, Lock, Unlock, Eye, Tags, Save, Target, Medal, Calendar, MapPin, Clock, Gamepad2, Activity, Sparkles } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, Trophy, Users, DollarSign, Edit3, Trash2, Lock, Eye, Tags, Save, Target, Medal, Calendar, MapPin, Clock, Gamepad2, Activity, Sparkles } from 'lucide-react';
 import * as eventsApi from '../api/eventsApi';
 import type { BackendTournament, BackendTournamentCategory, BackendEvent, BackendStanding, BackendTournamentTeam, BackendMatch } from '../api/eventsApi';
 
@@ -77,20 +77,15 @@ export default function TournamentManager() {
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this tournament?')) return;
-    try { await eventsApi.adminDeleteTournament(id); load(); } catch (err: any) { setError(err.message); }
-  };
-
-  const handleToggleClose = async (id: string, isClosed: boolean) => {
+  const handleClose = async (id: string) => {
     try {
-      if (isClosed) {
-        await eventsApi.adminReopenTournament(id);
-      } else {
-        await eventsApi.adminCloseTournament(id);
-      }
+      await eventsApi.adminCloseTournament(id);
       load();
     } catch (err: any) { setError(err.message); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try { await eventsApi.adminDeleteTournament(id); load(); } catch (err: any) { setError(err.message); }
   };
 
   const handleShowDetail = async (t: any) => {
@@ -219,12 +214,15 @@ export default function TournamentManager() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                    {t.is_closed && <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded mr-1">Closed</span>}
-                    <button onClick={() => handleToggleClose(t.id, t.is_closed)} className={`p-1.5 rounded-lg ${t.is_closed ? 'text-slate-400' : 'text-emerald-500'}`} title={t.is_closed ? 'Reopen' : 'Close'}>
-                      {t.is_closed ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                    </button>
+                    {t.is_closed ? (
+                      <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded flex items-center gap-1"><Lock className="w-3 h-3" />Closed</span>
+                    ) : (
+                      <button onClick={() => handleClose(t.id)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Close Tournament">
+                        <Lock className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button onClick={() => openEdit(t)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500"><Edit3 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 text-[11px] text-slate-500 flex-wrap">
@@ -295,7 +293,7 @@ export default function TournamentManager() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="font-black text-lg text-slate-900">{selectedTournament.event_title}</h3>
-                  <p className="text-xs text-slate-500">{selectedTournament.category_name} · {selectedTournament.is_closed ? 'Closed' : 'Open'}</p>
+                  <p className="text-xs text-slate-500">{selectedTournament.category_name} · {selectedTournament.is_closed ? <span className="text-red-500 font-bold">Closed</span> : 'Open'}</p>
                 </div>
                 <button onClick={() => setSelectedTournament(null)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X className="w-5 h-5" /></button>
               </div>

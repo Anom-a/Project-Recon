@@ -280,7 +280,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               className="bg-white rounded-card shadow-premium-sm hover:shadow-premium-lg border border-brand-border-light/45 overflow-hidden flex flex-col group h-full transition-all duration-500 card-float hover:shadow-[0_20px_60px_-8px_rgba(37,51,141,0.15)] hover:border-[#25338d]/20"
             >
               <div className="relative aspect-video w-full bg-slate-100 overflow-hidden cursor-pointer" onClick={() => onSetSelectedProgramSpec(prog)}>
-                <img src={prog.image} alt={prog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
+                {prog.image && <img src={prog.image} alt={prog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />}
                 <div className="absolute top-4 left-4">
                   <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-white/95 px-2.5 py-1 rounded-full text-slate-800 shadow-sm border border-slate-100">{prog.category}</span>
                 </div>
