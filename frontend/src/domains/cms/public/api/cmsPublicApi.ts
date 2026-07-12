@@ -56,9 +56,18 @@ export interface TeamMemberResponse {
   bio: string;
   image: string;
   is_active: boolean;
+  order?: number;
+}
+
+export interface PlatformStats {
+  students_trained: number;
+  program_tracks: number;
+  partner_schools: number;
+  countries_reached: number;
 }
 
 export const cmsPublicApi = {
+  getPlatformStats: (signal?: AbortSignal) => http.get<PlatformStats>('/cms/stats/', { signal }),
   getHeroBanners: (signal?: AbortSignal) => http.get<HeroBannerResponse[]>('/cms/hero-banners/', { signal }),
   getNews: (params?: Record<string, string>, signal?: AbortSignal) => http.get<PaginatedResponse<NewsArticleResponse>>('/cms/news/', { params, signal }),
   getNewsDetail: (slug: string) => http.get<NewsArticleResponse>(`/cms/news/${slug}/`),

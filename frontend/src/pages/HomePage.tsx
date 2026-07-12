@@ -10,7 +10,7 @@ import DemoSlider from '../domains/learning/programs/ui/DemoSlider';
 import Updates from '../domains/learning/programs/ui/Updates';
 import { UserProfile, ActiveTab, type ProgramDisplay } from '../shared/types';
 import { getPrograms } from '../domains/learning/programs/api/programApi';
-import { cmsPublicApi, type CmsPartnerResponse, type FaqResponse } from '../domains/cms/public/api/cmsPublicApi';
+import { cmsPublicApi, type CmsPartnerResponse, type FaqResponse, type PlatformStats } from '../domains/cms/public/api/cmsPublicApi';
 import { ChevronDown } from 'lucide-react';
 
 import galleryImg1 from '../../assets/photo_2026-06-15_14-39-46.jpg';
@@ -44,6 +44,12 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [programs, setPrograms] = useState<ProgramDisplay[]>([]);
   const [programsLoading, setProgramsLoading] = useState(true);
+  const [stats, setStats] = useState<PlatformStats>({
+    students_trained: 0,
+    program_tracks: 0,
+    partner_schools: 0,
+    countries_reached: 0,
+  });
 
   React.useEffect(() => {
     const abort = new AbortController();
@@ -55,6 +61,10 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
 
     cmsPublicApi.getFaqs(signal)
       .then(data => setFaqs(data.filter(f => f.is_active).sort((a, b) => (a.order ?? 999) - (b.order ?? 999))))
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+
+    cmsPublicApi.getPlatformStats(signal)
+      .then(data => setStats(data))
       .catch(err => { if (err.name !== 'AbortError') console.error(err); });
 
     setProgramsLoading(true);
@@ -118,10 +128,10 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
-              { value: '500+', label: 'Students Trained', icon: Users },
-              { value: '10+', label: 'Program Tracks', icon: BookOpen },
-              { value: '25+', label: 'Partner Schools', icon: Globe },
-              { value: '3+', label: 'Countries Reached', icon: Trophy },
+              { value: `${stats.students_trained}+`, label: 'Students Trained', icon: Users },
+              { value: `${stats.program_tracks}+`, label: 'Program Tracks', icon: BookOpen },
+              { value: `${stats.partner_schools}+`, label: 'Partner Schools', icon: Globe },
+              { value: `${stats.countries_reached}+`, label: 'Countries Reached', icon: Trophy },
             ].map((stat, i) => {
               const StatIcon = stat.icon;
               return (

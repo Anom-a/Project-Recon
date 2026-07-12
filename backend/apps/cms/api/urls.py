@@ -24,6 +24,7 @@ from apps.cms.api.views import (
     PublicMapNodeListView,
     AdminMapNodeListCreateView,
     AdminMapNodeRetrieveUpdateDestroyView,
+    PublicPlatformStatsView,
 )
 
 urlpatterns = [
@@ -36,6 +37,7 @@ urlpatterns = [
     path("about/<slug:slug>/", PublicAboutUsDetailView.as_view(), name="cms-about-detail"),
     path("faqs/", PublicFAQListView.as_view(), name="cms-faq-list"),
     path("contact-requests/", PublicCreateContactRequestView.as_view(), name="cms-contact-request-create"),
+    path("stats/", PublicPlatformStatsView.as_view(), name="cms-stats"),
     # Admin
     path("admin/hero-banners/", AdminHeroBannerListCreateView.as_view(), name="cms-admin-hero-banner-list"),
     path(

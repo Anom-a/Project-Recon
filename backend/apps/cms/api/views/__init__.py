@@ -35,6 +35,7 @@ from .map_node import (
     AdminMapNodeListCreateView,
     AdminMapNodeRetrieveUpdateDestroyView,
 )
+from .stats import PublicPlatformStatsView
 
 __all__ = [
     "PublicHeroBannerListView",
@@ -60,4 +61,5 @@ __all__ = [
     "PublicMapNodeListView",
     "AdminMapNodeListCreateView",
     "AdminMapNodeRetrieveUpdateDestroyView",
+    "PublicPlatformStatsView",
 ]
