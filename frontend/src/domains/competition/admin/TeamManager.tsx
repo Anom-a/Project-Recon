@@ -41,10 +41,19 @@ export default function TeamManager() {
     if (!form.tournament || !form.team_name) { setError('Tournament and team name are required'); return; }
     setSaving(true); setError(null);
     try {
+      const payload: Record<string, string> = { tournament: form.tournament, team_name: form.team_name };
       if (editingId) {
-        await eventsApi.adminUpdateTeam(editingId, form as any);
+        if (form.organization) payload.organization = form.organization;
+        if (form.coach_name) payload.coach_name = form.coach_name;
+        if (form.contact_email) payload.contact_email = form.contact_email;
+        if (form.contact_phone) payload.contact_phone = form.contact_phone;
+        await eventsApi.adminUpdateTeam(editingId, payload);
       } else {
-        await eventsApi.adminCreateTeam(form as any);
+        if (form.organization) payload.organization = form.organization;
+        if (form.coach_name) payload.coach_name = form.coach_name;
+        if (form.contact_email) payload.contact_email = form.contact_email;
+        if (form.contact_phone) payload.contact_phone = form.contact_phone;
+        await eventsApi.adminCreateTeam(payload);
       }
       setShowForm(false); load();
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
