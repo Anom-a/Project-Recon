@@ -85,7 +85,7 @@ const pageTitle: Record<string, string> = {
   'staff-attendance': 'Staff Attendance',
   branches: 'Branch Management', registrations: 'Registration Management',
   events: 'Events Management', tournaments: 'Tournament Management',
-  'tournament-teams': 'Team Management', matches: 'Match Management',
+  'tournament-teams': 'Team Management', matches: 'VEX Match Control',
   workshops: 'Workshop Management', 'event-registrations': 'Event Registrations',
   certificates: 'Certificate Management',
   audit: 'Audit Logs',

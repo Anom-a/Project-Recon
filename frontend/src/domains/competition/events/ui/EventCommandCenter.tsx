@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { UserProfile, VexRobot, VexMatchRecord, VexTeam, StudentAward } from '@/src/shared/types';
 import * as eventsApi from '../../api/eventsApi';
+import MatchManager from '../../admin/MatchManager';
+import TeamManager from '../../admin/TeamManager';
+import VexRulesPanel from '../../shared/VexRulesPanel';
 
 
 import { AppLayout } from '@/src/shared/ui/AppLayout';
@@ -73,7 +76,7 @@ export default function EventCommandCenter({ currentUser, onLogout }: EventComma
       case 'create': return <CreateEvent />;
       case 'events': return <AllEvents />;
       case 'teams': return <TeamsPanel />;
-      case 'matches': return <MatchControl />;
+      case 'matches': return <MatchManager />;
       case 'judging': return <JudgingPanel />;
       case 'brackets': return <BracketsView />;
       case 'media': return <MediaHub />;
@@ -287,10 +290,17 @@ function CreateEvent() {
 /* ─── ALL EVENTS ─── */
 function AllEvents() {
   const [events, setEvents] = useState<any[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    eventsApi.adminGetTournaments().then(data => setEvents(Array.isArray(data) ? data : [])).catch(() => {}).finally(() => setLoading(false));
+    Promise.all([
+      eventsApi.adminGetTournaments(),
+      eventsApi.adminGetMatches().catch(() => []),
+    ]).then(([data, ms]) => {
+      setEvents(Array.isArray(data) ? data : []);
+      setMatches(Array.isArray(ms) ? ms : []);
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -319,7 +329,25 @@ function AllEvents() {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-red" /></div>;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      {/* Quick stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Tournaments', value: events.length, icon: Trophy, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Open', value: events.filter((e: any) => !e.is_closed).length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Live Matches', value: matches.filter((m: any) => m.status === 'LIVE').length, icon: Zap, color: 'text-red-600', bg: 'bg-red-50' },
+          { label: 'Total Matches', value: matches.length, icon: Gamepad2, color: 'text-blue-600', bg: 'bg-blue-50' },
+        ].map((s, i) => (
+          <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-2`}>
+              <s.icon className={`w-4 h-4 ${s.color}`} />
+            </div>
+            <p className="font-black text-xl text-slate-900">{s.value}</p>
+            <p className="text-[10px] font-bold text-slate-500">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
       {deleteError && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700"><AlertCircle className="w-4 h-4 shrink-0" /><span>{deleteError}</span><button onClick={() => setDeleteError(null)} className="ml-auto"><X className="w-3.5 h-3.5" /></button></div>}
       <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-4 py-2 max-w-md">
         <Search className="w-4 h-4 text-slate-400" />
@@ -332,11 +360,12 @@ function AllEvents() {
           >
             <div className="flex items-center justify-between mb-3">
               <span className={`text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider ${e.is_closed ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}>{e.is_closed ? 'Closed' : 'Open'}</span>
-              <span className="text-[9px] font-bold text-slate-400">{e.category || 'Tournament'}</span>
+              <span className="text-[9px] font-bold text-slate-400">{e.category || 'VEX Tournament'}</span>
             </div>
             <h4 className="font-bold text-sm text-slate-900 mb-2">{e.event_title || e.event || 'Untitled'}</h4>
             <div className="text-[10px] text-slate-500 space-y-1">
               <p className="flex items-center gap-1.5"><Users className="w-3 h-3" />{e.max_teams || '—'} max teams</p>
+              <p className="flex items-center gap-1.5"><Gamepad2 className="w-3 h-3" />{matches.filter((m: any) => m.tournament === e.id).length} matches</p>
               {e.prize_pool && <p className="flex items-center gap-1.5"><DollarSign className="w-3 h-3" />{e.prize_pool} Birr</p>}
             </div>
             <div className="flex gap-2 mt-4">
@@ -352,182 +381,17 @@ function AllEvents() {
           </motion.div>
         ))}
       </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <VexRulesPanel />
+      </div>
     </div>
   );
 }
 
 /* ─── TEAMS ─── */
 function TeamsPanel() {
-  const [teams, setTeams] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    eventsApi.adminGetTeams().then(data => setTeams(Array.isArray(data) ? data : [])).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-
-  const handleToggle = async (id: string, field: 'checked_in' | 'inspected', current: boolean) => {
-    setUpdatingId(`${id}-${field}`);
-    try {
-      await eventsApi.adminUpdateTeam(id, { [field]: !current });
-      setTeams(prev => prev.map((t: any) => t.id === id ? { ...t, [field]: !current } : t));
-    } catch { /* ignore */ } finally { setUpdatingId(null); }
-  };
-
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-red" /></div>;
-
-  return (
-    <div className="flex flex-col gap-4">
-      {!teams.length && (
-        <div className="flex flex-col items-center py-16 text-center gap-3">
-          <Users className="w-12 h-12 text-slate-300" />
-          <p className="text-sm text-slate-500">No teams registered yet.</p>
-        </div>
-      )}
-      {teams.length > 0 && <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-200">
-            <th className="text-left py-3 px-2">Team</th><th className="text-left py-3 px-2">Tournament</th><th className="text-left py-3 px-2">Coach</th>
-            <th className="text-center py-3 px-2">Check-In</th><th className="text-center py-3 px-2">Inspection</th>
-          </tr></thead>
-          <tbody>
-            {teams.map((t: any) => {
-              const ciBusy = updatingId === `${t.id}-checked_in`;
-              const insBusy = updatingId === `${t.id}-inspected`;
-              return (
-              <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                <td className="py-3 px-2 font-bold text-slate-900">{t.team_name || 'Unnamed Team'} <span className="text-slate-400 font-medium">({t.id?.slice(-6)})</span></td>
-                <td className="py-3 px-2 text-slate-600">{t.tournament_title || t.tournament?.slice(-6) || '—'}</td>
-                <td className="py-3 px-2 text-slate-600">{t.coach_name || '—'}</td>
-                <td className="py-3 px-2 text-center">
-                  <button onClick={() => handleToggle(t.id, 'checked_in', t.checked_in)} disabled={ciBusy} className="mx-auto">
-                    {ciBusy ? <Loader2 className="w-4 h-4 animate-spin text-slate-400 mx-auto" /> : t.checked_in ? <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto cursor-pointer hover:text-emerald-600" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-300 mx-auto cursor-pointer hover:border-brand-red" />}
-                  </button>
-                </td>
-                <td className="py-3 px-2 text-center">
-                  <button onClick={() => handleToggle(t.id, 'inspected', t.inspected)} disabled={insBusy} className="mx-auto">
-                    {insBusy ? <Loader2 className="w-4 h-4 animate-spin text-slate-400 mx-auto" /> : t.inspected ? <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto cursor-pointer hover:text-emerald-600" /> : <div className="w-5 h-5 rounded-full border-2 border-slate-300 mx-auto cursor-pointer hover:border-brand-red" />}
-                  </button>
-                </td>
-              </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>}
-    </div>
-  );
-}
-
-/* ─── MATCH CONTROL ─── */
-function MatchControl() {
-  const [matches, setMatches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    eventsApi.adminGetMatches().then(data => setMatches(Array.isArray(data) ? data : [])).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [scoreInputs, setScoreInputs] = useState<Record<string, { a: string; b: string }>>({});
-
-  const handleStart = async (id: string) => {
-    setActionId(id);
-    try { await eventsApi.adminUpdateMatch(id, { status: 'LIVE' as any }); setMatches(prev => prev.map((m: any) => m.id === id ? { ...m, status: 'LIVE' } : m)); } catch { /* ignore */ }
-    finally { setActionId(null); }
-  };
-
-  const handleRecordScores = async (id: string) => {
-    const s = scoreInputs[id] || { a: '0', b: '0' };
-    setActionId(id);
-    try {
-      await eventsApi.adminRecordMatchScores(id, { side_a_score: parseInt(s.a) || 0, side_b_score: parseInt(s.b) || 0 });
-      const updated = await eventsApi.adminGetMatch(id);
-      setMatches(prev => prev.map((m: any) => m.id === id ? updated : m));
-    } catch { /* ignore */ } finally { setActionId(null); }
-  };
-
-  const handleComplete = async (id: string) => {
-    setActionId(id);
-    try { await eventsApi.adminCompleteMatch(id); setMatches(prev => prev.map((m: any) => m.id === id ? { ...m, status: 'COMPLETED' } : m)); }
-    catch { /* ignore */ } finally { setActionId(null); }
-  };
-
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-red" /></div>;
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {matches.map((m: any) => {
-          const s0 = m.sides?.[0];
-          const s1 = m.sides?.[1];
-          const isCompleted = m.status === 'COMPLETED';
-          const isLive = m.status === 'LIVE';
-          const isScheduled = m.status === 'SCHEDULED';
-          const sc = scoreInputs[m.id] || { a: '', b: '' };
-          const busy = actionId === m.id;
-          return (
-          <div key={m.id} className={`bg-white rounded-2xl border-2 p-5 transition-all ${isLive ? 'border-brand-red shadow-lg shadow-brand-red/10' : 'border-slate-200'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[9px] font-black text-slate-500 uppercase">{m.round}</span>
-              <span className={`text-[9px] font-bold px-2 py-1 rounded-md ${isLive ? 'bg-brand-red/10 text-brand-red' : isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-600'}`}>
-                {isLive && <><span className="inline-block w-1.5 h-1.5 bg-brand-red rounded-full animate-pulse mr-1" /></>}
-                {m.status}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 bg-red-50 rounded-xl p-3 border border-red-100">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-red-600">RED</span>
-                  {isCompleted ? <span className="font-black text-lg text-slate-900">{s0?.score ?? '-'}</span>
-                    : <input type="number" value={sc.a} onChange={e => setScoreInputs(prev => ({ ...prev, [m.id]: { ...prev[m.id], a: e.target.value } }))}
-                        className="w-16 text-center text-sm font-black bg-white border border-slate-200 rounded-lg px-2 py-1" placeholder="0" disabled={!isLive} />}
-                </div>
-                <p className="text-[10px] text-slate-600 mt-1">{s0?.participants?.map((p: any) => p.team_name || p.tournament_team_name || p.tournament_team?.slice(-6)).join(' · ') || '—'}</p>
-              </div>
-              <span className="text-[9px] font-black text-slate-400">VS</span>
-              <div className="flex-1 bg-blue-50 rounded-xl p-3 border border-blue-100">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-blue-600">BLUE</span>
-                  {isCompleted ? <span className="font-black text-lg text-slate-900">{s1?.score ?? '-'}</span>
-                    : <input type="number" value={sc.b} onChange={e => setScoreInputs(prev => ({ ...prev, [m.id]: { ...prev[m.id], b: e.target.value } }))}
-                        className="w-16 text-center text-sm font-black bg-white border border-slate-200 rounded-lg px-2 py-1" placeholder="0" disabled={!isLive} />}
-                </div>
-                <p className="text-[10px] text-slate-600 mt-1">{s1?.participants?.map((p: any) => p.team_name || p.tournament_team_name || p.tournament_team?.slice(-6)).join(' · ') || '—'}</p>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              {isScheduled && <button onClick={() => handleStart(m.id)} disabled={busy}
-                className="flex-1 text-[10px] font-bold bg-emerald-500 text-white px-3 py-2 rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50">
-                {busy ? <Loader2 className="w-3 h-3 animate-spin inline" /> : <><Play className="w-3 h-3 inline mr-1" />Start</>}
-              </button>}
-              {isLive && <button onClick={() => handleRecordScores(m.id)} disabled={busy}
-                className="flex-1 text-[10px] font-bold bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50">
-                {busy ? <Loader2 className="w-3 h-3 animate-spin inline" /> : 'Save Scores'}
-              </button>}
-              {isLive && <button onClick={() => handleComplete(m.id)} disabled={busy}
-                className="flex-1 text-[10px] font-bold bg-brand-red text-white px-3 py-2 rounded-lg hover:bg-brand-red-dark transition-colors disabled:opacity-50">
-                {busy ? <Loader2 className="w-3 h-3 animate-spin inline" /> : <><Flag className="w-3 h-3 inline mr-1" />Complete</>}
-              </button>}
-              {isCompleted && m.winning_side && (
-                <div className="flex-1 text-center py-2">
-                  <span className="text-[10px] font-bold text-emerald-600">Winner: {m.winning_side_label === 'SIDE_A' ? 'Red Alliance' : 'Blue Alliance'}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          );
-        })}
-        {!matches.length && (
-          <div className="col-span-full flex flex-col items-center py-12 text-center gap-3">
-            <Gamepad2 className="w-12 h-12 text-slate-300" />
-            <p className="text-sm text-slate-500">No matches yet. Create a tournament and schedule matches to see them here.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <TeamManager />;
 }
 
 /* ─── LIVE JUDGING ─── */

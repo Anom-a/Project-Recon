@@ -650,11 +650,21 @@
 .sidebar-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 10px; }
 .sidebar-scroll:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); }
 
+.sidebar-group-divider {
+  height: 1px;
+  background: #e8eaed;
+  margin: 8px 12px 4px;
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .sidebar-group-divider {
+  margin: 8px 6px 4px;
+}
+
 .sidebar-footer {
   flex-shrink: 0;
   padding: 10px 12px 14px;
   border-top: 1px solid #e8eaed;
-  margin-top: auto;
 }
 
 /* ─── DESKTOP (≥1024px): fixed sidebar ─── */

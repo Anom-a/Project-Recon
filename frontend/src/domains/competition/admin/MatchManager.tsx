@@ -1,11 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, Gamepad2, Clock, Edit3, Trash2, CheckCircle, Swords, Users, Trophy, Activity, BarChart3, Calendar, Filter } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, Gamepad2, Clock, Trash2, CheckCircle, XCircle, Swords, Users, Trophy, Activity, BarChart3, Calendar, Wand2, Layers, Target, Medal, TrendingUp, Play, Flag, Shield, Zap } from 'lucide-react';
 import * as eventsApi from '../api/eventsApi';
-import type { BackendMatch, BackendTournamentTeam, SideType } from '../api/eventsApi';
+import type { BackendMatch, BackendTournamentTeam, SideType, BackendStanding } from '../api/eventsApi';
+import AdminMatchCard from '../shared/AdminMatchCard';
+import VexAllianceDisplay, { sidesFromMatch } from '../shared/VexAllianceDisplay';
+import { generateVexAllianceQualification, generateVexAllianceElimination, getSideTeamNames, sideLabel, canAddTeamToSide, TEAMS_PER_ALLIANCE } from '../shared/vexAllianceUtils';
+import { VEX_ALLIANCE_CONFIG, VEX_SCORING_RULES } from '../shared/vexConstants';
 
 const defaultForm = { tournament: '', round: '', scheduled_at: '' };
 const defaultScoreForm = { side_a_score: 0, side_b_score: 0 };
+
+/* ─── Round-robin pair generator ─── */
+function generateRoundRobinPairs(teamIds: string[]): [string, string][][] {
+  const n = teamIds.length;
+  if (n < 2) return [];
+  const ids = [...teamIds];
+  if (n % 2 !== 0) ids.push('BYE');
+  const rounds: [string, string][][] = [];
+  const numRounds = ids.length - 1;
+  const half = ids.length / 2;
+  for (let r = 0; r < numRounds; r++) {
+    const pairs: [string, string][] = [];
+    for (let i = 0; i < half; i++) {
+      const a = ids[i];
+      const b = ids[ids.length - 1 - i];
+      if (a !== 'BYE' && b !== 'BYE') pairs.push([a, b]);
+    }
+    rounds.push(pairs);
+    ids.splice(1, 0, ids.pop()!);
+  }
+  return rounds;
+}
+
+/* ─── Standings computation (client-side) ─── */
+function computeStandings(
+  teams: BackendTournamentTeam[],
+  completedMatches: BackendMatch[],
+): (BackendStanding & { totalScore: number; matchesPlayed: number })[] {
+  const map = new Map<string, { wins: number; losses: number; draws: number; points: number; totalScore: number; matchesPlayed: number }>();
+  for (const t of teams) {
+    map.set(t.id, { wins: 0, losses: 0, draws: 0, points: 0, totalScore: 0, matchesPlayed: 0 });
+  }
+  for (const m of completedMatches) {
+    const sideA = m.sides?.find(s => s.side === 'SIDE_A');
+    const sideB = m.sides?.find(s => s.side === 'SIDE_B');
+    if (!sideA || !sideB) continue;
+    const scoreA = sideA.score ?? 0;
+    const scoreB = sideB.score ?? 0;
+    for (const p of sideA.participants || []) {
+      const entry = map.get(p.tournament_team);
+      if (!entry) continue;
+      entry.matchesPlayed++;
+      entry.totalScore += scoreA;
+      if (scoreA > scoreB) { entry.wins++; entry.points += 2; }
+      else if (scoreA === scoreB) { entry.draws++; entry.points += 1; }
+      else entry.losses++;
+    }
+    for (const p of sideB.participants || []) {
+      const entry = map.get(p.tournament_team);
+      if (!entry) continue;
+      entry.matchesPlayed++;
+      entry.totalScore += scoreB;
+      if (scoreB > scoreA) { entry.wins++; entry.points += 2; }
+      else if (scoreA === scoreB) { entry.draws++; entry.points += 1; }
+      else entry.losses++;
+    }
+  }
+  const teamMap = new Map(teams.map(t => [t.id, t]));
+  return Array.from(map.entries())
+    .map(([teamId, stats]) => ({
+      rank: 0,
+      team_id: teamId,
+      team_name: teamMap.get(teamId)?.team_name || 'Unknown',
+      ...stats,
+    }))
+    .sort((a, b) => b.points - a.points || b.wins - a.wins || b.totalScore - a.totalScore)
+    .map((entry, i) => ({ ...entry, rank: i + 1 }));
+}
+
+/* ─── Knockout bracket generator ─── */
+function generateKnockoutPairs(seededTeams: string[]): [string, string][] {
+  const n = seededTeams.length;
+  if (n < 2) return [];
+  const nextPow2 = Math.pow(2, Math.ceil(Math.log2(n)));
+  const padded = [...seededTeams];
+  while (padded.length < nextPow2) padded.push('BYE');
+  const pairs: [string, string][] = [];
+  for (let i = 0; i < nextPow2 / 2; i++) {
+    const a = padded[i];
+    const b = padded[nextPow2 - 1 - i];
+    if (a !== 'BYE' && b !== 'BYE') pairs.push([a, b]);
+    else if (a !== 'BYE') pairs.push([a, a]);
+    else if (b !== 'BYE') pairs.push([b, b]);
+  }
+  return pairs;
+}
 
 export default function MatchManager() {
   const [matches, setMatches] = useState<BackendMatch[]>([]);
@@ -24,6 +114,21 @@ export default function MatchManager() {
   const [assignForm, setAssignForm] = useState({ side: 'SIDE_A' as SideType, tournament_team: '' });
   const [scoreForm, setScoreForm] = useState(defaultScoreForm);
   const [showDashboard, setShowDashboard] = useState(true);
+
+  /* Auto-generate state */
+  const [showAutoGen, setShowAutoGen] = useState(false);
+  const [autoGenForm, setAutoGenForm] = useState({
+    tournament: '',
+    format: 'vex-alliance-qual' as 'vex-alliance-qual' | 'vex-alliance-elim' | 'round-robin' | 'knockout',
+    num_groups: 1,
+    num_rounds: 3,
+  });
+  const [genLoading, setGenLoading] = useState(false);
+  const [genProgress, setGenProgress] = useState('');
+
+  /* Standings state */
+  const [showStandings, setShowStandings] = useState(false);
+  const [standingsTournament, setStandingsTournament] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -63,38 +168,165 @@ export default function MatchManager() {
     try {
       await eventsApi.adminAssignTeamToMatch(selectedMatch.id, assignForm);
       setAssignForm({ side: 'SIDE_A', tournament_team: '' });
+      load();
       const updated = await eventsApi.adminGetMatch(selectedMatch.id);
       setSelectedMatch(updated);
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) { setError(`Assign failed: ${err.message}`); load(); }
   };
 
   const handleRemoveTeam = async (side: SideType, teamId: string) => {
     if (!selectedMatch) return;
     try {
       await eventsApi.adminRemoveTeamFromMatch(selectedMatch.id, { side, tournament_team: teamId });
+      load();
       const updated = await eventsApi.adminGetMatch(selectedMatch.id);
       setSelectedMatch(updated);
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) {
+      setError(`Remove team failed: ${err.message}`);
+      load();
+    }
   };
 
   const handleRecordScores = async () => {
     if (!selectedMatch) return;
     try {
       await eventsApi.adminRecordMatchScores(selectedMatch.id, scoreForm);
+      load();
       const updated = await eventsApi.adminGetMatch(selectedMatch.id);
       setSelectedMatch(updated);
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) { setError(`Scores failed: ${err.message}`); load(); }
   };
 
   const handleComplete = async () => {
     if (!selectedMatch) return;
     try {
       await eventsApi.adminCompleteMatch(selectedMatch.id);
+      load();
       const updated = await eventsApi.adminGetMatch(selectedMatch.id);
       setSelectedMatch(updated);
-      load();
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) { setError(`Complete failed: ${err.message}`); load(); }
   };
+
+  const handleStartMatch = async (id: string) => {
+    try {
+      await eventsApi.adminUpdateMatch(id, { status: 'LIVE' as any });
+      load();
+      if (selectedMatch?.id === id) {
+        const updated = await eventsApi.adminGetMatch(id);
+        setSelectedMatch(updated);
+      }
+    } catch (err: any) { setError(`Start failed: ${err.message}`); }
+  };
+
+  /* ─── Auto Generate ─── */
+  const handleAutoGenerate = async () => {
+    if (!autoGenForm.tournament) { setError('Select a tournament'); return; }
+    setGenLoading(true);
+    setGenProgress('Preparing teams...');
+    setError(null);
+    try {
+      const tournamentTeams = teams.filter(t => t.tournament === autoGenForm.tournament);
+      if (tournamentTeams.length < 2) { throw new Error('Need at least 2 teams'); }
+      const teamIds = tournamentTeams.map(t => t.id);
+      const now = new Date().toISOString().slice(0, 16);
+      let created = 0;
+
+      if (autoGenForm.format === 'vex-alliance-qual' || autoGenForm.format === 'vex-alliance-elim') {
+        const plans = autoGenForm.format === 'vex-alliance-qual'
+          ? generateVexAllianceQualification(teamIds, autoGenForm.num_rounds)
+          : generateVexAllianceElimination(teamIds);
+
+        for (const plan of plans) {
+          if (!plan.redTeams.length && !plan.blueTeams.length) {
+            // Empty elimination placeholder — create match shell for staff
+            setGenProgress(`Creating ${plan.round}...`);
+            await eventsApi.adminCreateMatch({
+              tournament: autoGenForm.tournament,
+              round: plan.round,
+              scheduled_at: now,
+            } as any);
+            created++;
+            continue;
+          }
+          if (plan.redTeams.length < 1 || plan.blueTeams.length < 1) continue;
+
+          setGenProgress(`Creating ${plan.round}: ${created + 1}/${plans.length}...`);
+          const match = await eventsApi.adminCreateMatch({
+            tournament: autoGenForm.tournament,
+            round: plan.round,
+            scheduled_at: now,
+          } as any);
+
+          const assignOps: Promise<unknown>[] = [];
+          for (const teamId of plan.redTeams.slice(0, TEAMS_PER_ALLIANCE)) {
+            assignOps.push(eventsApi.adminAssignTeamToMatch(match.id, { side: 'SIDE_A', tournament_team: teamId }));
+          }
+          for (const teamId of plan.blueTeams.slice(0, TEAMS_PER_ALLIANCE)) {
+            assignOps.push(eventsApi.adminAssignTeamToMatch(match.id, { side: 'SIDE_B', tournament_team: teamId }));
+          }
+          await Promise.all(assignOps);
+          created++;
+        }
+      } else {
+        let allPairs: [string, string][][] = [];
+
+        if (autoGenForm.format === 'round-robin') {
+          const groups = autoGenForm.num_groups || 1;
+          const groupSize = Math.ceil(teamIds.length / groups);
+          for (let g = 0; g < groups; g++) {
+            const groupTeams = teamIds.slice(g * groupSize, (g + 1) * groupSize);
+            const groupRounds = generateRoundRobinPairs(groupTeams);
+            for (let r = 0; r < groupRounds.length; r++) {
+              allPairs.push(groupRounds[r].map(p => p));
+            }
+          }
+        } else {
+          const seeded = [...teamIds].sort(() => Math.random() - 0.5);
+          const bracketPairs = generateKnockoutPairs(seeded);
+          allPairs = [bracketPairs];
+        }
+
+        const total = allPairs.reduce((s, r) => s + r.length, 0);
+
+        for (let r = 0; r < allPairs.length; r++) {
+          const roundPairs = allPairs[r];
+          const roundLabel = autoGenForm.format === 'round-robin'
+            ? `Round ${r + 1}`
+            : r === 0 ? 'Quarter Finals' : r === 1 ? 'Semi Finals' : r === 2 ? 'Final' : `Round ${r + 1}`;
+
+          for (const [a, b] of roundPairs) {
+            setGenProgress(`Creating ${roundLabel}: ${created + 1}/${total}...`);
+            const match = await eventsApi.adminCreateMatch({
+              tournament: autoGenForm.tournament,
+              round: roundLabel,
+              scheduled_at: now,
+            } as any);
+            await Promise.all([
+              eventsApi.adminAssignTeamToMatch(match.id, { side: 'SIDE_A', tournament_team: a }),
+              eventsApi.adminAssignTeamToMatch(match.id, { side: 'SIDE_B', tournament_team: b }),
+            ]);
+            created++;
+          }
+        }
+      }
+
+      setGenProgress(`Done! Created ${created} alliance matches.`);
+      setShowAutoGen(false);
+      load();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
+  /* ─── Standings (client-side computed) ─── */
+  const standingsData = useMemo(() => {
+    if (!standingsTournament) return [];
+    const tournamentTeams = teams.filter(t => t.tournament === standingsTournament);
+    const completedMatches = matches.filter(m => m.tournament === standingsTournament && m.status === 'COMPLETED');
+    return computeStandings(tournamentTeams, completedMatches);
+  }, [standingsTournament, teams, matches]);
 
   const statusBadge = (s: string) => {
     const map: Record<string, string> = {
@@ -146,7 +378,15 @@ export default function MatchManager() {
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div><h3 className="font-black text-lg text-slate-900">Matches</h3><p className="text-xs text-slate-500 mt-1">{completedCount} completed / {totalMatches} total</p></div>
+        <div>
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-brand-red" />
+            <h3 className="font-black text-lg text-slate-900">VEX Match Control</h3>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            {VEX_ALLIANCE_CONFIG.redLabel} vs {VEX_ALLIANCE_CONFIG.blueLabel} · {TEAMS_PER_ALLIANCE} teams per alliance · {completedCount} completed / {totalMatches} total
+          </p>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setShowDashboard(p => !p)} className="px-3 py-2 bg-slate-100 text-slate-600 font-black text-xs rounded-xl hover:bg-slate-200 flex items-center gap-1.5"><BarChart3 className="w-4 h-4" /> {showDashboard ? 'Hide' : 'Stats'}</button>
           <select value={tournamentFilter} onChange={e => setTournamentFilter(e.target.value)}
@@ -163,53 +403,48 @@ export default function MatchManager() {
             <option value="CANCELLED">Cancelled</option>
           </select>
           <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search rounds..." className="w-48 pl-9 pr-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red" /></div>
+          <button onClick={() => { setStandingsTournament(tournamentFilter === 'all' ? '' : tournamentFilter); setShowStandings(true); }}
+            className="px-3 py-2 bg-purple-50 text-purple-700 font-black text-xs rounded-xl hover:bg-purple-100 flex items-center gap-1.5 border border-purple-200"><Target className="w-4 h-4" /> Standings</button>
+          <button onClick={() => setShowAutoGen(true)} className="px-3 py-2 bg-emerald-50 text-emerald-700 font-black text-xs rounded-xl hover:bg-emerald-100 flex items-center gap-1.5 border border-emerald-200"><Wand2 className="w-4 h-4" /> Auto Alliance</button>
           <button onClick={openCreate} className="bg-gradient-to-r from-brand-red to-brand-red-dark text-white font-black text-xs px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-brand-red/25"><Plus className="w-4 h-4" /> New Match</button>
         </div>
       </div>
+
+      {/* Live matches bar */}
+      {liveCount > 0 && (
+        <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-4 text-white">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span className="text-xs font-black uppercase">{liveCount} Alliance Match{liveCount > 1 ? 'es' : ''} LIVE</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {matches.filter(m => m.status === 'LIVE').slice(0, 4).map(m => (
+              <button key={m.id} onClick={() => { setSelectedMatch(m); setScoreForm({ side_a_score: m.sides?.find(s => s.side === 'SIDE_A')?.score ?? 0, side_b_score: m.sides?.find(s => s.side === 'SIDE_B')?.score ?? 0 }); }}
+                className="bg-white/10 hover:bg-white/20 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all">
+                {m.round} — {getSideTeamNames(m.sides?.find(s => s.side === 'SIDE_A')?.participants).join(' & ') || 'RED'} vs {getSideTeamNames(m.sides?.find(s => s.side === 'SIDE_B')?.participants).join(' & ') || 'BLUE'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="text-center py-16 bg-white border border-brand-border rounded-2xl"><Gamepad2 className="w-10 h-10 text-slate-300 mx-auto mb-2" /><p className="font-bold text-slate-600">No matches</p></div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((m, i) => {
-            const sideA = m.sides?.find(s => s.side === 'SIDE_A');
-            const sideB = m.sides?.find(s => s.side === 'SIDE_B');
-            const teamANames = sideA?.participants?.map(p => (p as any).team_name || p.tournament_team_name).join(', ') || 'TBD';
-            const teamBNames = sideB?.participants?.map(p => (p as any).team_name || p.tournament_team_name).join(', ') || 'TBD';
-            return (
-              <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                className="bg-white border border-brand-border rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer" onClick={() => setSelectedMatch(m)}>
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 flex items-center justify-center"><Gamepad2 className="w-4 h-4 text-amber-600" /></div>
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-900">{m.round}</h4>
-                      <span className="text-[10px] text-slate-500">{m.tournament_title}</span>
-                    </div>
-                  </div>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${statusBadge(m.status)}`}>{m.status}</span>
-                </div>
-                <div className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
-                  <div className="flex-1 text-center min-w-0">
-                    <span className="text-xs font-semibold text-slate-700 block truncate">{teamANames}</span>
-                    <span className="text-[9px] text-slate-400 uppercase">Side A</span>
-                  </div>
-                  <div className="mx-4 text-center">
-                    <span className="text-lg font-black text-slate-900">{sideA?.score ?? '-'} : {sideB?.score ?? '-'}</span>
-                    <p className="text-[9px] text-slate-400 uppercase">Score</p>
-                  </div>
-                  <div className="flex-1 text-center min-w-0">
-                    <span className="text-xs font-semibold text-slate-700 block truncate">{teamBNames}</span>
-                    <span className="text-[9px] text-slate-400 uppercase">Side B</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-400">
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{m.scheduled_at?.slice(0, 16) || 'TBD'}</span>
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3" />{(sideA?.participants?.length || 0) + (sideB?.participants?.length || 0)} participants</span>
-                </div>
-              </motion.div>
-            );
-          })}
+          {filtered.map(m => (
+            <AdminMatchCard
+              key={m.id}
+              match={m}
+              onClick={() => {
+                const sideA = m.sides?.find(s => s.side === 'SIDE_A');
+                const sideB = m.sides?.find(s => s.side === 'SIDE_B');
+                setSelectedMatch(m);
+                setScoreForm({ side_a_score: sideA?.score ?? 0, side_b_score: sideB?.score ?? 0 });
+              }}
+              onStart={m.status === 'SCHEDULED' ? () => handleStartMatch(m.id) : undefined}
+            />
+          ))}
         </div>
       )}
 
@@ -246,37 +481,86 @@ export default function MatchManager() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedMatch(null)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-6 md:p-8 z-10 max-h-[85vh] overflow-y-auto">
+              className="relative bg-white w-full max-w-3xl rounded-3xl shadow-2xl p-6 md:p-8 z-10 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="font-black text-lg text-slate-900">{selectedMatch.round}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Gamepad2 className="w-5 h-5 text-brand-red" />
+                    <h3 className="font-black text-lg text-slate-900">{selectedMatch.round}</h3>
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${statusBadge(selectedMatch.status)}`}>{selectedMatch.status}</span>
+                  </div>
                   <p className="text-xs text-slate-500">{selectedMatch.tournament_title}</p>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${statusBadge(selectedMatch.status)}`}>{selectedMatch.status}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' && (
-                    <button onClick={handleComplete} className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100"><CheckCircle className="w-4 h-4" /></button>
+                  {selectedMatch.status === 'SCHEDULED' && (
+                    <button onClick={() => handleStartMatch(selectedMatch.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 text-white text-xs font-black rounded-xl hover:bg-emerald-600 transition-colors">
+                      <Play className="w-4 h-4" /> Start Match
+                    </button>
+                  )}
+                  {selectedMatch.status === 'LIVE' && (
+                    <button onClick={handleComplete}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-brand-red text-white text-xs font-black rounded-xl hover:bg-brand-red-dark transition-colors">
+                      <Flag className="w-4 h-4" /> Complete
+                    </button>
                   )}
                   <button onClick={() => setSelectedMatch(null)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X className="w-5 h-5" /></button>
                 </div>
               </div>
 
-              {/* Sides Display */}
+              {/* VEX Alliance Display */}
+              {(() => {
+                const sideAData = selectedMatch.sides?.find(s => s.side === 'SIDE_A');
+                const sideBData = selectedMatch.sides?.find(s => s.side === 'SIDE_B');
+                const sides = [
+                  { side: 'SIDE_A' as const, score: sideAData?.score ?? null, teams: getSideTeamNames(sideAData?.participants) },
+                  { side: 'SIDE_B' as const, score: sideBData?.score ?? null, teams: getSideTeamNames(sideBData?.participants) },
+                ];
+                const { sideA, sideB } = sidesFromMatch(sides);
+                return (
+                  <div className="mb-6">
+                    <VexAllianceDisplay
+                      sideA={sideA}
+                      sideB={sideB}
+                      winningSide={selectedMatch.winning_side_label || selectedMatch.winning_side}
+                      variant="broadcast"
+                      isLive={selectedMatch.status === 'LIVE'}
+                    />
+                  </div>
+                );
+              })()}
+
+              {/* Alliance team slots */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 {(['SIDE_A', 'SIDE_B'] as SideType[]).map(sideKey => {
                   const side = selectedMatch.sides?.find(s => s.side === sideKey);
+                  const count = side?.participants?.length || 0;
+                  const isRed = sideKey === 'SIDE_A';
                   return (
-                    <div key={sideKey} className={`rounded-2xl p-4 border ${sideKey === 'SIDE_A' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
+                    <div key={sideKey} className={`rounded-2xl p-4 border-2 ${isRed ? 'border-red-200 bg-red-50/50' : 'border-blue-200 bg-blue-50/50'}`}>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{sideKey === 'SIDE_A' ? 'Side A' : 'Side B'}</span>
-                        <span className="text-lg font-black text-slate-900">{side?.score ?? '-'}</span>
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${isRed ? 'text-red-600' : 'text-blue-600'}`}>
+                          {sideLabel(sideKey)}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400">{count}/{TEAMS_PER_ALLIANCE} teams</span>
                       </div>
-                      {side?.participants?.map(p => (
-                        <div key={p.id} className="flex items-center justify-between bg-white/80 rounded-lg px-3 py-2 mb-1.5 last:mb-0">
-                          <span className="text-xs font-medium text-slate-900">{(p as any).team_name || p.tournament_team_name}</span>
-                          <button onClick={() => handleRemoveTeam(sideKey, p.tournament_team)} className="text-slate-400 hover:text-red-500"><X className="w-3 h-3" /></button>
-                        </div>
-                      )) || <p className="text-xs text-slate-400 text-center py-3">No teams assigned</p>}
+                      {[0, 1].map(slot => {
+                        const p = side?.participants?.[slot];
+                        return (
+                          <div key={slot} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 mb-1.5 border border-slate-100">
+                            {p ? (
+                              <>
+                                <span className="text-xs font-bold text-slate-900">{p.team_name || p.tournament_team_name}</span>
+                                {selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' && (
+                                  <button onClick={() => handleRemoveTeam(sideKey, p.tournament_team)} className="text-slate-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">Team {slot + 1} — slot open</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -299,39 +583,313 @@ export default function MatchManager() {
 
               <div className="flex flex-col gap-4">
                 {/* Assign Teams */}
-                <div className="bg-slate-50 rounded-2xl p-4">
-                  <h4 className="font-bold text-xs text-slate-700 mb-3">Assign Teams</h4>
-                  <div className="flex items-center gap-2">
-                    <select value={assignForm.side} onChange={e => setAssignForm(p => ({ ...p, side: e.target.value as SideType }))} className="px-3 py-2 bg-white border border-brand-border rounded-lg text-xs">
-                      <option value="SIDE_A">Side A</option><option value="SIDE_B">Side B</option>
-                    </select>
-                    <select value={assignForm.tournament_team} onChange={e => setAssignForm(p => ({ ...p, tournament_team: e.target.value }))} className="flex-1 px-3 py-2 bg-white border border-brand-border rounded-lg text-xs">
-                      <option value="">Select team...</option>
-                      {teams.filter(t => t.tournament === selectedMatch.tournament).map(t => <option key={t.id} value={t.id}>{t.team_name}</option>)}
-                    </select>
-                    <button onClick={handleAssign} disabled={!assignForm.tournament_team} className="px-4 py-2 bg-brand-red text-white text-xs font-bold rounded-lg hover:bg-brand-red-dark disabled:opacity-50">Assign</button>
+                {selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' && (
+                  <div className="bg-slate-50 rounded-2xl p-4">
+                    <h4 className="font-bold text-xs text-slate-700 mb-3 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" /> Assign to Alliance
+                      <span className="text-[9px] text-slate-400 font-normal">(max {TEAMS_PER_ALLIANCE} per side)</span>
+                    </h4>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select value={assignForm.side} onChange={e => setAssignForm(p => ({ ...p, side: e.target.value as SideType }))} className="px-3 py-2 bg-white border border-brand-border rounded-lg text-xs">
+                        <option value="SIDE_A">{VEX_ALLIANCE_CONFIG.redLabel}</option>
+                        <option value="SIDE_B">{VEX_ALLIANCE_CONFIG.blueLabel}</option>
+                      </select>
+                      <select value={assignForm.tournament_team} onChange={e => setAssignForm(p => ({ ...p, tournament_team: e.target.value }))} className="flex-1 min-w-[140px] px-3 py-2 bg-white border border-brand-border rounded-lg text-xs">
+                        <option value="">Select team...</option>
+                        {teams.filter(t => t.tournament === selectedMatch.tournament).map(t => <option key={t.id} value={t.id}>{t.team_name}</option>)}
+                      </select>
+                      <button
+                        onClick={handleAssign}
+                        disabled={!assignForm.tournament_team || !canAddTeamToSide(
+                          selectedMatch.sides?.find(s => s.side === assignForm.side)?.participants?.length || 0
+                        )}
+                        className="px-4 py-2 bg-brand-red text-white text-xs font-bold rounded-lg hover:bg-brand-red-dark disabled:opacity-50"
+                      >
+                        Assign
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Record Scores */}
-                <div className="bg-slate-50 rounded-2xl p-4">
-                  <h4 className="font-bold text-xs text-slate-700 mb-3">Record Scores</h4>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <label className="text-[10px] text-slate-500 block mb-1">Side A</label>
-                      <input type="number" value={scoreForm.side_a_score} onChange={e => setScoreForm(p => ({ ...p, side_a_score: parseInt(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 bg-white border border-brand-border rounded-lg text-sm" />
+                {selectedMatch.status !== 'COMPLETED' && selectedMatch.status !== 'CANCELLED' && (
+                  <div className="bg-slate-50 rounded-2xl p-4">
+                    <h4 className="font-bold text-xs text-slate-700 mb-3">Record Alliance Scores</h4>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <label className="text-[10px] font-bold text-red-600 block mb-1">{VEX_ALLIANCE_CONFIG.redLabel}</label>
+                        <input type="number" value={scoreForm.side_a_score} onChange={e => setScoreForm(p => ({ ...p, side_a_score: parseInt(e.target.value) || 0 }))}
+                          className="w-full px-3 py-2 bg-white border border-red-200 rounded-lg text-sm font-black" />
+                      </div>
+                      <span className="font-black text-2xl text-slate-300 mt-5">:</span>
+                      <div className="flex-1">
+                        <label className="text-[10px] font-bold text-blue-600 block mb-1">{VEX_ALLIANCE_CONFIG.blueLabel}</label>
+                        <input type="number" value={scoreForm.side_b_score} onChange={e => setScoreForm(p => ({ ...p, side_b_score: parseInt(e.target.value) || 0 }))}
+                          className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm font-black" />
+                      </div>
+                      <button onClick={handleRecordScores} className="px-4 py-2 bg-brand-red text-white text-xs font-bold rounded-lg hover:bg-brand-red-dark mt-5">Save Scores</button>
                     </div>
-                    <span className="font-bold text-slate-400 mt-6">:</span>
-                    <div className="flex-1">
-                      <label className="text-[10px] text-slate-500 block mb-1">Side B</label>
-                      <input type="number" value={scoreForm.side_b_score} onChange={e => setScoreForm(p => ({ ...p, side_b_score: parseInt(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 bg-white border border-brand-border rounded-lg text-sm" />
-                    </div>
-                    <button onClick={handleRecordScores} className="px-4 py-2 bg-brand-red text-white text-xs font-bold rounded-lg hover:bg-brand-red-dark mt-6">Save Scores</button>
+                  </div>
+                )}
+
+                {selectedMatch.status === 'COMPLETED' && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center">
+                    <CheckCircle className="w-6 h-6 text-emerald-500 mx-auto mb-1" />
+                    <p className="text-xs font-bold text-emerald-700">Match Completed</p>
+                    <p className="text-[10px] text-emerald-600 mt-0.5">No further changes allowed.</p>
+                  </div>
+                )}
+
+                {selectedMatch.status === 'CANCELLED' && (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+                    <XCircle className="w-6 h-6 text-red-500 mx-auto mb-1" />
+                    <p className="text-xs font-bold text-red-700">Match Cancelled</p>
+                    <p className="text-[10px] text-red-600 mt-0.5">No further changes allowed.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Auto Generate Modal */}
+        {showAutoGen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { if (!genLoading) setShowAutoGen(false); }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 z-10">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 flex items-center justify-center"><Wand2 className="w-5 h-5 text-emerald-600" /></div>
+                  <div>
+                    <h3 className="font-black text-lg text-slate-900">Auto Generate Alliances</h3>
+                    <p className="text-xs text-slate-500">Pair teams into {VEX_ALLIANCE_CONFIG.redLabel} vs {VEX_ALLIANCE_CONFIG.blueLabel} matches</p>
                   </div>
                 </div>
+                <button onClick={() => { if (!genLoading) setShowAutoGen(false); }} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X className="w-5 h-5" /></button>
               </div>
+
+              {genLoading ? (
+                <div className="flex flex-col items-center py-12 gap-4">
+                  <Loader2 className="w-10 h-10 animate-spin text-emerald-500" />
+                  <p className="text-sm font-medium text-slate-700">{genProgress}</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Tournament *</label>
+                    <select value={autoGenForm.tournament} onChange={e => setAutoGenForm(p => ({ ...p, tournament: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red">
+                      <option value="">Select tournament...</option>
+                      {tournaments.map((t: any) => (
+                        <option key={t.id} value={t.id}>
+                          {t.event_title || t.event} ({teams.filter(te => te.tournament === t.id).length} teams)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Format</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        { id: 'vex-alliance-qual' as const, label: 'VEX Qualification', desc: '2 teams per alliance · multiple rounds', icon: Zap },
+                        { id: 'vex-alliance-elim' as const, label: 'VEX Elimination', desc: 'Bracket with alliance finals', icon: Trophy },
+                        { id: 'round-robin' as const, label: 'Round Robin', desc: '1v1 every team plays', icon: Layers },
+                        { id: 'knockout' as const, label: 'Knockout', desc: 'Single elimination 1v1', icon: Swords },
+                      ]).map(fmt => {
+                        const isActive = autoGenForm.format === fmt.id;
+                        const FmtIcon = fmt.icon;
+                        return (
+                          <button key={fmt.id} onClick={() => setAutoGenForm(p => ({ ...p, format: fmt.id }))}
+                            className={`flex flex-col items-start gap-1 p-3 rounded-xl border-2 transition-all text-left ${
+                              isActive ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <FmtIcon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
+                            <span className={`text-[10px] font-bold ${isActive ? 'text-emerald-700' : 'text-slate-600'}`}>{fmt.label}</span>
+                            <span className="text-[8px] text-slate-400">{fmt.desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {autoGenForm.format === 'vex-alliance-qual' && (
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Qualification Rounds</label>
+                      <input type="number" min={1} max={10} value={autoGenForm.num_rounds}
+                        onChange={e => setAutoGenForm(p => ({ ...p, num_rounds: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        className="w-24 px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm" />
+                      <p className="text-[10px] text-slate-400 mt-1">Each round creates matches with 4 teams (2 RED + 2 BLUE). Need at least 4 teams.</p>
+                    </div>
+                  )}
+
+                  {autoGenForm.format === 'round-robin' && (
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Number of Groups</label>
+                      <div className="flex items-center gap-2">
+                        <input type="number" min={1} max={10} value={autoGenForm.num_groups}
+                          onChange={e => setAutoGenForm(p => ({ ...p, num_groups: Math.max(1, parseInt(e.target.value) || 1) }))}
+                          className="w-24 px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" />
+                        <span className="text-xs text-slate-500">
+                          {autoGenForm.tournament ? (() => {
+                            const count = teams.filter(t => t.tournament === autoGenForm.tournament).length;
+                            const perGroup = Math.ceil(count / autoGenForm.num_groups);
+                            return `~${perGroup} teams per group · ${autoGenForm.num_groups > 1 ? `${count} teams split` : ''}`;
+                          })() : 'Select a tournament'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">More groups = fewer matches per team. Recommended: 4-6 teams per group.</p>
+                    </div>
+                  )}
+
+                  {/* Preview */}
+                  {autoGenForm.tournament && (() => {
+                    const tournamentTeams = teams.filter(t => t.tournament === autoGenForm.tournament);
+                    const count = tournamentTeams.length;
+                    let totalMatches = 0;
+                    if (autoGenForm.format === 'vex-alliance-qual') {
+                      totalMatches = generateVexAllianceQualification(tournamentTeams.map(t => t.id), autoGenForm.num_rounds).length;
+                    } else if (autoGenForm.format === 'vex-alliance-elim') {
+                      totalMatches = generateVexAllianceElimination(tournamentTeams.map(t => t.id)).length;
+                    } else if (autoGenForm.format === 'round-robin') {
+                      const perGroup = Math.ceil(count / autoGenForm.num_groups);
+                      for (let g = 0; g < autoGenForm.num_groups; g++) {
+                        const n = g < autoGenForm.num_groups - 1 ? perGroup : count - g * perGroup;
+                        if (n >= 2) totalMatches += n * (n - 1) / 2;
+                      }
+                    } else {
+                      const nextPow2 = Math.pow(2, Math.ceil(Math.log2(count)));
+                      totalMatches = nextPow2 / 2;
+                    }
+                    return (
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                        <p className="text-xs font-medium text-slate-700">
+                          <span className="font-bold">{count}</span> teams · <span className="font-bold">{totalMatches}</span> alliance matches
+                          {(autoGenForm.format === 'vex-alliance-qual' || autoGenForm.format === 'vex-alliance-elim') && (
+                            <span className="text-emerald-600"> · 2 teams per RED/BLUE alliance</span>
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {tournamentTeams.slice(0, 10).map(t => (
+                            <span key={t.id} className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">{t.team_name}</span>
+                          ))}
+                          {count > 10 && <span className="text-[9px] text-slate-400">+{count - 10} more</span>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="flex items-center justify-end gap-3 mt-2 pt-4 border-t border-brand-border">
+                    <button onClick={() => setShowAutoGen(false)} className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl">Cancel</button>
+                    <button onClick={handleAutoGenerate} disabled={!autoGenForm.tournament}
+                      className="px-6 py-2.5 text-xs font-black text-white bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/25 disabled:opacity-50 flex items-center gap-1.5">
+                      <Wand2 className="w-4 h-4" /> Generate Alliances
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+
+        {/* Standings Modal */}
+        {showStandings && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowStandings(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-6 md:p-8 z-10 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-500/10 flex items-center justify-center"><Target className="w-5 h-5 text-purple-600" /></div>
+                  <div>
+                    <h3 className="font-black text-lg text-slate-900">Live Standings</h3>
+                    <p className="text-xs text-slate-500">
+                      {standingsTournament
+                        ? `${standingsData.length} teams · ${matches.filter(m => m.tournament === standingsTournament && m.status === 'COMPLETED').length} matches completed`
+                        : 'Select a tournament to view standings'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select value={standingsTournament} onChange={e => setStandingsTournament(e.target.value)}
+                    className="px-3 py-1.5 bg-slate-50 border border-brand-border rounded-lg text-xs focus:outline-none focus:border-brand-red">
+                    <option value="">All tournaments</option>
+                    {tournaments.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.event_title || t.event}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => setShowStandings(false)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X className="w-5 h-5" /></button>
+                </div>
+              </div>
+
+              {standingsData.length > 0 ? (
+                <div className="border border-brand-border rounded-2xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-brand-border">
+                        <th className="text-left px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">#</th>
+                        <th className="text-left px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">Team</th>
+                        <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">MP</th>
+                        <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">W</th>
+                        <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">L</th>
+                        <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">D</th>
+                        <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">TS</th>
+                        <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-brand-border">
+                      {standingsData.map((s, i) => (
+                        <tr key={s.team_id} className={`hover:bg-slate-50/50 ${i === 0 ? 'bg-amber-50/50' : i === 1 ? 'bg-slate-50/50' : i === 2 ? 'bg-orange-50/30' : ''}`}>
+                          <td className="px-4 py-2.5">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                              i === 0 ? 'bg-amber-500 text-white' :
+                              i === 1 ? 'bg-slate-400 text-white' :
+                              i === 2 ? 'bg-orange-500 text-white' :
+                              'bg-slate-100 text-slate-500'
+                            }`}>{s.rank}</div>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              {i === 0 && <Medal className="w-3.5 h-3.5 text-amber-500" />}
+                              {i === 1 && <Medal className="w-3.5 h-3.5 text-slate-400" />}
+                              {i === 2 && <Medal className="w-3.5 h-3.5 text-orange-500" />}
+                              <span className="text-xs font-semibold text-slate-900">{s.team_name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-center text-xs text-slate-500">{s.matchesPlayed}</td>
+                          <td className="px-4 py-2.5 text-center text-xs text-emerald-600 font-bold">{s.wins}</td>
+                          <td className="px-4 py-2.5 text-center text-xs text-red-500 font-bold">{s.losses}</td>
+                          <td className="px-4 py-2.5 text-center text-xs text-amber-500 font-bold">{s.draws}</td>
+                          <td className="px-4 py-2.5 text-center text-xs font-bold text-slate-700">{s.totalScore}</td>
+                          <td className="px-4 py-2.5 text-center text-xs font-black text-slate-900">{s.points}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-slate-50 rounded-2xl">
+                  <Target className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="font-bold text-slate-500">No standings yet</p>
+                  <p className="text-xs text-slate-400 mt-1">Standings are computed from completed matches in real-time.</p>
+                </div>
+              )}
+
+              {standingsData.length > 0 && (
+                <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <h4 className="font-bold text-xs text-slate-700 mb-2 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-brand-red" /> Legend</h4>
+                  <div className="grid grid-cols-4 gap-2 text-[10px]">
+                    <span className="text-slate-500"><span className="font-bold">MP</span> = Matches Played</span>
+                    <span className="text-slate-500"><span className="font-bold">W</span> = Wins (2 pts)</span>
+                    <span className="text-slate-500"><span className="font-bold">L</span> = Losses (0 pts)</span>
+                    <span className="text-slate-500"><span className="font-bold">D</span> = Draws (1 pt)</span>
+                    <span className="text-slate-500 col-span-2"><span className="font-bold">TS</span> = Total Score (tie-breaker)</span>
+                    <span className="text-slate-500 col-span-2"><span className="font-bold">Pts</span> = Total Points</span>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         )}

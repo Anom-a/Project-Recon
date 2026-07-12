@@ -172,21 +172,21 @@ export default function TeamManager() {
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Tournament *</label>
                   <select value={form.tournament} onChange={e => setForm(p => ({ ...p, tournament: e.target.value }))} className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red">
-                    <option value="">Select...</option>
+                    <option value="">Select tournament...</option>
                     {tournaments.map((t: any) => <option key={t.id} value={t.id}>{t.event_title || t.event}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Team Name *</label>
-                  <input value={form.team_name} onChange={e => setForm(p => ({ ...p, team_name: e.target.value }))} className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" />
+                  <input value={form.team_name} onChange={e => setForm(p => ({ ...p, team_name: e.target.value }))} placeholder="e.g. Robo Titans, Circuit Breakers, VEX Kings" className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Organization</label><input value={form.organization} onChange={e => setForm(p => ({ ...p, organization: e.target.value }))} className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
-                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Coach</label><input value={form.coach_name} onChange={e => setForm(p => ({ ...p, coach_name: e.target.value }))} className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
+                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Organization</label><input value={form.organization} onChange={e => setForm(p => ({ ...p, organization: e.target.value }))} placeholder="e.g. Ethio Robotics, School of Engineering" className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
+                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Coach</label><input value={form.coach_name} onChange={e => setForm(p => ({ ...p, coach_name: e.target.value }))} placeholder="e.g. Alemayehu Hailu, Sarah Johnson" className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Email</label><input value={form.contact_email} onChange={e => setForm(p => ({ ...p, contact_email: e.target.value }))} className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
-                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Phone</label><input value={form.contact_phone} onChange={e => setForm(p => ({ ...p, contact_phone: e.target.value }))} className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
+                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Email</label><input value={form.contact_email} onChange={e => setForm(p => ({ ...p, contact_email: e.target.value }))} placeholder="e.g. coach@example.com, team.lead@school.edu" className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
+                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Phone</label><input value={form.contact_phone} onChange={e => setForm(p => ({ ...p, contact_phone: e.target.value }))} placeholder="e.g. +251-911-234-567, +1-555-0123" className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" /></div>
                 </div>
               </div>
               <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-brand-border">

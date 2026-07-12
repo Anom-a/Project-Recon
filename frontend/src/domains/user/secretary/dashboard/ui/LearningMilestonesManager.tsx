@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, X, Loader2, AlertCircle, Target, BookOpen, Archive, Filter, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { LearningMilestone } from '@/src/shared/types';
+import { LearningMilestone, UserProfile } from '@/src/shared/types';
 import { fetchMilestonesApi, createMilestoneApi, updateMilestoneApi, archiveMilestoneApi, fetchSubProgramsApi, fetchClassesApi } from '@/src/domains/learning/academics/api/academicApi';
 
 const defaultForm = {
   sub_program: '', title: '', description: '', scope_class: '',
 };
 
-export default function LearningMilestonesManager() {
+export default function LearningMilestonesManager({ currentUser }: { currentUser?: UserProfile }) {
   const [milestones, setMilestones] = useState<LearningMilestone[]>([]);
   const [subPrograms, setSubPrograms] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -22,15 +22,16 @@ export default function LearningMilestonesManager() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([
-      fetchMilestonesApi(''),
+    const isSecretary = currentUser?.role === 'Secretary';
+    Promise.allSettled([
+      isSecretary ? Promise.resolve([]) : fetchMilestonesApi(''),
       fetchSubProgramsApi(),
-      fetchClassesApi(),
+      isSecretary ? Promise.resolve([]) : fetchClassesApi(),
     ]).then(([m, sp, c]) => {
-      setMilestones(Array.isArray(m) ? m : []);
-      setSubPrograms(Array.isArray(sp) ? sp : []);
-      setClasses(Array.isArray(c) ? c.filter((cl: any) => cl.is_active !== false) : []);
-    }).catch(() => setError('Failed to load milestones')).finally(() => setLoading(false));
+      setMilestones(m.status === 'fulfilled' && Array.isArray(m.value) ? m.value : []);
+      setSubPrograms(sp.status === 'fulfilled' && Array.isArray(sp.value) ? sp.value : []);
+      setClasses(c.status === 'fulfilled' && Array.isArray(c.value) ? c.value.filter((cl: any) => cl.is_active !== false) : []);
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);

@@ -21,14 +21,15 @@ export default function CertificatesPanel() {
   const [form, setForm] = useState({ student: '', certificate: '' });
 
   useEffect(() => {
-    Promise.all([
+    Promise.allSettled([
       fetchStudentCertificatesApi(),
       fetchStudentsApi(),
       fetchCertificateTemplatesApi(),
     ]).then(([certRes, studentRes, templateRes]) => {
-      const studentList = Array.isArray(studentRes) ? studentRes : [];
-      const templateList = Array.isArray(templateRes) ? templateRes : [];
-      const sorted = (Array.isArray(certRes) ? certRes : []).sort(
+      const studentList = studentRes.status === 'fulfilled' && Array.isArray(studentRes.value) ? studentRes.value : [];
+      const templateList = templateRes.status === 'fulfilled' && Array.isArray(templateRes.value) ? templateRes.value : [];
+      const certsData = certRes.status === 'fulfilled' && Array.isArray(certRes.value) ? certRes.value : [];
+      const sorted = certsData.sort(
         (a, b) => new Date(b.issued_at).getTime() - new Date(a.issued_at).getTime()
       );
       setCerts(sorted);

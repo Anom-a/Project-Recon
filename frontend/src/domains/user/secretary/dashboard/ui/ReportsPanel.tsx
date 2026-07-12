@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { FileText, Users, BookOpen, DollarSign, Award, Download, Loader2 } from 'lucide-react';
-import { Enrollment, EnrollmentPayment, StudentProfile, StudentCertificate, AcademicClass } from '@/src/shared/types';
+import { Enrollment, EnrollmentPayment, StudentProfile, StudentCertificate, AcademicClass, UserProfile } from '@/src/shared/types';
 import {
   fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchStudentCertificatesApi,
   fetchClassesApi, fetchProgramsApi, fetchSubProgramsApi,
@@ -12,7 +12,7 @@ import {
 } from '@/src/domains/learning/academics/api/academicApi';
 import type { Program, SubProgram } from '@/src/shared/types';
 
-export default function ReportsPanel() {
+export default function ReportsPanel({ currentUser }: { currentUser?: UserProfile }) {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [payments, setPayments] = useState<EnrollmentPayment[]>([]);
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -31,27 +31,35 @@ export default function ReportsPanel() {
   const [studentResults, setStudentResults] = useState<StudentProfile[]>([]);
 
   useEffect(() => {
-    Promise.all([
+    const isSecretary = currentUser?.role === 'Secretary';
+    Promise.allSettled([
       fetchEnrollmentsApi(),
       fetchPaymentsApi(),
       fetchStudentsApi(),
       fetchStudentCertificatesApi(),
-      fetchClassesApi(),
+      isSecretary ? Promise.resolve([]) : fetchClassesApi(),
       fetchProgramsApi(),
       fetchSubProgramsApi(),
     ]).then(([enr, pay, stu, cer, cls, prog, sub]) => {
-      setEnrollments(Array.isArray(enr) ? enr : []);
-      setPayments(Array.isArray(pay) ? pay : []);
-      setStudents(Array.isArray(stu) ? stu : []);
-      setCerts(Array.isArray(cer) ? cer : []);
-      setClasses(Array.isArray(cls) ? cls : []);
-      setPrograms(Array.isArray(prog) ? prog : []);
-      setSubPrograms(Array.isArray(sub) ? sub : []);
-      if (Array.isArray(stu) && stu.length > 0) setSelectedStudent(stu[0].id);
-      if (Array.isArray(cls) && cls.length > 0) setSelectedClass(cls[0].id);
-      if (Array.isArray(sub) && sub.length > 0) setSelectedSubProgram(sub[0].id);
-      if (Array.isArray(prog) && prog.length > 0) setSelectedProgram(prog[0].id);
-    }).catch(() => {}).finally(() => setLoading(false));
+      const enrV = enr.status === 'fulfilled' && Array.isArray(enr.value) ? enr.value : [];
+      const payV = pay.status === 'fulfilled' && Array.isArray(pay.value) ? pay.value : [];
+      const stuV = stu.status === 'fulfilled' && Array.isArray(stu.value) ? stu.value : [];
+      const cerV = cer.status === 'fulfilled' && Array.isArray(cer.value) ? cer.value : [];
+      const clsV = cls.status === 'fulfilled' && Array.isArray(cls.value) ? cls.value : [];
+      const progV = prog.status === 'fulfilled' && Array.isArray(prog.value) ? prog.value : [];
+      const subV = sub.status === 'fulfilled' && Array.isArray(sub.value) ? sub.value : [];
+      setEnrollments(enrV);
+      setPayments(payV);
+      setStudents(stuV);
+      setCerts(cerV);
+      setClasses(clsV);
+      setPrograms(progV);
+      setSubPrograms(subV);
+      if (stuV.length > 0) setSelectedStudent(stuV[0].id);
+      if (clsV.length > 0) setSelectedClass(clsV[0].id);
+      if (subV.length > 0) setSelectedSubProgram(subV[0].id);
+      if (progV.length > 0) setSelectedProgram(progV[0].id);
+    }).finally(() => setLoading(false));
   }, []);
 
   const totalPaid = payments.filter(p => p.status === 'PAID').reduce((s, p) => s + Number(p.amount), 0);

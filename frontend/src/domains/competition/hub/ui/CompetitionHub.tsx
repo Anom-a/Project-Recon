@@ -5,21 +5,27 @@ import {
   Clock, DollarSign, Lock, User, ExternalLink, GraduationCap,
   EyeOff, X, Shield, CheckCircle2, Activity, Zap, Gamepad2, Sparkles,
   Medal, Award, Swords, ChevronRight, Tv, TrendingUp, RotateCcw,
+  Maximize2, Minimize2, RefreshCw,
 } from 'lucide-react';
 import { UserProfile, type Tournament, type Workshop } from '@/src/shared/types';
 import {
   getTournaments, getWorkshops,
   registerForEvent, getMyRegistrations,
   getPublicTeams, getAllPublicMatches,
-  type PublicRegistrationData, type PublicTeamEntry,
+  type PublicRegistrationData, type PublicTeamEntry, type MatchDetail,
 } from '../../api/competitionApi';
+import VexAllianceDisplay, { sidesFromMatch } from '../../shared/VexAllianceDisplay';
+import VexRulesPanel from '../../shared/VexRulesPanel';
+import { VEX_SCORING_RULES } from '../../shared/vexConstants';
+import MatchCard from '../../matches/ui/MatchCard';
 
 interface CompetitionHubProps {
   currentUser?: UserProfile | null;
   onViewTournament?: (id: string) => void;
+  onSelectMatch?: (id: string) => void;
 }
 
-type HubTab = 'tournaments' | 'workshops' | 'leaderboard';
+type EventFilter = 'tournaments' | 'workshops' | 'all';
 type TimeFilter = 'all' | 'upcoming' | 'live' | 'past';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -65,13 +71,15 @@ function HubSkeleton() {
 
 /* ───── Main Component ───── */
 
-export default function CompetitionHub({ currentUser, onViewTournament }: CompetitionHubProps) {
-  const [hubTab, setHubTab] = useState<HubTab>('tournaments');
+export default function CompetitionHub({ currentUser, onViewTournament, onSelectMatch }: CompetitionHubProps) {
+  const [eventFilter, setEventFilter] = useState<EventFilter>('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [teams, setTeams] = useState<PublicTeamEntry[]>([]);
+  const [matches, setMatches] = useState<MatchDetail[]>([]);
   const [liveMatchCount, setLiveMatchCount] = useState(0);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -82,6 +90,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
   const [detailEvent, setDetailEvent] = useState<Tournament | Workshop | null>(null);
+  const [showMatchView, setShowMatchView] = useState(false);
 
   const fetchAll = () => {
     setLoading(true);
@@ -91,11 +100,13 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
       getWorkshops(),
       getPublicTeams(),
       getAllPublicMatches(),
-    ]).then(([ts, ws, tms, matches]) => {
+    ]).then(([ts, ws, tms, matchList]) => {
       setTournaments(ts);
       setWorkshops(ws);
       setTeams(tms);
-      setLiveMatchCount(matches.filter(m => m.status === 'LIVE').length);
+      setMatches(matchList);
+      setLiveMatchCount(matchList.filter(m => m.status === 'LIVE').length);
+      setLastRefresh(new Date());
     }).catch(err => {
       console.error(err);
       setError('Failed to load events');
@@ -114,6 +125,24 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
     }
   }, [currentUser]);
 
+  /* Live auto-refresh every 15s for matches & leaderboard */
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const [freshTeams, freshMatches] = await Promise.all([
+          getPublicTeams(),
+          getAllPublicMatches(),
+        ]);
+        setTeams(freshTeams);
+        setMatches(freshMatches);
+        setLiveMatchCount(freshMatches.filter(m => m.status === 'LIVE').length);
+        setLastRefresh(new Date());
+      } catch { /* silent */ }
+    };
+    const interval = setInterval(poll, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   /* Derived data */
   const allEvents = useMemo(() => [...tournaments, ...workshops], [tournaments, workshops]);
   const liveEvents = useMemo(() => allEvents.filter(e => e.computedState === 'LIVE'), [allEvents]);
@@ -123,7 +152,13 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
     return upcomingEvents[0] || liveEvents[0] || tournaments[0] || null;
   }, [upcomingEvents, liveEvents, tournaments]);
 
-  const events = hubTab === 'tournaments' ? tournaments : workshops;
+  const liveMatches = useMemo(() => matches.filter(m => m.status === 'LIVE'), [matches]);
+  const upcomingMatches = useMemo(() => matches.filter(m => m.status === 'SCHEDULED').slice(0, 6), [matches]);
+  const sortedTeams = useMemo(() =>
+    [...teams].sort((a, b) => b.points - a.points || b.wins - a.wins || b.totalScore - a.totalScore),
+  [teams]);
+
+  const events = eventFilter === 'tournaments' ? tournaments : eventFilter === 'workshops' ? workshops : allEvents;
   const filtered = events.filter(e => {
     if (timeFilter === 'upcoming' && e.computedState !== 'FUTURE') return false;
     if (timeFilter === 'live' && e.computedState !== 'LIVE') return false;
@@ -139,9 +174,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
     past: events.filter(e => e.computedState === 'PAST').length,
   };
 
-  const topTeams = useMemo(() =>
-    [...teams].sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 3),
-  [teams]);
+  const topTeams = useMemo(() => sortedTeams.slice(0, 3), [sortedTeams]);
 
   /* Registration handlers */
   const openRegModal = (id: string, title: string) => {
@@ -162,6 +195,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
     const email = regForm.public_email.trim();
     if (!email) { setRegError('Email is required.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setRegError('Enter a valid email.'); return; }
+    if (!regForm.public_phone.trim()) { setRegError('Phone number is required.'); return; }
     setRegSubmitting(true);
     setRegError(null);
     try {
@@ -233,10 +267,10 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight">
-                Competitions & Events
+                VEX Competition Center
               </h1>
               <p className="mt-3 text-base md:text-lg text-slate-300 max-w-2xl leading-relaxed">
-                Browse upcoming tournaments, workshops, and events. Register to participate and showcase your skills.
+                Live matches, alliance scores, and rankings — all in one view. RED vs BLUE alliances, 2 teams per side.
               </p>
             </div>
             {featured && daysUntil(featured.startDateTime) && (
@@ -254,7 +288,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
               { label: 'Tournaments', value: totalTournaments, icon: Trophy, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
               { label: 'Teams', value: totalTeams, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
               { label: 'Participants', value: totalParticipants, icon: Users, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-              { label: 'Live Now', value: liveEvents.length, icon: Zap, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+              { label: 'Live Matches', value: liveMatchCount, icon: Zap, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
             ].map(s => (
               <motion.div key={s.label} whileHover={{ scale: 1.02 }}
                 className={`${s.bg} ${s.border} border rounded-2xl p-4 backdrop-blur-sm transition-shadow hover:shadow-lg hover:shadow-white/5`}>
@@ -272,7 +306,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
       {/* ════════════════════════════════════════ */}
       {/* FEATURED TOURNAMENT */}
       {/* ════════════════════════════════════════ */}
-      {featured && !loading && hubTab === 'tournaments' && (
+      {featured && !loading && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-amber-50 rounded-3xl border border-indigo-100 p-6 md:p-8"
         >
@@ -320,7 +354,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
       {/* LIVE MATCHES BAR */}
       {/* ════════════════════════════════════════ */}
       <AnimatePresence>
-        {liveEvents.length > 0 && !loading && (
+              {liveEvents.length > 0 && !loading && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
             className="bg-gradient-to-r from-red-500 via-red-600 to-red-500 rounded-2xl p-4 shadow-lg shadow-red-500/20"
           >
@@ -337,16 +371,24 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
                   <p className="text-[11px] text-red-200">Watch live and follow the action</p>
                 </div>
               </div>
-              {(() => {
-                const liveTournament = liveEvents.find(e => e.eventType === 'TOURNAMENT') as Tournament | undefined;
-                const liveUrl = liveTournament?.youtubeLiveUrl;
-                return liveUrl ? (
-                  <a href={liveUrl} target="_blank" rel="noopener noreferrer"
+              <div className="flex items-center gap-2">
+                {liveEvents.filter(e => e.eventType === 'TOURNAMENT').length > 0 && (
+                  <button onClick={() => setShowMatchView(true)}
                     className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5">
-                    <Tv className="w-3.5 h-3.5" /> Watch
-                  </a>
-                ) : null;
-              })()}
+                    <Tv className="w-3.5 h-3.5" /> Large Screen View
+                  </button>
+                )}
+                {(() => {
+                  const liveTournament = liveEvents.find(e => e.eventType === 'TOURNAMENT') as Tournament | undefined;
+                  const liveUrl = liveTournament?.youtubeLiveUrl;
+                  return liveUrl ? (
+                    <a href={liveUrl} target="_blank" rel="noopener noreferrer"
+                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5">
+                      <Tv className="w-3.5 h-3.5" /> Watch
+                    </a>
+                  ) : null;
+                })()}
+              </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {liveEvents.map(ev => (
@@ -367,20 +409,90 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
       </AnimatePresence>
 
       {/* ════════════════════════════════════════ */}
-      {/* NAV TABS */}
+      {/* LIVE MATCHES + LEADERBOARD — unified view */}
       {/* ════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {!loading && (
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          {/* Live Matches Column */}
+          <div className="xl:col-span-3 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tv className="w-5 h-5 text-red-500" />
+                <h2 className="font-black text-base text-slate-900 uppercase tracking-wider">Live Matches</h2>
+                {liveMatchCount > 0 && (
+                  <span className="flex items-center gap-1 text-[9px] font-black text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    {liveMatchCount} LIVE
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] text-slate-400 hidden sm:inline">
+                  Updated {lastRefresh.toLocaleTimeString()}
+                </span>
+                <button onClick={() => setShowMatchView(true)}
+                  className="text-[10px] font-black uppercase tracking-wider px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-all flex items-center gap-1.5">
+                  <Maximize2 className="w-3 h-3" /> Full Screen
+                </button>
+              </div>
+            </div>
+
+            {liveMatches.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {liveMatches.map(m => (
+                  <MatchCard key={m.id} match={m} onClick={() => onSelectMatch?.(m.id)} />
+                ))}
+              </div>
+            ) : upcomingMatches.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500 font-medium">No live matches — upcoming next:</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {upcomingMatches.slice(0, 4).map(m => (
+                    <MatchCard key={m.id} match={m} onClick={() => onSelectMatch?.(m.id)} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+                <Gamepad2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-500">No matches scheduled yet</p>
+                <p className="text-xs text-slate-400 mt-1">Alliance matches will appear here when scheduled</p>
+              </div>
+            )}
+          </div>
+
+          {/* Leaderboard Column */}
+          <div className="xl:col-span-2">
+            <LeaderboardSection
+              teams={sortedTeams}
+              topTeams={topTeams}
+              loading={loading}
+              onViewTournament={onViewTournament}
+              compact
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════ */}
+      {/* ALL EVENTS SECTION */}
+      {/* ════════════════════════════════════════ */}
+      <div id="events" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-brand-red" />
+          <h2 className="font-black text-base text-slate-900 uppercase tracking-wider">All Events</h2>
+        </div>
         <div className="flex gap-1 p-1 bg-white border border-slate-200 rounded-2xl w-fit shadow-sm">
           {([
-            { id: 'tournaments' as HubTab, label: 'Tournaments', icon: Trophy },
-            { id: 'workshops' as HubTab, label: 'Workshops', icon: GraduationCap },
-            { id: 'leaderboard' as HubTab, label: 'Leaderboard', icon: Medal },
+            { id: 'all' as EventFilter, label: 'All', icon: Activity },
+            { id: 'tournaments' as EventFilter, label: 'Tournaments', icon: Trophy },
+            { id: 'workshops' as EventFilter, label: 'Workshops', icon: GraduationCap },
           ]).map(tab => {
             const TabIcon = tab.icon;
             return (
-              <button key={tab.id} onClick={() => setHubTab(tab.id)}
+              <button key={tab.id} onClick={() => setEventFilter(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                  hubTab === tab.id
+                  eventFilter === tab.id
                     ? 'bg-gradient-to-r from-brand-red to-brand-red-dark text-white shadow-md shadow-brand-red/20'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
@@ -392,8 +504,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
           })}
         </div>
 
-        {hubTab !== 'leaderboard' && (
-          <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
             {FILTERS.map(f => {
               const FIcon = f.icon;
               return (
@@ -412,31 +523,18 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
                 </button>
               );
             })}
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* ════════════════════════════════════════ */}
-      {/* LEADERBOARD FULL VIEW */}
-      {/* ════════════════════════════════════════ */}
-      {hubTab === 'leaderboard' ? (
-        <LeaderboardSection
-          teams={teams}
-          topTeams={topTeams}
-          loading={loading}
-          onViewTournament={onViewTournament}
-        />
-      ) : (
-        <>
-          {/* Search */}
+      {/* Search + Events grid */}
+      <>
           <div className="relative max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={`Search ${hubTab}...`}
+              placeholder="Search events..."
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red/20 transition-all" />
           </div>
 
-          {/* Content */}
           {loading ? (
             <HubSkeleton />
           ) : error ? (
@@ -451,7 +549,7 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
           ) : filtered.length === 0 ? (
             <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-14 flex flex-col items-center text-center">
               <Trophy className="w-14 h-14 text-slate-300 mb-4" />
-              <h3 className="font-black text-xl text-slate-600 mb-1">No {hubTab === 'tournaments' ? 'Tournaments' : 'Workshops'} Found</h3>
+              <h3 className="font-black text-xl text-slate-600 mb-1">No Events Found</h3>
               <p className="text-sm text-slate-400 max-w-xs">
                 {search || timeFilter !== 'all'
                   ? 'Try adjusting your search or filters.'
@@ -634,8 +732,14 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
               })}
             </div>
           )}
-        </>
-      )}
+      </>
+
+      {/* ════════════════════════════════════════ */}
+      {/* VEX RULES */}
+      {/* ════════════════════════════════════════ */}
+      <div id="rules" className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8">
+        <VexRulesPanel />
+      </div>
 
       {/* ════════════════════════════════════════ */}
       {/* REGISTRATION MODAL */}
@@ -722,17 +826,29 @@ export default function CompetitionHub({ currentUser, onViewTournament }: Compet
           } : undefined}
         />
       )}
+
+      {/* ════════════════════════════════════════ */}
+      {/* LARGE SCREEN MATCH VIEW */}
+      {/* ════════════════════════════════════════ */}
+      {showMatchView && (
+        <MatchViewOverlay
+          teams={teams}
+          onClose={() => setShowMatchView(false)}
+          onViewTournament={onViewTournament}
+        />
+      )}
     </div>
   );
 }
 
 /* ───── Leaderboard Section ───── */
 
-function LeaderboardSection({ teams, topTeams, loading, onViewTournament }: {
+function LeaderboardSection({ teams, topTeams, loading, onViewTournament, compact = false }: {
   teams: PublicTeamEntry[];
   topTeams: PublicTeamEntry[];
   loading: boolean;
   onViewTournament?: (id: string) => void;
+  compact?: boolean;
 }) {
   const totalTournaments = useMemo(() => new Set(teams.map(t => t.tournamentId)).size, [teams]);
   const totalPoints = useMemo(() => teams.reduce((a, b) => a + b.points, 0), [teams]);
@@ -752,7 +868,18 @@ function LeaderboardSection({ teams, topTeams, loading, onViewTournament }: {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Medal className="w-5 h-5 text-amber-500" />
+          <h2 className="font-black text-base text-slate-900 uppercase tracking-wider">Leaderboard</h2>
+          <span className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE
+          </span>
+        </div>
+      </div>
+
+      {!compact && (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Teams', value: teams.length, icon: Users, color: 'text-brand-blue', bg: 'bg-brand-blue/5' },
@@ -769,10 +896,11 @@ function LeaderboardSection({ teams, topTeams, loading, onViewTournament }: {
           </div>
         ))}
       </div>
+      )}
 
       {/* Podium */}
       {topTeams.length >= 3 && (
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl border border-slate-700/60 p-6 md:p-8 relative overflow-hidden">
+        <div className={`bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl border border-slate-700/60 relative overflow-hidden ${compact ? 'p-4' : 'p-6 md:p-8'}`}>
           <div className="absolute inset-0 opacity-[0.04]" style={{
             backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
             backgroundSize: '40px 40px',
@@ -833,17 +961,19 @@ function LeaderboardSection({ teams, topTeams, loading, onViewTournament }: {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider w-14">Rank</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider w-14">#</th>
                 <th className="text-left px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">Team</th>
                 <th className="text-left px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider hidden sm:table-cell">Tournament</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">MP</th>
                 <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">W</th>
                 <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">L</th>
                 <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">D</th>
+                <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">TS</th>
                 <th className="text-center px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-wider">Pts</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {teams.map((t, i) => (
+              {(compact ? teams.slice(0, 10) : teams).map((t, i) => (
                 <tr key={t.id} className={`transition-colors ${i < 3 ? 'bg-amber-50/50' : 'hover:bg-slate-50/80'}`}>
                   <td className="px-4 py-3 text-center">
                     {i < 3 ? (
@@ -863,9 +993,11 @@ function LeaderboardSection({ teams, topTeams, loading, onViewTournament }: {
                       <span className="text-xs text-slate-500">{t.tournamentName}</span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-center text-xs text-slate-500">{t.matchesPlayed}</td>
                   <td className="px-4 py-3 text-center text-xs font-bold text-emerald-600">{t.wins}</td>
                   <td className="px-4 py-3 text-center text-xs font-bold text-red-500">{t.losses}</td>
-                  <td className="px-4 py-3 text-center text-xs text-slate-500">{t.draws}</td>
+                  <td className="px-4 py-3 text-center text-xs text-amber-600">{t.draws}</td>
+                  <td className="px-4 py-3 text-center text-xs font-bold text-slate-600">{t.totalScore}</td>
                   <td className="px-4 py-3 text-center">
                     <span className="text-base font-black text-slate-900">{t.points}</span>
                   </td>
@@ -873,6 +1005,9 @@ function LeaderboardSection({ teams, topTeams, loading, onViewTournament }: {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-[9px] text-slate-400 text-center">
+          RP = Win×{VEX_SCORING_RULES.winPoints} + Draw×{VEX_SCORING_RULES.drawPoints} · Tie-break: Total Score
         </div>
       </div>
     </div>
@@ -990,6 +1125,403 @@ function EventDetailModal({ event, onClose, currentUser, isRegistered, onRegiste
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ───── Animated Match Card (for Large Screen View) ───── */
+
+function MatchCardAnimated({ match, index }: { match: MatchDetail; index: number; key?: string }) {
+  const isLive = match.status === 'LIVE';
+  const isCompleted = match.status === 'COMPLETED';
+  const { sideA, sideB } = sidesFromMatch(match.sides);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        ...(isLive ? { y: [0, -2, 0] } : {}),
+      }}
+      transition={{
+        opacity: { duration: 0.4, delay: index * 0.05 },
+        y: isLive ? { duration: 3, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.4 },
+        scale: { duration: 0.4 },
+        layout: { duration: 0.5, ease: 'easeInOut' },
+      }}
+      className={`relative overflow-hidden rounded-2xl border ${
+        isLive
+          ? 'border-red-500/40 bg-gradient-to-br from-slate-900 via-red-950/50 to-slate-900 shadow-lg shadow-red-500/20'
+          : isCompleted
+            ? 'border-slate-700/40 bg-slate-800/40'
+            : 'border-slate-700/30 bg-slate-800/20'
+      }`}
+    >
+      {isLive && (
+        <motion.div
+          animate={{ x: ['-100%', '100%'] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          className="absolute inset-y-0 -inset-x-4 w-20 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+        />
+      )}
+      <div className="p-4 md:p-5 relative">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {isLive ? (
+              <span className="flex items-center gap-1.5 text-[10px] font-black text-red-400 uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Live
+              </span>
+            ) : isCompleted ? (
+              <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Completed</span>
+            ) : (
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Scheduled</span>
+            )}
+          </div>
+          <span className="text-[9px] font-bold text-slate-500">{match.round}</span>
+        </div>
+
+        <VexAllianceDisplay
+          sideA={sideA}
+          sideB={sideB}
+          winningSide={match.winningSide}
+          variant="standard"
+          isLive={isLive}
+        />
+
+        <div className="mt-3 flex items-center justify-between text-[9px] text-slate-500">
+          <span>{match.tournamentName}</span>
+          {isLive && match.startedAt && (
+            <span>Started {new Date(match.startedAt).toLocaleTimeString()}</span>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ───── Large Screen Match View Overlay ───── */
+
+function MatchViewOverlay({ teams: initialTeams, onClose, onViewTournament }: {
+  teams: PublicTeamEntry[];
+  onClose: () => void;
+  onViewTournament?: (id: string) => void;
+}) {
+  const [matches, setMatches] = useState<MatchDetail[]>([]);
+  const [teams, setTeams] = useState<PublicTeamEntry[]>(initialTeams);
+  const [loadingMatches, setLoadingMatches] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedTournament, setSelectedTournament] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'matches' | 'standings'>('matches');
+
+  const fetchData = async () => {
+    try {
+      const [freshMatches, freshTeams] = await Promise.all([
+        getAllPublicMatches(),
+        getPublicTeams(),
+      ]);
+      setMatches(freshMatches);
+      setTeams(freshTeams);
+    } catch { /* ignore */ }
+    setLoadingMatches(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    const interval = setInterval(fetchData, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      await document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const tournamentIds = useMemo(() => {
+    const ids = new Set(matches.map(m => m.tournamentId));
+    return Array.from(ids);
+  }, [matches]);
+
+  const filteredMatches = useMemo(() => {
+    if (selectedTournament === 'all') return matches;
+    return matches.filter(m => m.tournamentId === selectedTournament);
+  }, [matches, selectedTournament]);
+
+  const liveMatches = useMemo(() => filteredMatches.filter(m => m.status === 'LIVE'), [filteredMatches]);
+  const upcomingMatches = useMemo(() => filteredMatches.filter(m => m.status === 'SCHEDULED'), [filteredMatches]);
+  const completedMatches = useMemo(() => filteredMatches.filter(m => m.status === 'COMPLETED'), [filteredMatches]);
+
+  const sortedTeams = useMemo(() =>
+    [...teams].sort((a, b) => b.points - a.points || (b.wins - a.wins) || (b.totalScore - a.totalScore)),
+  [teams]);
+
+  const topTeams = useMemo(() =>
+    [...sortedTeams].sort((a, b) => b.points - a.points).slice(0, 3),
+  [sortedTeams, teams]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/98 backdrop-blur-md flex flex-col">
+      {/* Top bar */}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-white/10 shrink-0"
+      >
+        <div className="flex items-center gap-3">
+          <Tv className="w-5 h-5 text-red-400" />
+          <h2 className="text-sm md:text-base font-black text-white tracking-tight">
+            <span className="hidden sm:inline">Large Screen &middot; </span>Live View
+          </h2>
+          <span className="text-[10px] text-slate-500 hidden sm:inline">Auto-refreshing every 15s</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <select value={selectedTournament} onChange={e => setSelectedTournament(e.target.value)}
+            className="px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold text-slate-300 focus:outline-none focus:border-red-500/40"
+          >
+            <option value="all">All Tournaments</option>
+            {tournamentIds.map(id => (
+              <option key={id} value={id}>{matches.find(m => m.tournamentId === id)?.tournamentName || id.slice(0, 8)}</option>
+            ))}
+          </select>
+          <div className="flex bg-white/5 rounded-lg p-0.5">
+            <button onClick={() => setViewMode('matches')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                viewMode === 'matches' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'
+              }`}>Matches</button>
+            <button onClick={() => setViewMode('standings')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                viewMode === 'standings' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'
+              }`}>Standings</button>
+          </div>
+          <button onClick={toggleFullscreen}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+          <button onClick={onClose}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Content */}
+      {loadingMatches ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-red-400" />
+            <p className="text-sm text-slate-400">Loading matches...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex overflow-hidden">
+          {/* Main content */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            {viewMode === 'matches' && (
+              <div className="space-y-8">
+                {/* Live now */}
+                {liveMatches.length > 0 && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                      <h3 className="text-sm font-black text-red-400 uppercase tracking-wider">
+                        Live Now ({liveMatches.length})
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(liveMatches as MatchDetail[]).map((m, i) => (
+                        <MatchCardAnimated key={m.id} match={m} index={i} />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Upcoming */}
+                {upcomingMatches.length > 0 && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Clock className="w-4 h-4 text-blue-400" />
+                      <h3 className="text-sm font-black text-blue-400 uppercase tracking-wider">
+                        Upcoming ({upcomingMatches.length})
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(upcomingMatches as MatchDetail[]).map((m, i) => (
+                        <MatchCardAnimated key={m.id} match={m} index={i} />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Completed - last 20 */}
+                {completedMatches.length > 0 && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <h3 className="text-sm font-black text-emerald-400 uppercase tracking-wider">
+                        Completed ({completedMatches.length})
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(completedMatches as MatchDetail[]).slice(0, 20).map((m, i) => (
+                        <MatchCardAnimated key={m.id} match={m} index={i} />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {filteredMatches.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <Gamepad2 className="w-12 h-12 text-slate-600 mb-3" />
+                    <p className="font-black text-lg text-slate-400">No matches yet</p>
+                    <p className="text-xs text-slate-600 mt-1">Matches will appear once they are scheduled.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {viewMode === 'standings' && (
+              <div className="max-w-3xl">
+                <div className="flex items-center gap-2 mb-4">
+                  <Medal className="w-4 h-4 text-amber-400" />
+                  <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">Standings</h3>
+                </div>
+                {sortedTeams.length > 0 ? (
+                  <div className="border border-white/10 rounded-2xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-white/5 border-b border-white/10">
+                          <th className="text-left px-4 py-3 text-[10px] font-black text-slate-400 uppercase">#</th>
+                          <th className="text-left px-4 py-3 text-[10px] font-black text-slate-400 uppercase">Team</th>
+                          <th className="text-center px-4 py-3 text-[10px] font-black text-slate-400 uppercase">MP</th>
+                          <th className="text-center px-4 py-3 text-[10px] font-black text-slate-400 uppercase">W</th>
+                          <th className="text-center px-4 py-3 text-[10px] font-black text-slate-400 uppercase">L</th>
+                          <th className="text-center px-4 py-3 text-[10px] font-black text-slate-400 uppercase">D</th>
+                          <th className="text-center px-4 py-3 text-[10px] font-black text-slate-400 uppercase">TS</th>
+                          <th className="text-center px-4 py-3 text-[10px] font-black text-slate-400 uppercase">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {sortedTeams.map((t, i) => (
+                          <motion.tr key={t.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
+                            className={`hover:bg-white/5 transition-colors ${i < 3 ? 'bg-amber-500/5' : ''}`}
+                          >
+                            <td className="px-4 py-3">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
+                                i === 0 ? 'bg-amber-500 text-white' :
+                                i === 1 ? 'bg-slate-500 text-white' :
+                                i === 2 ? 'bg-orange-500 text-white' :
+                                'bg-white/5 text-slate-400'
+                              }`}>{i + 1}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-sm font-bold text-white">{t.teamName}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center text-xs text-slate-400">{t.matchesPlayed}</td>
+                            <td className="px-4 py-3 text-center text-xs font-bold text-emerald-400">{t.wins}</td>
+                            <td className="px-4 py-3 text-center text-xs font-bold text-red-400">{t.losses}</td>
+                            <td className="px-4 py-3 text-center text-xs text-amber-400">{t.draws}</td>
+                            <td className="px-4 py-3 text-center text-xs font-bold text-slate-300">{t.totalScore}</td>
+                            <td className="px-4 py-3 text-center text-sm font-black text-white">{t.points}</td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="px-4 py-2.5 bg-white/5 border-t border-white/10 flex items-center gap-4 text-[9px] text-slate-500">
+                      <span><span className="font-bold text-slate-400">MP</span> Matches Played</span>
+                      <span><span className="font-bold text-slate-400">Pts</span> W&times;2 + D</span>
+                      <span><span className="font-bold text-slate-400">TS</span> Total Score (tie-breaker)</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <Medal className="w-12 h-12 text-slate-600 mb-3" />
+                    <p className="font-black text-base text-slate-400">No standings yet</p>
+                    <p className="text-xs text-slate-600 mt-1">Standings will be computed once matches complete.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Standings sidebar (visible on large screens) */}
+          <div className="hidden xl:block w-72 2xl:w-80 border-l border-white/10 overflow-y-auto p-4 shrink-0">
+            <div className="flex items-center gap-2 mb-4">
+              <Medal className="w-4 h-4 text-amber-400" />
+              <h3 className="text-xs font-black text-amber-400 uppercase tracking-wider">Top Teams</h3>
+            </div>
+
+            {/* Mini podium */}
+            {topTeams.length >= 3 && (
+              <div className="mb-6 bg-white/5 rounded-xl p-3">
+                <div className="flex items-end justify-center gap-2">
+                  {[1, 0, 2].map(pos => {
+                    const entry = topTeams[pos];
+                    if (!entry) return null;
+                    const isFirst = pos === 0;
+                    return (
+                      <div key={entry.id}
+                        className={`flex flex-col items-center gap-1 ${isFirst ? 'order-2' : pos === 0 ? 'order-1' : 'order-3'}`}
+                      >
+                        <div className={`px-1.5 py-0.5 rounded text-[8px] font-black ${
+                          pos === 0 ? 'bg-amber-500/20 text-amber-300' :
+                          pos === 1 ? 'bg-slate-500/20 text-slate-300' :
+                          'bg-orange-500/20 text-orange-300'
+                        }`}>{entry.points} pts</div>
+                        <div className={`rounded-t w-12 flex items-center justify-center ${
+                          pos === 0 ? 'h-16 bg-amber-500/20' :
+                          pos === 1 ? 'h-12 bg-slate-500/20' :
+                          'h-10 bg-orange-500/20'
+                        }`}>
+                          <span className="text-lg">{['🥇', '🥈', '🥉'][pos]}</span>
+                        </div>
+                        <span className="text-[9px] font-bold text-white text-center truncate max-w-16">{entry.teamName}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Standings list */}
+            <div className="space-y-1">
+              {sortedTeams.slice(0, 15).map((t, i) => (
+                <motion.div key={t.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                  className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-colors ${
+                    i < 3 ? 'bg-amber-500/10' : 'hover:bg-white/5'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black ${
+                    i === 0 ? 'bg-amber-500 text-white' :
+                    i === 1 ? 'bg-slate-500 text-white' :
+                    i === 2 ? 'bg-orange-500 text-white' :
+                    'bg-white/5 text-slate-400'
+                  }`}>{i + 1}</div>
+                  <span className="flex-1 font-bold text-white truncate">{t.teamName}</span>
+                  <span className="font-black text-white">{t.points}</span>
+                  <span className="text-[9px] text-slate-400">{t.wins}W {t.losses}L</span>
+                </motion.div>
+              ))}
+            </div>
+
+            <button onClick={() => setViewMode('standings')}
+              className="mt-3 w-full text-center text-[10px] font-bold text-slate-400 hover:text-white py-2 transition-colors">
+              View Full Standings &rarr;
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

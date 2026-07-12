@@ -121,6 +121,75 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
   return res.json();
 }
 
+async function requestBlob(endpoint: string, config: RequestConfig = {}): Promise<Blob> {
+  const { params, _isRetry, ...init } = config;
+  const urlStr = `${BASE_URL}${endpoint}`;
+  const url = urlStr.startsWith('http') ? new URL(urlStr) : new URL(urlStr, window.location.origin);
+  if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+
+  let token = localStorage.getItem('access_token');
+  const headers: Record<string, string> = { ...init.headers as Record<string, string> };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url.toString(), {
+    ...init,
+    headers,
+  });
+
+  if (res.status === 401 && !_isRetry && token) {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const refreshUrl = new URL(`${BASE_URL}/accounts/token/refresh/`, window.location.origin);
+          const refreshRes = await fetch(refreshUrl.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh: refreshToken }),
+          });
+
+          if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            localStorage.setItem('access_token', data.access);
+            if (data.refresh) {
+              localStorage.setItem('refresh_token', data.refresh);
+            }
+            onRefreshed(data.access);
+          } else {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('ethio_robotics_user');
+            window.dispatchEvent(new CustomEvent('auth:logout'));
+          }
+        } catch {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
+      return new Promise<Blob>((resolve, reject) => {
+        subscribeTokenRefresh((newToken) => {
+          config._isRetry = true;
+          requestBlob(endpoint, config).then(resolve).catch(reject);
+        });
+      });
+    }
+  }
+
+  if (!res.ok) {
+    const message = await parseErrorBody(res);
+    throw new Error(message);
+  }
+
+  return res.blob();
+}
+
 export const http = {
   get: <T>(endpoint: string, config?: RequestConfig) =>
     request<T>(endpoint, { ...config, method: 'GET' }),
@@ -132,4 +201,6 @@ export const http = {
     request<T>(endpoint, { ...config, method: 'PATCH', body: body instanceof FormData ? body : JSON.stringify(body) }),
   delete: <T>(endpoint: string, config?: RequestConfig) =>
     request<T>(endpoint, { ...config, method: 'DELETE' }),
+  downloadBlob: (endpoint: string, config?: RequestConfig) =>
+    requestBlob(endpoint, { ...config, method: 'GET' }),
 };

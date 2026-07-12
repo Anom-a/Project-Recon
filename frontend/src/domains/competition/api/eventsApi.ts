@@ -160,6 +160,8 @@ export interface BackendStanding {
   losses: number;
   draws: number;
   points: number;
+  matchesPlayed?: number;
+  totalScore?: number;
 }
 
 export interface BackendEventPayment {

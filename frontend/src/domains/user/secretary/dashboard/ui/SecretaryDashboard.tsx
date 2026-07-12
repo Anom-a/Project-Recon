@@ -53,22 +53,23 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
 
   const refreshSignals = () => {
     setLoading(true);
-    Promise.all([
+    const isSecretary = currentUser.role === 'Secretary';
+    Promise.allSettled([
       fetchEnrollmentsApi(),
       fetchPaymentsApi(),
       fetchStudentCertificatesApi(),
-      fetchCertificateTemplatesApi().catch(() => []),
-      fetchMilestonesApi('').catch(() => []),
-      fetchLearningMaterialsApi().catch(() => []),
-      fetchEnrollmentPeriodsApi().catch(() => []),
+      fetchCertificateTemplatesApi(),
+      isSecretary ? Promise.resolve([]) : fetchMilestonesApi(''),
+      isSecretary ? Promise.resolve([]) : fetchLearningMaterialsApi(),
+      fetchEnrollmentPeriodsApi(),
     ]).then(([enr, pay, certs, templates, milestones, materials, periods]) => {
-      const enrollments = Array.isArray(enr) ? enr : [];
-      const payments = Array.isArray(pay) ? pay : [];
-      const certificates = Array.isArray(certs) ? certs : [];
-      const tpl = Array.isArray(templates) ? templates : [];
-      const mls = Array.isArray(milestones) ? milestones : [];
-      const mat = Array.isArray(materials) ? materials : [];
-      const per = Array.isArray(periods) ? periods : [];
+      const enrollments = enr.status === 'fulfilled' && Array.isArray(enr.value) ? enr.value : [];
+      const payments = pay.status === 'fulfilled' && Array.isArray(pay.value) ? pay.value : [];
+      const certificates = certs.status === 'fulfilled' && Array.isArray(certs.value) ? certs.value : [];
+      const tpl = templates.status === 'fulfilled' && Array.isArray(templates.value) ? templates.value : [];
+      const mls = milestones.status === 'fulfilled' && Array.isArray(milestones.value) ? milestones.value : [];
+      const mat = materials.status === 'fulfilled' && Array.isArray(materials.value) ? materials.value : [];
+      const per = periods.status === 'fulfilled' && Array.isArray(periods.value) ? periods.value : [];
       const active = enrollments.filter(e => e.status === 'ACTIVE');
       const pendingEnrollments = enrollments.filter(e => e.status === 'PENDING_PAYMENT');
       const todayPay = payments.filter(p =>
@@ -84,7 +85,7 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
         { label: 'Milestones', value: String(mls.length), detail: 'active milestones', icon: Target, tone: 'emerald' },
         { label: 'Periods', value: String(per.length), detail: 'enrollment periods', icon: Calendar, tone: 'amber' },
       ]);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { refreshSignals(); }, []);
@@ -92,17 +93,17 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
   const renderPage = () => {
     switch (activeSection) {
       case 'overview': return <Overview />;
-      case 'admissions': return <AdmissionsPanel />;
-      case 'enrollments': return <EnrollmentsPanel />;
+      case 'admissions': return <AdmissionsPanel currentUser={currentUser} />;
+      case 'enrollments': return <EnrollmentsPanel currentUser={currentUser} />;
       case 'payments': return <PaymentsPanel />;
       case 'certificates': return <CertificateManager currentUserRole={currentUser.role} />;
       case 'templates': return <CertificateTemplateManager />;
-      case 'periods': return <EnrollmentPeriodsPanel />;
+      case 'periods': return <EnrollmentPeriodsPanel currentUser={currentUser} />;
       case 'students': return <StudentDetailPanel />;
-      case 'milestones': return <LearningMilestonesManager />;
-      case 'materials': return <LearningMaterialsPanel />;
+      case 'milestones': return <LearningMilestonesManager currentUser={currentUser} />;
+      case 'materials': return <LearningMaterialsPanel currentUser={currentUser} />;
       case 'event-registrations': return <RegistrationManager />;
-      case 'reports': return <ReportsPanel />;
+      case 'reports': return <ReportsPanel currentUser={currentUser} />;
       case 'account': return <AdminAccount currentUser={currentUser} />;
     }
   };

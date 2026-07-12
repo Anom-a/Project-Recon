@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { LogOut, X, Menu, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeft } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import { useBranding } from '@/src/shared/hooks/useBranding';
@@ -55,9 +55,56 @@ export function Sidebar({
     return acc;
   }, {});
 
+  const topGroups = Object.entries(grouped).filter(([g]) => g !== 'system');
+  const bottomGroups = Object.entries(grouped).filter(([g]) => g === 'system');
+
   const handleNav = (id: string) => {
     onSectionChange(id);
     onDrawerToggle?.(false);
+  };
+
+  const renderNavGroup = ([group, navItems]: [string, NavItem[]]) => {
+    const label = groupLabels[group] || group;
+    return (
+      <div key={group} className="mb-1">
+        <div className="sidebar-group-label px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+          {!collapsed && <span>{label}</span>}
+        </div>
+        <div className="flex flex-col gap-px">
+          {navItems.map(item => {
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNav(item.id)}
+                className={`sidebar-nav-item group relative flex items-center w-full rounded-lg transition-all duration-150 ${
+                  collapsed ? 'justify-center px-2 py-2.5 mx-auto' : 'gap-3 px-3 py-2'
+                } ${
+                  isActive
+                    ? 'bg-brand-red/8 text-brand-red'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+                title={collapsed ? item.label : undefined}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active-indicator"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-brand-red"
+                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <item.icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${
+                  isActive ? 'text-brand-red' : 'text-slate-400 group-hover:text-slate-600'
+                }`} />
+                <span className={`sidebar-nav-label text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis ${
+                  isActive ? 'font-semibold' : ''
+                }`}>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -111,51 +158,18 @@ export function Sidebar({
           </div>
         </div>
 
-        {/* Nav items */}
+        {/* Scrollable nav area with animated active line */}
         <div className="sidebar-scroll">
-          {Object.entries(grouped).map(([group, navItems]) => {
-            const label = groupLabels[group] || group;
-            return (
-              <div key={group} className="mb-1">
-                <div className="sidebar-group-label px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  {!collapsed && <span>{label}</span>}
-                </div>
-                <div className="flex flex-col gap-px">
-                  {navItems.map(item => {
-                    const isActive = activeSection === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => handleNav(item.id)}
-                        className={`sidebar-nav-item group relative flex items-center w-full rounded-lg transition-all duration-150 ${
-                          collapsed ? 'justify-center px-2 py-2.5 mx-auto' : 'gap-3 px-3 py-2'
-                        } ${
-                          isActive
-                            ? 'bg-brand-red/8 text-brand-red'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        }`}
-                        title={collapsed ? item.label : undefined}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="sidebar-active-indicator"
-                            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-brand-red"
-                            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                          />
-                        )}
-                        <item.icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${
-                          isActive ? 'text-brand-red' : 'text-slate-400 group-hover:text-slate-600'
-                        }`} />
-                        <span className={`sidebar-nav-label text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis ${
-                          isActive ? 'font-semibold' : ''
-                        }`}>{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+          <LayoutGroup>
+            {topGroups.map(renderNavGroup)}
+
+            {bottomGroups.length > 0 && (
+              <>
+                <div className="sidebar-group-divider" />
+                {bottomGroups.map(renderNavGroup)}
+              </>
+            )}
+          </LayoutGroup>
         </div>
 
         {/* Footer */}

@@ -4,6 +4,12 @@ import { http } from '@/src/shared/api/http';
 const BASE = '/academic';
 
 type ListResponse<T> = T[] | { results: T[] };
+export interface PaginatedListResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
 type QueryValue = string | number | boolean | null | undefined;
 
 function unwrapList<T>(response: ListResponse<T>): T[] {
@@ -226,6 +232,10 @@ export async function fetchEnrollmentsApi(studentId?: string): Promise<Enrollmen
   return unwrapList(await http.get<ListResponse<Enrollment>>(`${BASE}/enrollments/${queryString({ student: studentId })}`));
 }
 
+export async function fetchEnrollmentsPaginatedApi(page = 1, pageSize = 20): Promise<PaginatedListResponse<Enrollment>> {
+  return http.get<PaginatedListResponse<Enrollment>>(`${BASE}/enrollments/${queryString({ page: String(page), page_size: String(pageSize) })}`);
+}
+
 export async function enrollStudentApi(payload: StaffEnrollmentPayload): Promise<Enrollment> {
   return http.post<Enrollment>(`${BASE}/enrollments/`, payload);
 }
@@ -286,7 +296,7 @@ export async function fetchAttendanceSessionsApi(classId: string): Promise<Atten
 }
 
 export async function fetchAttendanceRecordsApi(sessionId: string): Promise<AttendanceRecord[]> {
-  return unwrapList(await http.get<ListResponse<AttendanceRecord>>(`${BASE}/attendance/sessions/${sessionId}/`));
+  return unwrapList(await http.get<ListResponse<AttendanceRecord>>(`${BASE}/attendance/sessions/${sessionId}/records/`));
 }
 
 export async function createAttendanceSessionApi(payload: { enrolled_class: string; session_date: string; topic?: string }): Promise<AttendanceSession> {
@@ -443,15 +453,9 @@ export async function verifyCertificateApi(number: string): Promise<StudentCerti
 }
 
 // ─── Reports (PDF download) ───
-const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 async function downloadFile(endpoint: string, filename: string) {
-  const token = localStorage.getItem('access_token');
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error('Failed to download report');
-  const blob = await res.blob();
+  const blob = await http.downloadBlob(endpoint);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, X, Loader2, AlertCircle, BookOpen, FileText, Download, Trash2, ExternalLink, Filter } from 'lucide-react';
-import { LearningMaterial } from '@/src/shared/types';
+import { LearningMaterial, UserProfile } from '@/src/shared/types';
 import { fetchLearningMaterialsApi, createLearningMaterialApi, updateLearningMaterialApi, deleteLearningMaterialApi, downloadLearningMaterialApi, fetchSubProgramsApi } from '@/src/domains/learning/academics/api/academicApi';
 
 const defaultForm = {
@@ -10,7 +10,7 @@ const defaultForm = {
 
 const materialTypes = ['DOCUMENT', 'VIDEO', 'IMAGE', 'AUDIO', 'OTHER'];
 
-export default function LearningMaterialsPanel() {
+export default function LearningMaterialsPanel({ currentUser }: { currentUser?: UserProfile }) {
   const [materials, setMaterials] = useState<LearningMaterial[]>([]);
   const [subPrograms, setSubPrograms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,13 +24,14 @@ export default function LearningMaterialsPanel() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([
-      fetchLearningMaterialsApi(),
+    const isSecretary = currentUser?.role === 'Secretary';
+    Promise.allSettled([
+      isSecretary ? Promise.resolve([]) : fetchLearningMaterialsApi(),
       fetchSubProgramsApi(),
     ]).then(([m, sp]) => {
-      setMaterials(Array.isArray(m) ? m : []);
-      setSubPrograms(Array.isArray(sp) ? sp : []);
-    }).catch(() => setError('Failed to load materials')).finally(() => setLoading(false));
+      setMaterials(m.status === 'fulfilled' && Array.isArray(m.value) ? m.value : []);
+      setSubPrograms(sp.status === 'fulfilled' && Array.isArray(sp.value) ? sp.value : []);
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);

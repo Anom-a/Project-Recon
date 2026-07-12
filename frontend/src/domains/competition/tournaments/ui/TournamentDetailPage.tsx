@@ -4,9 +4,11 @@ import {
   ArrowLeft, Trophy, MapPin, Calendar, Users, DollarSign, Shield, Loader2, AlertCircle,
   Gamepad2, CheckCircle, Clock, Swords, Medal, Target, Flame, Award, ScrollText, Sparkles,
 } from 'lucide-react';
-import { getTournamentById, getMatches, getTournamentStandings, type StandingEntry } from '../../api/competitionApi';
+import { getTournamentById, getMatches, getTournamentStandings, getTournamentMatchDetails, type StandingEntry, type MatchDetail } from '../../api/competitionApi';
 import { type Tournament, type MatchResult } from '@/src/shared/types';
 import TournamentCertificateManager from './TournamentCertificateManager';
+import MatchCard from '../../matches/ui/MatchCard';
+import VexRulesPanel from '../../shared/VexRulesPanel';
 import type { UserProfile } from '@/src/shared/types';
 
 interface TournamentDetailPageProps {
@@ -34,6 +36,7 @@ const MATCH_STATUS_STYLE: Record<string, string> = {
 export default function TournamentDetailPage({ tournamentId, onBack, currentUser }: TournamentDetailPageProps) {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
+  const [matchDetails, setMatchDetails] = useState<MatchDetail[]>([]);
   const [standings, setStandings] = useState<StandingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,11 +49,13 @@ export default function TournamentDetailPage({ tournamentId, onBack, currentUser
       getTournamentById(tournamentId),
       getMatches(tournamentId),
       getTournamentStandings(tournamentId),
-    ]).then(([t, m, s]) => {
+      getTournamentMatchDetails(tournamentId),
+    ]).then(([t, m, s, md]) => {
       if (!t) { setError('Tournament not found'); return; }
       setTournament(t);
       setMatches(m);
       setStandings(s);
+      setMatchDetails(md);
     }).catch(err => setError(err.message))
     .finally(() => setLoading(false));
   }, [tournamentId]);
@@ -181,6 +186,7 @@ export default function TournamentDetailPage({ tournamentId, onBack, currentUser
 
         {/* Overview */}
         {tab === 'overview' && (
+          <div className="space-y-6">
           <div className="bg-white rounded-3xl border border-slate-200 p-6">
             <h3 className="font-black text-base text-slate-900 mb-3">Description</h3>
             <p className="text-sm text-slate-600 leading-relaxed">{tournament.description || 'No description provided.'}</p>
@@ -238,6 +244,10 @@ export default function TournamentDetailPage({ tournamentId, onBack, currentUser
               </div>
             )}
           </div>
+          <div className="bg-white rounded-3xl border border-slate-200 p-6">
+            <VexRulesPanel />
+          </div>
+          </div>
         )}
 
         {/* Teams */}
@@ -281,93 +291,52 @@ export default function TournamentDetailPage({ tournamentId, onBack, currentUser
           </div>
         )}
 
-        {/* Matches */}
+        {/* Matches — VEX Alliance */}
         {tab === 'matches' && (
           <div className="space-y-4">
-            {liveMatches.length > 0 && (
+            {matchDetails.filter(m => m.status === 'LIVE').length > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
                 <h4 className="font-black text-xs text-red-700 flex items-center gap-1.5 mb-3">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  LIVE — {liveMatches.length} Match{liveMatches.length > 1 ? 'es' : ''}
+                  LIVE ALLIANCE MATCHES — {matchDetails.filter(m => m.status === 'LIVE').length}
                 </h4>
-                {liveMatches.map(m => (
-                  <div key={m.id} className="bg-white rounded-xl px-4 py-3 border border-red-100 flex items-center justify-between mb-2 last:mb-0">
-                    <span className="text-xs font-bold text-slate-700">{m.team1} vs {m.team2}</span>
-                    <span className="text-sm font-black text-red-600">{m.score1} : {m.score2}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {upcomingMatches.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                <h4 className="font-black text-xs text-slate-700 mb-3 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-brand-red" />
-                  Upcoming — {upcomingMatches.length} Match{upcomingMatches.length > 1 ? 'es' : ''}
-                </h4>
-                {upcomingMatches.map(m => (
-                  <div key={m.id} className="bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 flex items-center justify-between mb-2 last:mb-0">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-slate-700">{m.team1} vs {m.team2}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400">{m.round}</span>
-                      <span className="text-[10px] text-slate-500">{new Date(m.time).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {completedMatches.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <h4 className="font-black text-xs text-slate-700 p-4 pb-0 flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5 text-brand-red" />
-                  Completed — {completedMatches.length} Match{completedMatches.length > 1 ? 'es' : ''}
-                </h4>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="text-left px-4 py-3 text-[10px] font-black text-slate-500 uppercase">Round</th>
-                        <th className="text-left px-4 py-3 text-[10px] font-black text-slate-500 uppercase">Team A</th>
-                        <th className="text-center px-4 py-3 text-[10px] font-black text-slate-500 uppercase">Score</th>
-                        <th className="text-right px-4 py-3 text-[10px] font-black text-slate-500 uppercase">Team B</th>
-                        <th className="text-center px-4 py-3 text-[10px] font-black text-slate-500 uppercase">Result</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {completedMatches.map(m => {
-                        const won = m.score1 > m.score2;
-                        return (
-                          <tr key={m.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-4 py-3 text-xs font-bold text-slate-700">{m.round}</td>
-                            <td className="px-4 py-3">
-                              <span className="text-xs font-medium text-slate-700">{m.team1}</span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`text-sm font-black ${won ? 'text-emerald-600' : 'text-red-500'}`}>
-                                {m.score1} : {m.score2}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <span className="text-xs font-medium text-slate-700">{m.team2}</span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${won ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                {won ? 'W' : 'L'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {matchDetails.filter(m => m.status === 'LIVE').map(m => (
+                    <MatchCard key={m.id} match={m} />
+                  ))}
                 </div>
               </div>
             )}
-            {matches.length === 0 && (
+            {matchDetails.filter(m => m.status === 'SCHEDULED').length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                <h4 className="font-black text-xs text-slate-700 mb-3 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-brand-red" />
+                  Upcoming — {matchDetails.filter(m => m.status === 'SCHEDULED').length}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {matchDetails.filter(m => m.status === 'SCHEDULED').map(m => (
+                    <MatchCard key={m.id} match={m} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {matchDetails.filter(m => m.status === 'COMPLETED').length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                <h4 className="font-black text-xs text-slate-700 mb-3 flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-brand-red" />
+                  Completed — {matchDetails.filter(m => m.status === 'COMPLETED').length}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {matchDetails.filter(m => m.status === 'COMPLETED').map(m => (
+                    <MatchCard key={m.id} match={m} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {matchDetails.length === 0 && (
               <div className="bg-white rounded-3xl border border-slate-200 text-center py-12">
                 <Gamepad2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-bold text-slate-500">No matches yet</p>
+                <p className="text-sm font-bold text-slate-500">No alliance matches yet</p>
               </div>
             )}
           </div>

@@ -35,13 +35,13 @@ export default function CertificateTemplateManager() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       fetchCertificateTemplatesApi(),
       fetchSubProgramsApi(),
     ]).then(([t, sp]) => {
-      setTemplates(Array.isArray(t) ? t : []);
-      setSubPrograms(Array.isArray(sp) ? sp : []);
-    }).catch(() => setError('Failed to load certificate templates')).finally(() => setLoading(false));
+      setTemplates(t.status === 'fulfilled' && Array.isArray(t.value) ? t.value : []);
+      setSubPrograms(sp.status === 'fulfilled' && Array.isArray(sp.value) ? sp.value : []);
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);

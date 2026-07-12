@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, DollarSign, Download, Eye, Filter, Calendar, BookOpen, CreditCard, Banknote, CheckCircle2, Clock } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, DollarSign, Download, Eye, Filter, Calendar, BookOpen, CreditCard, Banknote, CheckCircle2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { EnrollmentPayment, Enrollment } from '@/src/shared/types';
-import { fetchPaymentsApi, fetchEnrollmentsApi, createCashPaymentApi } from '@/src/domains/learning/academics/api/academicApi';
+import { fetchPaymentsApi, fetchEnrollmentsPaginatedApi, createCashPaymentApi } from '@/src/domains/learning/academics/api/academicApi';
+
+const PAGE_SIZE = 50;
 
 const STATUS_STYLES: Record<string, string> = {
   PAID: 'bg-emerald-100 text-emerald-700',
@@ -27,13 +29,24 @@ export default function PaymentsPanel() {
 
   const loadData = () => {
     setLoading(true);
-    Promise.all([
+    setError(null);
+    const errors: string[] = [];
+    Promise.allSettled([
       fetchPaymentsApi(),
-      fetchEnrollmentsApi(),
+      fetchEnrollmentsPaginatedApi(1, PAGE_SIZE),
     ]).then(([pay, enr]) => {
-      setPayments(Array.isArray(pay) ? pay : []);
-      setEnrollments(Array.isArray(enr) ? enr.filter(e => e.status === 'ACTIVE' || e.status === 'PENDING_PAYMENT') : []);
-    }).catch(() => setError('Failed to load payments')).finally(() => setLoading(false));
+      if (pay.status === 'fulfilled') {
+        setPayments(Array.isArray(pay.value) ? pay.value : []);
+      } else {
+        errors.push('payments');
+      }
+      if (enr.status === 'fulfilled') {
+        setEnrollments((enr.value.results || []).filter(e => e.status === 'ACTIVE' || e.status === 'PENDING_PAYMENT'));
+      } else {
+        errors.push('enrollments');
+      }
+      if (errors.length) setError(`Failed to load: ${errors.join(', ')}`);
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { loadData(); }, []);

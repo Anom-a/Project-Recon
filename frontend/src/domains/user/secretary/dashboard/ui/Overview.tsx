@@ -13,17 +13,17 @@ export default function Overview() {
 
   const loadData = () => {
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       fetchEnrollmentsApi(),
       fetchPaymentsApi(),
       fetchStudentsApi(),
       fetchStudentCertificatesApi(),
     ]).then(([enr, pay, stu, cer]) => {
-      setEnrollments(Array.isArray(enr) ? enr : []);
-      setPayments(Array.isArray(pay) ? pay : []);
-      setStudents(Array.isArray(stu) ? stu : []);
-      setCerts(Array.isArray(cer) ? cer : []);
-    }).catch(() => {}).finally(() => setLoading(false));
+      setEnrollments(enr.status === 'fulfilled' && Array.isArray(enr.value) ? enr.value : []);
+      setPayments(pay.status === 'fulfilled' && Array.isArray(pay.value) ? pay.value : []);
+      setStudents(stu.status === 'fulfilled' && Array.isArray(stu.value) ? stu.value : []);
+      setCerts(cer.status === 'fulfilled' && Array.isArray(cer.value) ? cer.value : []);
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { loadData(); }, []);

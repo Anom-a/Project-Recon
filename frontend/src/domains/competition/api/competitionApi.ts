@@ -186,7 +186,7 @@ export async function getPastEvents(): Promise<(Tournament | Workshop)[]> {
 export interface PublicRegistrationData {
   public_full_name: string;
   public_email: string;
-  public_phone?: string;
+  public_phone: string;
   public_organization?: string;
 }
 
@@ -272,6 +272,8 @@ export interface PublicTeamEntry {
   losses: number;
   draws: number;
   points: number;
+  matchesPlayed: number;
+  totalScore: number;
   rank?: number;
   coachName?: string;
   contactEmail?: string;
@@ -302,6 +304,8 @@ export async function getPublicTeams(): Promise<PublicTeamEntry[]> {
             losses: s.losses,
             draws: s.draws,
             points: s.points,
+            matchesPlayed: s.wins + s.losses + s.draws,
+            totalScore: s.totalScore ?? 0,
             rank: s.rank,
           });
         }
@@ -337,6 +341,8 @@ export async function getPublicTeamById(id: string): Promise<PublicTeamEntry | n
             losses: found.losses,
             draws: found.draws,
             points: found.points,
+            matchesPlayed: found.wins + found.losses + found.draws,
+            totalScore: found.totalScore ?? 0,
             rank: found.rank,
           };
         }
@@ -453,6 +459,16 @@ export async function getAllPublicMatches(): Promise<MatchDetail[]> {
       }
     }
     return all;
+  } catch {
+    return [];
+  }
+}
+
+export async function getTournamentMatchDetails(tournamentId: string): Promise<MatchDetail[]> {
+  if (!tournamentId) return [];
+  try {
+    const matches = await eventsApi.getPublicTournamentMatches(tournamentId);
+    return (Array.isArray(matches) ? matches : []).map(mapBackendMatchToDetail);
   } catch {
     return [];
   }

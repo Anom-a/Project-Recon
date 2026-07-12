@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, X, Loader2, AlertCircle, Calendar, Clock, CheckCircle2, RotateCcw, Filter } from 'lucide-react';
-import { EnrollmentPeriod } from '@/src/shared/types';
-import { fetchEnrollmentPeriodsApi, createEnrollmentPeriodApi, updateEnrollmentPeriodApi, setEnrollmentPeriodActiveApi, fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi } from '@/src/domains/learning/academics/api/academicApi';
+import { EnrollmentPeriod, UserProfile } from '@/src/shared/types';
+import { fetchEnrollmentPeriodsApi, createEnrollmentPeriodApi, updateEnrollmentPeriodApi, setEnrollmentPeriodActiveApi, fetchProgramsApi, fetchSubProgramsApi } from '@/src/domains/learning/academics/api/academicApi';
 import { branchesApi } from '@/src/domains/user/shared/api/adminApi';
 
 const defaultForm = {
   branch: '', program: '', sub_program: '', class_type: 'GROUP', class_period: '', title: '', start_date: '', end_date: '',
 };
 
-export default function EnrollmentPeriodsPanel() {
+export default function EnrollmentPeriodsPanel({ currentUser }: { currentUser?: UserProfile }) {
   const [periods, setPeriods] = useState<EnrollmentPeriod[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
@@ -25,17 +25,18 @@ export default function EnrollmentPeriodsPanel() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([
+    const isSecretary = currentUser?.role === 'Secretary';
+    Promise.allSettled([
       fetchEnrollmentPeriodsApi(),
-      branchesApi.list().catch(() => []),
+      isSecretary ? Promise.resolve([]) : branchesApi.list(),
       fetchProgramsApi(),
       fetchSubProgramsApi(),
     ]).then(([p, b, pr, sp]) => {
-      setPeriods(Array.isArray(p) ? p : []);
-      setBranches(Array.isArray(b) ? b : (b as any)?.results || []);
-      setPrograms(Array.isArray(pr) ? pr : []);
-      setSubPrograms(Array.isArray(sp) ? sp : []);
-    }).catch(() => setError('Failed to load enrollment periods')).finally(() => setLoading(false));
+      if (p.status === 'fulfilled') setPeriods(Array.isArray(p.value) ? p.value : []);
+      if (b.status === 'fulfilled') setBranches(Array.isArray(b.value) ? b.value : (b.value as any)?.results || []);
+      if (pr.status === 'fulfilled') setPrograms(Array.isArray(pr.value) ? pr.value : []);
+      if (sp.status === 'fulfilled') setSubPrograms(Array.isArray(sp.value) ? sp.value : []);
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -219,10 +220,16 @@ export default function EnrollmentPeriodsPanel() {
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Title</label>
                     <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red" placeholder="e.g. Fall 2026 Enrollment" /></div>
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Branch</label>
-                    <select value={form.branch} onChange={e => setForm(p => ({ ...p, branch: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red">
-                      <option value="">Select branch...</option>
-                      {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    </select></div>
+                    {branches.length === 0 ? (
+                      <div className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-700 flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Branches unavailable — check permissions
+                      </div>
+                    ) : (
+                      <select value={form.branch} onChange={e => setForm(p => ({ ...p, branch: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red">
+                        <option value="">Select branch...</option>
+                        {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    )}</div>
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Program</label>
                     <select value={form.program} onChange={e => setForm(p => ({ ...p, program: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red">
                       <option value="">Select program...</option>

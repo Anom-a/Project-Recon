@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, X, Loader2, AlertCircle, UserPlus, Users, Mail, Phone, Shield, CheckCircle2, ArrowRight } from 'lucide-react';
-import { StudentProfile } from '@/src/shared/types';
+import { StudentProfile, UserProfile } from '@/src/shared/types';
 import { fetchStudentsApi, admitStudentApi, fetchClassesApi } from '@/src/domains/learning/academics/api/academicApi';
 import { branchesApi } from '@/src/domains/user/shared/api/adminApi';
 
-export default function AdmissionsPanel() {
+export default function AdmissionsPanel({ currentUser }: { currentUser?: UserProfile }) {
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [branchesError, setBranchesError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
@@ -20,6 +21,10 @@ export default function AdmissionsPanel() {
   });
 
   useEffect(() => {
+    if (currentUser?.role === 'Secretary') {
+      setBranchesError('Branches unavailable — not accessible for secretaries');
+      return;
+    }
     branchesApi.list().then(res => {
       const list = Array.isArray(res) ? res : (res as any).results || [];
       setBranches(list.map((b: any) => ({ id: b.id, name: b.name })));
@@ -31,9 +36,12 @@ export default function AdmissionsPanel() {
         const list = Array.from(map, ([id, name]) => ({ id, name }));
         setBranches(list);
         if (list.length > 0) setForm(p => ({ ...p, branch: list[0].id }));
-      }).catch(() => {});
+        else setBranchesError('Branches unavailable — check permissions');
+      }).catch(() => {
+        setBranchesError('Branches unavailable — check permissions');
+      });
     });
-  }, []);
+  }, [currentUser]);
 
   const loadStudents = () => {
     setLoading(true);
@@ -237,10 +245,16 @@ export default function AdmissionsPanel() {
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Phone</label><input value={form.phone_number} onChange={e => setForm(p => ({ ...p, phone_number: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10" placeholder="+251-911-000001" /></div>
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Temporary Password</label><input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10" placeholder="Set login password" /></div>
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Branch</label>
-                    <select value={form.branch} onChange={e => setForm(p => ({ ...p, branch: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10">
-                      <option value="">Select branch...</option>
-                      {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    </select>
+                    {branchesError ? (
+                      <div className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-700 flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {branchesError}
+                      </div>
+                    ) : (
+                      <select value={form.branch} onChange={e => setForm(p => ({ ...p, branch: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10">
+                        <option value="">Select branch...</option>
+                        {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    )}
                   </div>
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Guardian Name</label><input value={form.guardian_name} onChange={e => setForm(p => ({ ...p, guardian_name: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10" placeholder="Parent or guardian" /></div>
                   <div className="grid grid-cols-2 gap-2">

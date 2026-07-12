@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Loader2, AlertCircle, Users, CheckCircle, XCircle, Eye, Send, CreditCard } from 'lucide-react';
+import { Search, X, Loader2, AlertCircle, Users, CheckCircle, XCircle, Eye, Send, CreditCard, Trophy, GraduationCap, Calendar, BarChart3, TrendingUp, UserPlus, Clock } from 'lucide-react';
 import * as eventsApi from '../api/eventsApi';
 import type { BackendEventRegistration, RegistrationStatus } from '../api/eventsApi';
 
@@ -43,10 +43,9 @@ export default function RegistrationManager() {
       await actions[action]();
       load();
       if (selected?.id === id) {
-        const updated = await eventsApi.adminGetRegistration(id);
-        setSelected(updated);
+        try { setSelected(await eventsApi.adminGetRegistration(id)); } catch {}
       }
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) { setError(`${action} failed: ${err.message}`); }
   };
 
   const handleConvertWithTeamName = async () => {
@@ -58,10 +57,9 @@ export default function RegistrationManager() {
       setTeamName('');
       load();
       if (selected?.id === pendingConvertId) {
-        const updated = await eventsApi.adminGetRegistration(pendingConvertId);
-        setSelected(updated);
+        try { setSelected(await eventsApi.adminGetRegistration(pendingConvertId)); } catch {}
       }
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) { setError(`Convert failed: ${err.message}`); }
   };
 
   const handleCashPayment = async () => {
@@ -72,7 +70,7 @@ export default function RegistrationManager() {
       const updated = await eventsApi.adminGetRegistration(selected.id);
       setSelected(updated);
       load();
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) { setError(`Payment failed: ${err.message}`); }
   };
 
   const statusBadge = (s: string) => {
@@ -91,6 +89,15 @@ export default function RegistrationManager() {
     return map[s] || 'bg-slate-100 text-slate-600';
   };
 
+  const typeBadge = (t?: string) => {
+    const map: Record<string, string> = {
+      TOURNAMENT: 'bg-purple-100 text-purple-700',
+      WORKSHOP: 'bg-cyan-100 text-cyan-700',
+      GENERAL: 'bg-slate-100 text-slate-600',
+    };
+    return map[t || ''] || 'bg-slate-100 text-slate-600';
+  };
+
   const filtered = registrations.filter(r => {
     const name = r.public_full_name || r.student_email || '';
     const matchesSearch = name.toLowerCase().includes(search.toLowerCase());
@@ -98,14 +105,42 @@ export default function RegistrationManager() {
     return matchesSearch && matchesStatus;
   });
 
+  const stats = useMemo(() => ({
+    total: registrations.length,
+    pending: registrations.filter(r => r.registration_status === 'PENDING').length,
+    approved: registrations.filter(r => r.registration_status === 'APPROVED').length,
+    tournaments: registrations.filter(r => r.event_type === 'TOURNAMENT').length,
+  }), [registrations]);
+
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-red" /></div>;
 
   return (
     <div className="flex flex-col gap-6">
       {error && (<div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-xs text-red-700"><AlertCircle className="w-4 h-4 shrink-0" /><span>{error}</span><button onClick={() => setError(null)} className="ml-auto"><X className="w-3.5 h-3.5" /></button></div>)}
 
+      {/* Dashboard stats */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Registrations', value: stats.total, icon: UserPlus, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Pending Review', value: stats.pending, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Tournament Entries', value: stats.tournaments, icon: Trophy, color: 'text-purple-600', bg: 'bg-purple-50' },
+        ].map((stat, i) => {
+          const SIcon = stat.icon;
+          return (
+            <motion.div key={stat.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              className="bg-white rounded-xl border border-slate-200 p-4"
+            >
+              <div className={`w-8 h-8 rounded-lg ${stat.bg} flex items-center justify-center mb-2`}><SIcon className={`w-4 h-4 ${stat.color}`} /></div>
+              <p className="text-xl font-bold text-slate-900">{stat.value}</p>
+              <p className="text-sm text-slate-500">{stat.label}</p>
+            </motion.div>
+          );
+        })}
+      </motion.div>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div><h3 className="font-black text-lg text-slate-900">Registrations</h3><p className="text-xs text-slate-500 mt-1">{registrations.length} total</p></div>
+        <div><h3 className="font-black text-lg text-slate-900">Event Registrations</h3><p className="text-xs text-slate-500 mt-1">{registrations.length} total · {stats.pending} pending review</p></div>
         <div className="flex items-center gap-2">
           <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="w-48 pl-9 pr-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red" /></div>
           <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); load(e.target.value); }} className="px-3 py-2 bg-white border border-brand-border rounded-xl text-xs focus:outline-none focus:border-brand-red">
@@ -122,6 +157,7 @@ export default function RegistrationManager() {
             <thead><tr className="bg-slate-50 border-b border-brand-border">
               <th className="text-left px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">Participant</th>
               <th className="text-left px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase hidden md:table-cell">Event</th>
+              <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">Type</th>
               <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">Status</th>
               <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">Payment</th>
               <th className="text-center px-4 py-2.5 text-[10px] font-black text-slate-500 uppercase">Actions</th>
@@ -141,6 +177,9 @@ export default function RegistrationManager() {
                     </div>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell text-xs text-slate-600">{r.event_title || r.event}</td>
+                  <td className="px-4 py-3 text-center">
+                    {r.event_type && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${typeBadge(r.event_type)}`}>{r.event_type}</span>}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${statusBadge(r.registration_status)}`}>{r.registration_status}</span>
                   </td>
@@ -192,7 +231,13 @@ export default function RegistrationManager() {
                   <div><label className="text-[10px] font-bold text-slate-500 uppercase block">Registration Status</label><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBadge(selected.registration_status)}`}>{selected.registration_status}</span></div>
                   <div><label className="text-[10px] font-bold text-slate-500 uppercase block">Payment Status</label><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${payStatusBadge(selected.payment_status)}`}>{selected.payment_status}</span></div>
                 </div>
-                <div><label className="text-[10px] font-bold text-slate-500 uppercase block">Event</label><p className="text-sm text-slate-900">{selected.event_title || selected.event}</p></div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block">Event</label>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-sm text-slate-900">{selected.event_title || selected.event}</p>
+                    {selected.event_type && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${typeBadge(selected.event_type)}`}>{selected.event_type}</span>}
+                  </div>
+                </div>
 
                 {selected.registration_status === 'PENDING' && (
                   <div className="flex items-center gap-2 pt-2">
