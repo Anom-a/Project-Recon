@@ -1,37 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, Gamepad2, Clock, Trash2, CheckCircle, XCircle, Swords, Users, Trophy, Activity, BarChart3, Calendar, Wand2, Layers, Target, Medal, TrendingUp, Play, Flag, Shield, Zap, AlertTriangle, Info, Timer, Lock } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, Gamepad2, Clock, Trash2, CheckCircle, XCircle, Users, Trophy, Activity, BarChart3, Calendar, Target, Medal, TrendingUp, Play, Flag, Shield, AlertTriangle, Info, Timer, Lock } from 'lucide-react';
 import * as eventsApi from '../api/eventsApi';
 import type { BackendMatch, BackendTournamentTeam, SideType, BackendStanding } from '../api/eventsApi';
 import AdminMatchCard from '../shared/AdminMatchCard';
 import VexAllianceDisplay, { sidesFromMatch } from '../shared/VexAllianceDisplay';
-import { generateVexAllianceQualification, generateVexAllianceElimination, getSideTeamNames, sideLabel, canAddTeamToSide, TEAMS_PER_ALLIANCE } from '../shared/vexAllianceUtils';
+import { getSideTeamNames, sideLabel, canAddTeamToSide, TEAMS_PER_ALLIANCE } from '../shared/vexAllianceUtils';
 import { VEX_ALLIANCE_CONFIG, VEX_SCORING_RULES } from '../shared/vexConstants';
 
 const defaultForm = { tournament: '', round: '', scheduled_at: '' };
 const defaultScoreForm = { side_a_score: 0, side_b_score: 0 };
-
-/* ─── Round-robin pair generator ─── */
-function generateRoundRobinPairs(teamIds: string[]): [string, string][][] {
-  const n = teamIds.length;
-  if (n < 2) return [];
-  const ids = [...teamIds];
-  if (n % 2 !== 0) ids.push('BYE');
-  const rounds: [string, string][][] = [];
-  const numRounds = ids.length - 1;
-  const half = ids.length / 2;
-  for (let r = 0; r < numRounds; r++) {
-    const pairs: [string, string][] = [];
-    for (let i = 0; i < half; i++) {
-      const a = ids[i];
-      const b = ids[ids.length - 1 - i];
-      if (a !== 'BYE' && b !== 'BYE') pairs.push([a, b]);
-    }
-    rounds.push(pairs);
-    ids.splice(1, 0, ids.pop()!);
-  }
-  return rounds;
-}
 
 /* ─── Standings computation (client-side) ─── */
 function computeStandings(
@@ -77,24 +55,6 @@ function computeStandings(
     }))
     .sort((a, b) => b.points - a.points || b.wins - a.wins || b.totalScore - a.totalScore)
     .map((entry, i) => ({ ...entry, rank: i + 1 }));
-}
-
-/* ─── Knockout bracket generator ─── */
-function generateKnockoutPairs(seededTeams: string[]): [string, string][] {
-  const n = seededTeams.length;
-  if (n < 2) return [];
-  const nextPow2 = Math.pow(2, Math.ceil(Math.log2(n)));
-  const padded = [...seededTeams];
-  while (padded.length < nextPow2) padded.push('BYE');
-  const pairs: [string, string][] = [];
-  for (let i = 0; i < nextPow2 / 2; i++) {
-    const a = padded[i];
-    const b = padded[nextPow2 - 1 - i];
-    if (a !== 'BYE' && b !== 'BYE') pairs.push([a, b]);
-    else if (a !== 'BYE') pairs.push([a, a]);
-    else if (b !== 'BYE') pairs.push([b, b]);
-  }
-  return pairs;
 }
 
 type ToastType = { id: number; type: 'success' | 'error' | 'info'; message: string; title?: string };
@@ -164,17 +124,6 @@ export default function MatchManager() {
     return () => { if (timerInterval.current) clearInterval(timerInterval.current); };
   }, [matches]);
 
-
-  /* Auto-generate state */
-  const [showAutoGen, setShowAutoGen] = useState(false);
-  const [autoGenForm, setAutoGenForm] = useState({
-    tournament: '',
-    format: 'vex-alliance-qual' as 'vex-alliance-qual' | 'vex-alliance-elim' | 'round-robin' | 'knockout',
-    num_groups: 1,
-    num_rounds: 3,
-  });
-  const [genLoading, setGenLoading] = useState(false);
-  const [genProgress, setGenProgress] = useState('');
 
   /* Standings state */
   const [showStandings, setShowStandings] = useState(false);
@@ -368,108 +317,6 @@ export default function MatchManager() {
     }
   };
 
-  /* ─── Auto Generate ─── */
-  const handleAutoGenerate = async () => {
-    if (!autoGenForm.tournament) { setError('Select a tournament'); return; }
-    setGenLoading(true);
-    setGenProgress('Preparing teams...');
-    setError(null);
-    try {
-      const tournamentTeams = teams.filter(t => t.tournament === autoGenForm.tournament);
-      if (tournamentTeams.length < 2) { throw new Error('Need at least 2 teams'); }
-      const teamIds = tournamentTeams.map(t => t.id);
-      const now = new Date().toISOString().slice(0, 16);
-      let created = 0;
-
-      if (autoGenForm.format === 'vex-alliance-qual' || autoGenForm.format === 'vex-alliance-elim') {
-        const plans = autoGenForm.format === 'vex-alliance-qual'
-          ? generateVexAllianceQualification(teamIds, autoGenForm.num_rounds)
-          : generateVexAllianceElimination(teamIds);
-
-        for (const plan of plans) {
-          if (!plan.redTeams.length && !plan.blueTeams.length) {
-            // Empty elimination placeholder — create match shell for staff
-            setGenProgress(`Creating ${plan.round}...`);
-            await eventsApi.adminCreateMatch({
-              tournament: autoGenForm.tournament,
-              round: plan.round,
-              scheduled_at: now,
-            } as any);
-            created++;
-            continue;
-          }
-          if (plan.redTeams.length < 1 || plan.blueTeams.length < 1) continue;
-
-          setGenProgress(`Creating ${plan.round}: ${created + 1}/${plans.length}...`);
-          const match = await eventsApi.adminCreateMatch({
-            tournament: autoGenForm.tournament,
-            round: plan.round,
-            scheduled_at: now,
-          } as any);
-
-          const assignOps: Promise<unknown>[] = [];
-          for (const teamId of plan.redTeams.slice(0, TEAMS_PER_ALLIANCE)) {
-            assignOps.push(eventsApi.adminAssignTeamToMatch(match.id, { side: 'SIDE_A', tournament_team: teamId }));
-          }
-          for (const teamId of plan.blueTeams.slice(0, TEAMS_PER_ALLIANCE)) {
-            assignOps.push(eventsApi.adminAssignTeamToMatch(match.id, { side: 'SIDE_B', tournament_team: teamId }));
-          }
-          await Promise.all(assignOps);
-          created++;
-        }
-      } else {
-        let allPairs: [string, string][][] = [];
-
-        if (autoGenForm.format === 'round-robin') {
-          const groups = autoGenForm.num_groups || 1;
-          const groupSize = Math.ceil(teamIds.length / groups);
-          for (let g = 0; g < groups; g++) {
-            const groupTeams = teamIds.slice(g * groupSize, (g + 1) * groupSize);
-            const groupRounds = generateRoundRobinPairs(groupTeams);
-            for (let r = 0; r < groupRounds.length; r++) {
-              allPairs.push(groupRounds[r].map(p => p));
-            }
-          }
-        } else {
-          const seeded = [...teamIds].sort(() => Math.random() - 0.5);
-          const bracketPairs = generateKnockoutPairs(seeded);
-          allPairs = [bracketPairs];
-        }
-
-        const total = allPairs.reduce((s, r) => s + r.length, 0);
-
-        for (let r = 0; r < allPairs.length; r++) {
-          const roundPairs = allPairs[r];
-          const roundLabel = autoGenForm.format === 'round-robin'
-            ? `Round ${r + 1}`
-            : r === 0 ? 'Quarter Finals' : r === 1 ? 'Semi Finals' : r === 2 ? 'Final' : `Round ${r + 1}`;
-
-          for (const [a, b] of roundPairs) {
-            setGenProgress(`Creating ${roundLabel}: ${created + 1}/${total}...`);
-            const match = await eventsApi.adminCreateMatch({
-              tournament: autoGenForm.tournament,
-              round: roundLabel,
-              scheduled_at: now,
-            } as any);
-            await Promise.all([
-              eventsApi.adminAssignTeamToMatch(match.id, { side: 'SIDE_A', tournament_team: a }),
-              eventsApi.adminAssignTeamToMatch(match.id, { side: 'SIDE_B', tournament_team: b }),
-            ]);
-            created++;
-          }
-        }
-      }
-
-      addToast('success', `Auto-generated ${created} alliance matches for the tournament!`, 'Generation Complete');
-      setShowAutoGen(false);
-      load();
-    } catch (err: any) {
-      addToast('error', err.message || 'Failed to auto-generate matches');
-    } finally {
-      setGenLoading(false);
-    }
-  };
-
   /* ─── Standings (client-side computed) ─── */
   const standingsData = useMemo(() => {
     if (!standingsTournament) return [];
@@ -609,7 +456,6 @@ export default function MatchManager() {
           <button onClick={() => { setStandingsTournament(tournamentFilter === 'all' ? '' : tournamentFilter); setShowStandings(true); }}
             className="px-3 py-2 bg-purple-50 text-purple-700 font-black text-xs rounded-xl hover:bg-purple-100 flex items-center gap-1.5 border border-purple-200"><Target className="w-4 h-4" /> Standings</button>
           <button onClick={() => setBulkClose(prev => ({ ...prev, show: true }))} className="px-3 py-2 bg-red-50 text-red-700 font-black text-xs rounded-xl hover:bg-red-100 flex items-center gap-1.5 border border-red-200"><XCircle className="w-4 h-4" /> Close All</button>
-          <button onClick={() => setShowAutoGen(true)} className="px-3 py-2 bg-emerald-50 text-emerald-700 font-black text-xs rounded-xl hover:bg-emerald-100 flex items-center gap-1.5 border border-emerald-200"><Wand2 className="w-4 h-4" /> Auto Alliance</button>
           <button onClick={openCreate} className="bg-gradient-to-r from-brand-red to-brand-red-dark text-white font-black text-xs px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-lg shadow-brand-red/25"><Plus className="w-4 h-4" /> New Match</button>
         </div>
       </div>
@@ -658,10 +504,9 @@ export default function MatchManager() {
             <Gamepad2 className="w-14 h-14 text-slate-200 mx-auto mb-3" />
           </motion.div>
           <p className="font-bold text-slate-500 text-lg">No matches yet</p>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Create your first alliance match or auto-generate a full tournament schedule.</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Create your first alliance match to get started.</p>
           <div className="flex items-center justify-center gap-2 mt-4">
             <button onClick={openCreate} className="px-4 py-2 bg-brand-red text-white text-xs font-black rounded-xl flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> New Match</button>
-            <button onClick={() => setShowAutoGen(true)} className="px-4 py-2 bg-emerald-50 text-emerald-700 text-xs font-black rounded-xl border border-emerald-200 flex items-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> Auto Generate</button>
           </div>
         </motion.div>
       ) : (
@@ -1090,168 +935,6 @@ export default function MatchManager() {
                   </motion.div>
                 )}
               </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Auto Generate Modal */}
-        {showAutoGen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { if (!genLoading) setShowAutoGen(false); }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 md:p-8 z-10">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 flex items-center justify-center"><Wand2 className="w-5 h-5 text-emerald-600" /></div>
-                  <div>
-                    <h3 className="font-black text-lg text-slate-900">Auto Generate Alliances</h3>
-                    <p className="text-xs text-slate-500">Pair teams into {VEX_ALLIANCE_CONFIG.redLabel} vs {VEX_ALLIANCE_CONFIG.blueLabel} matches</p>
-                  </div>
-                </div>
-                <button onClick={() => { if (!genLoading) setShowAutoGen(false); }} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X className="w-5 h-5" /></button>
-              </div>
-
-              {genLoading ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center py-12 gap-4"
-                >
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-                  >
-                    <Wand2 className="w-10 h-10 text-emerald-500" />
-                  </motion.div>
-                  <div className="flex flex-col items-center gap-1">
-                    <p className="text-sm font-medium text-slate-700">{genProgress}</p>
-                    <p className="text-[10px] text-slate-400">Generating alliance schedule...</p>
-                  </div>
-                  <div className="w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
-                    <motion.div
-                      initial={{ x: '-100%' }}
-                      animate={{ x: '200%' }}
-                      transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
-                      className="w-1/3 h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full"
-                    />
-                  </div>
-                </motion.div>
-              ) : (
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Tournament *</label>
-                    <select value={autoGenForm.tournament} onChange={e => setAutoGenForm(p => ({ ...p, tournament: e.target.value }))}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red">
-                      <option value="">Select tournament...</option>
-                      {tournaments.map((t: any) => (
-                        <option key={t.id} value={t.id}>
-                          {t.event_title || t.event || t.id.slice(0, 8)} ({teams.filter(te => te.tournament === t.id).length} teams)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Format</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {([
-                        { id: 'vex-alliance-qual' as const, label: 'VEX Qualification', desc: '2 teams per alliance · multiple rounds', icon: Zap },
-                        { id: 'vex-alliance-elim' as const, label: 'VEX Elimination', desc: 'Bracket with alliance finals', icon: Trophy },
-                        { id: 'round-robin' as const, label: 'Round Robin', desc: '1v1 every team plays', icon: Layers },
-                        { id: 'knockout' as const, label: 'Knockout', desc: 'Single elimination 1v1', icon: Swords },
-                      ]).map(fmt => {
-                        const isActive = autoGenForm.format === fmt.id;
-                        const FmtIcon = fmt.icon;
-                        return (
-                          <button key={fmt.id} onClick={() => setAutoGenForm(p => ({ ...p, format: fmt.id }))}
-                            className={`flex flex-col items-start gap-1 p-3 rounded-xl border-2 transition-all text-left ${
-                              isActive ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'
-                            }`}
-                          >
-                            <FmtIcon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
-                            <span className={`text-[10px] font-bold ${isActive ? 'text-emerald-700' : 'text-slate-600'}`}>{fmt.label}</span>
-                            <span className="text-[8px] text-slate-400">{fmt.desc}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {autoGenForm.format === 'vex-alliance-qual' && (
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Qualification Rounds</label>
-                      <input type="number" min={1} max={10} value={autoGenForm.num_rounds}
-                        onChange={e => setAutoGenForm(p => ({ ...p, num_rounds: Math.max(1, parseInt(e.target.value) || 1) }))}
-                        className="w-24 px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm" />
-                      <p className="text-[10px] text-slate-400 mt-1">Each round creates matches with 4 teams (2 RED + 2 BLUE). Need at least 4 teams.</p>
-                    </div>
-                  )}
-
-                  {autoGenForm.format === 'round-robin' && (
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Number of Groups</label>
-                      <div className="flex items-center gap-2">
-                        <input type="number" min={1} max={10} value={autoGenForm.num_groups}
-                          onChange={e => setAutoGenForm(p => ({ ...p, num_groups: Math.max(1, parseInt(e.target.value) || 1) }))}
-                          className="w-24 px-4 py-2.5 bg-slate-50 border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red" />
-                        <span className="text-xs text-slate-500">
-                          {autoGenForm.tournament ? (() => {
-                            const count = teams.filter(t => t.tournament === autoGenForm.tournament).length;
-                            const perGroup = Math.ceil(count / autoGenForm.num_groups);
-                            return `~${perGroup} teams per group · ${autoGenForm.num_groups > 1 ? `${count} teams split` : ''}`;
-                          })() : 'Select a tournament'}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-1">More groups = fewer matches per team. Recommended: 4-6 teams per group.</p>
-                    </div>
-                  )}
-
-                  {/* Preview */}
-                  {autoGenForm.tournament && (() => {
-                    const tournamentTeams = teams.filter(t => t.tournament === autoGenForm.tournament);
-                    const count = tournamentTeams.length;
-                    let totalMatches = 0;
-                    if (autoGenForm.format === 'vex-alliance-qual') {
-                      totalMatches = generateVexAllianceQualification(tournamentTeams.map(t => t.id), autoGenForm.num_rounds).length;
-                    } else if (autoGenForm.format === 'vex-alliance-elim') {
-                      totalMatches = generateVexAllianceElimination(tournamentTeams.map(t => t.id)).length;
-                    } else if (autoGenForm.format === 'round-robin') {
-                      const perGroup = Math.ceil(count / autoGenForm.num_groups);
-                      for (let g = 0; g < autoGenForm.num_groups; g++) {
-                        const n = g < autoGenForm.num_groups - 1 ? perGroup : count - g * perGroup;
-                        if (n >= 2) totalMatches += n * (n - 1) / 2;
-                      }
-                    } else {
-                      const nextPow2 = Math.pow(2, Math.ceil(Math.log2(count)));
-                      totalMatches = nextPow2 / 2;
-                    }
-                    return (
-                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                        <p className="text-xs font-medium text-slate-700">
-                          <span className="font-bold">{count}</span> teams · <span className="font-bold">{totalMatches}</span> alliance matches
-                          {(autoGenForm.format === 'vex-alliance-qual' || autoGenForm.format === 'vex-alliance-elim') && (
-                            <span className="text-emerald-600"> · 2 teams per RED/BLUE alliance</span>
-                          )}
-                        </p>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {tournamentTeams.slice(0, 10).map(t => (
-                            <span key={t.id} className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">{t.team_name}</span>
-                          ))}
-                          {count > 10 && <span className="text-[9px] text-slate-400">+{count - 10} more</span>}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="flex items-center justify-end gap-3 mt-2 pt-4 border-t border-brand-border">
-                    <button onClick={() => setShowAutoGen(false)} className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl">Cancel</button>
-                    <button onClick={handleAutoGenerate} disabled={!autoGenForm.tournament}
-                      className="px-6 py-2.5 text-xs font-black text-white bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/25 disabled:opacity-50 flex items-center gap-1.5">
-                      <Wand2 className="w-4 h-4" /> Generate Alliances
-                    </button>
-                  </div>
-                </div>
-              )}
             </motion.div>
           </div>
         )}
