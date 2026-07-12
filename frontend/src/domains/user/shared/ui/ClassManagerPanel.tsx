@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, X, Loader2, AlertCircle, BookOpen, Users, UserCheck, Filter, CheckCircle2, RotateCcw } from 'lucide-react';
 import { AcademicClass } from '@/src/shared/types';
 import { fetchClassesApi, createClassApi, updateClassApi, assignClassInstructorApi, setClassActiveApi, fetchSubProgramsApi } from '@/src/domains/learning/academics/api/academicApi';
-import { fetchUsersApi, resolveRole } from '@/src/domains/user/shared/api/adminApi';
+import { fetchUsersApi, resolveRole, branchesApi } from '@/src/domains/user/shared/api/adminApi';
 
 const defaultForm = {
   sub_program: '', branch: '', instructor: '', name: '', class_type: 'GROUP', class_period: '', capacity: '', start_date: '', end_date: '',
@@ -12,7 +12,10 @@ const defaultForm = {
 export default function ClassManagerPanel() {
   const [classes, setClasses] = useState<AcademicClass[]>([]);
   const [subPrograms, setSubPrograms] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
   const [instructors, setInstructors] = useState<any[]>([]);
+  const [instructorSearch, setInstructorSearch] = useState('');
+  const [showInstructorDropdown, setShowInstructorDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +32,7 @@ export default function ClassManagerPanel() {
     Promise.all([
       fetchClassesApi(),
       fetchSubProgramsApi(),
+      branchesApi.list().catch(() => []),
       fetchUsersApi().then(res => {
         const users = (res as any)?.results || [];
         return users.filter((u: any) => {
@@ -36,9 +40,10 @@ export default function ClassManagerPanel() {
           return role === 'instructor' || role === 'Instructor';
         });
       }).catch(() => []),
-    ]).then(([c, sp, inst]) => {
+    ]).then(([c, sp, br, inst]) => {
       setClasses(Array.isArray(c) ? c : []);
       setSubPrograms(Array.isArray(sp) ? sp : []);
+      setBranches(Array.isArray(br) ? br : []);
       setInstructors(inst);
     }).catch(() => setError('Failed to load classes')).finally(() => setLoading(false));
   };
@@ -48,11 +53,17 @@ export default function ClassManagerPanel() {
   const openCreate = () => {
     setEditing(null);
     setForm(defaultForm);
+    setInstructorSearch('');
+    setShowInstructorDropdown(false);
     setShowForm(true);
   };
 
   const openEdit = (c: AcademicClass) => {
     setEditing(c);
+    const instId = (c as any).instructor || '';
+    const instObj = instructors.find(i => i.id === instId);
+    setInstructorSearch(instObj ? `${instObj.full_name} (${instObj.email})` : '');
+    setShowInstructorDropdown(false);
     setForm({
       sub_program: (c as any).sub_program || '',
       branch: (c as any).branch || '',
@@ -68,11 +79,13 @@ export default function ClassManagerPanel() {
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.sub_program || !form.branch) return;
+    if (!form.name || !form.sub_program || !form.branch || !form.instructor) return;
     setSaving(true);
     setError(null);
     try {
-      const payload = { ...form, capacity: form.capacity ? Number(form.capacity) : undefined };
+      const payload: any = { ...form, capacity: form.capacity ? Number(form.capacity) : undefined };
+      if (!payload.class_period) delete payload.class_period;
+
       if (editing) {
         await updateClassApi(editing.id, payload);
       } else {
@@ -233,16 +246,58 @@ export default function ClassManagerPanel() {
                   <h3 className="font-bold text-base text-slate-900">{editing ? 'Edit Class' : 'New Class'}</h3>
                   <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X className="w-4 h-4" /></button>
                 </div>
-                <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
-                  <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Class Name</label>
+                <div className="p-4 space-y-3 max-h-[70vh] overflow-y-visible">
+                  <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Class Name <span className="text-red-500">*</span></label>
                     <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red" placeholder="e.g. VEX V5 - Section A" /></div>
-                  <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Sub-Program</label>
-                    <select value={form.sub_program} onChange={e => setForm(p => ({ ...p, sub_program: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red">
-                      <option value="">Select...</option>
-                      {subPrograms.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
-                    </select></div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Type</label>
+                    <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Sub-Program <span className="text-red-500">*</span></label>
+                      <select value={form.sub_program} onChange={e => setForm(p => ({ ...p, sub_program: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red">
+                        <option value="">Select...</option>
+                        {subPrograms.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
+                      </select></div>
+                    <div className="relative"><label className="text-[11px] font-bold text-slate-600 mb-1 block">Instructor <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <input
+                          value={instructorSearch}
+                          onChange={e => {
+                            setInstructorSearch(e.target.value);
+                            setForm(p => ({ ...p, instructor: '' }));
+                            setShowInstructorDropdown(true);
+                          }}
+                          onFocus={() => setShowInstructorDropdown(true)}
+                          placeholder="Search instructor..."
+                          className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red"
+                        />
+                        {showInstructorDropdown && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setShowInstructorDropdown(false)} />
+                            <div className="absolute top-full mt-1 left-0 right-0 max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg z-20">
+                              {instructors.filter(i => 
+                                i.full_name.toLowerCase().includes(instructorSearch.toLowerCase()) || 
+                                i.email.toLowerCase().includes(instructorSearch.toLowerCase())
+                              ).map(inst => (
+                                <div key={inst.id} onClick={() => {
+                                  setForm(p => ({ ...p, instructor: inst.id }));
+                                  setInstructorSearch(`${inst.full_name} (${inst.email})`);
+                                  setShowInstructorDropdown(false);
+                                }} className="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 truncate">
+                                  {inst.full_name} <span className="text-slate-400 text-xs">({inst.email})</span>
+                                </div>
+                              ))}
+                              {instructors.filter(i => 
+                                i.full_name.toLowerCase().includes(instructorSearch.toLowerCase()) || 
+                                i.email.toLowerCase().includes(instructorSearch.toLowerCase())
+                              ).length === 0 && (
+                                <div className="px-3 py-2 text-sm text-slate-400 text-center">No instructors found</div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Type <span className="text-red-500">*</span></label>
                       <select value={form.class_type} onChange={e => setForm(p => ({ ...p, class_type: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red">
                         <option value="GROUP">Group</option>
                         <option value="INDIVIDUAL">Individual</option>
@@ -250,17 +305,18 @@ export default function ClassManagerPanel() {
                     <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Period</label>
                       <select value={form.class_period} onChange={e => setForm(p => ({ ...p, class_period: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red">
                         <option value="">Any</option>
-                        <option value="MORNING">Morning</option>
-                        <option value="AFTERNOON">Afternoon</option>
-                        <option value="EVENING">Evening</option>
-                        <option value="WEEKEND">Weekend</option>
+                        <option value="FULL_DAY">Full Day</option>
+                        <option value="HALF_DAY">Half Day</option>
                       </select></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Capacity</label>
+                    <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Capacity {form.class_type === 'GROUP' && <span className="text-red-500">*</span>}</label>
                       <input type="number" value={form.capacity} onChange={e => setForm(p => ({ ...p, capacity: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red" placeholder="e.g. 20" /></div>
-                    <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Branch ID</label>
-                      <input value={form.branch} onChange={e => setForm(p => ({ ...p, branch: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red" placeholder="branch-uuid" /></div>
+                    <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Branch <span className="text-red-500">*</span></label>
+                      <select value={form.branch} onChange={e => setForm(p => ({ ...p, branch: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-brand-red">
+                        <option value="">Select branch...</option>
+                        {branches.map(b => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
+                      </select></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Start Date</label>
@@ -271,7 +327,7 @@ export default function ClassManagerPanel() {
                 </div>
                 <div className="flex items-center justify-end gap-2 p-4 border-t border-brand-border">
                   <button onClick={() => setShowForm(false)} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                  <button onClick={handleSave} disabled={saving || !form.name || !form.sub_program || !form.branch}
+                  <button onClick={handleSave} disabled={saving || !form.name || !form.sub_program || !form.branch || !form.instructor}
                     className="bg-brand-red text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-brand-red-dark disabled:opacity-50 flex items-center gap-1.5">
                     {saving && <Loader2 className="w-3 h-3 animate-spin" />}
                     {saving ? 'Saving...' : editing ? 'Update' : 'Create Class'}

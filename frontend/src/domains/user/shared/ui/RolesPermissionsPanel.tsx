@@ -163,6 +163,7 @@ export default function RolesPermissionsPanel() {
   const handleRemoveAssignment = async (id: string) => {
     try {
       await assignmentsApi.delete(id);
+      setEditAssign(null);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to remove assignment');
