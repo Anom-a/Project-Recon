@@ -140,4 +140,14 @@ def change_order_status(
             notes=notes,
         )
 
+    if new_status == OrderStatus.READY_FOR_PICKUP:
+        from apps.store.services.notification_service import notify_ready_for_pickup
+        notify_ready_for_pickup(order)
+    elif new_status == OrderStatus.COMPLETED:
+        from apps.store.services.notification_service import notify_order_completed
+        notify_order_completed(order)
+    elif new_status == OrderStatus.REFUNDED:
+        from apps.store.services.notification_service import notify_refund
+        notify_refund(order)
+
     return order

@@ -963,3 +963,143 @@ class OrderServiceTest(TestCase):
         updated = get_order_or_404(order.pk)
         self.assertEqual(updated.status, OrderStatus.COMPLETED)
         self.assertIsNotNone(updated.completed_at)
+
+
+class NotificationServiceTest(TestCase):
+    def setUp(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.accounts.models import Branch, User
+
+        from apps.store.constants import PaymentStatus
+
+        self.user = User.objects.create_user(
+            email="notify@test.com",
+            password="testpass123",
+            first_name="Notify",
+            last_name="User",
+        )
+        self.branch = Branch.objects.create(name="Branch", code="BR")
+        category = ProductCategory.objects.create(name="Category")
+        self.product = Product.objects.create(
+            category=category, name="Item", slug="item", sku="ITEM", price=25
+        )
+        self.pending_order = PendingOrder.objects.create(
+            user=self.user,
+            branch=self.branch,
+            subtotal=100.00,
+            total=115.00,
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
+        StorePayment.objects.create(
+            pending_order=self.pending_order,
+            amount=115.00,
+            transaction_reference="STORE-notify-ref",
+            status=PaymentStatus.PAID,
+        )
+        self.pending_order.payment_reference = "STORE-notify-ref"
+        self.pending_order.save(update_fields=["payment_reference"])
+        add_inventory(self.branch, self.product, 10)
+        PendingOrderItem.objects.create(
+            pending_order=self.pending_order,
+            product=self.product,
+            quantity=2,
+            unit_price=25.00,
+            subtotal=50.00,
+        )
+        self.order = create_order_from_pending_order(self.pending_order)
+
+    def test_notify_payment_and_order_confirmed(self):
+        from unittest.mock import patch
+
+        from apps.store.services.notification_service import (
+            notify_payment_and_order_confirmed,
+        )
+
+        with patch(
+            "apps.store.services.notification_service.send_email"
+        ) as mock_send:
+            notify_payment_and_order_confirmed(self.pending_order, self.order)
+        mock_send.assert_called_once()
+        args, _ = mock_send.call_args
+        self.assertEqual(args[0], "notify@test.com")
+        self.assertIn(self.order.order_number, args[1])
+        self.assertIn("Payment Confirmed", args[1])
+
+    def test_notify_ready_for_pickup(self):
+        from unittest.mock import patch
+
+        from apps.store.services.notification_service import notify_ready_for_pickup
+
+        self.order.status = OrderStatus.READY_FOR_PICKUP
+        with patch(
+            "apps.store.services.notification_service.send_email"
+        ) as mock_send:
+            notify_ready_for_pickup(self.order)
+        mock_send.assert_called_once()
+        args, _ = mock_send.call_args
+        self.assertIn("Ready for Pickup", args[1])
+
+    def test_notify_order_completed(self):
+        from unittest.mock import patch
+
+        from apps.store.services.notification_service import notify_order_completed
+
+        self.order.status = OrderStatus.COMPLETED
+        with patch(
+            "apps.store.services.notification_service.send_email"
+        ) as mock_send:
+            notify_order_completed(self.order)
+        mock_send.assert_called_once()
+        args, _ = mock_send.call_args
+        self.assertIn("Order Completed", args[1])
+
+    def test_notify_refund(self):
+        from unittest.mock import patch
+
+        from apps.store.services.notification_service import notify_refund
+
+        self.order.status = OrderStatus.REFUNDED
+        with patch(
+            "apps.store.services.notification_service.send_email"
+        ) as mock_send:
+            notify_refund(self.order)
+        mock_send.assert_called_once()
+        args, _ = mock_send.call_args
+        self.assertIn("Refund Processed", args[1])
+
+    def test_notify_skipped_when_no_recipient(self):
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        from django.utils import timezone
+
+        from apps.store.models.order import Order
+        from apps.store.services.notification_service import (
+            notify_payment_and_order_confirmed,
+        )
+
+        guest_order = Order.objects.create(
+            order_number="ORD-BR-2026-GUEST",
+            branch=self.branch,
+            payment_reference="STORE-guest-ref",
+            subtotal=50,
+            total=50,
+            status=OrderStatus.PAID,
+            paid_at=timezone.now(),
+        )
+        self.assertFalse(guest_order.guest_email)
+        with patch(
+            "apps.store.services.notification_service.send_email"
+        ) as mock_send:
+            from apps.store.models.pending_order import PendingOrder
+            notify_payment_and_order_confirmed(
+                PendingOrder.objects.create(
+                    branch=self.branch, subtotal=50, total=50,
+                    expires_at=timezone.now() + timedelta(minutes=30),
+                ),
+                guest_order,
+            )
+        mock_send.assert_not_called()
