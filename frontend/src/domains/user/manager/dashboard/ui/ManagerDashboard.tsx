@@ -5,7 +5,7 @@ import {
   Calendar, Bell, UserPlus, BarChart3, Users, Zap, Award,
   Clock, CheckCircle, CheckCircle2, Activity, Trophy, Building, Sparkles, Download,
   BookOpen, RefreshCw, Monitor, Globe,
-  Edit3, User, Loader2
+  Edit3, User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard
 } from 'lucide-react';
 import { UserProfile, AppNotification, Enrollment, EnrollmentPayment } from '@/src/shared/types';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
@@ -241,10 +241,10 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
-          { label: 'Students', value: String(students.length), icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { label: 'Programs', value: String(programs.length), icon: Award, color: 'text-purple-500', bg: 'bg-purple-50' },
-          { label: 'Revenue', value: payments.reduce((s, p) => s + (p.status === 'PAID' ? Number(p.amount) : 0), 0).toLocaleString() + ' Birr', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-          { label: 'Active Enrollments', value: String(enrollments.filter(e => e.status === 'ACTIVE').length), icon: Calendar, color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Students', value: String(students.length), icon: GraduationCap, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Programs', value: String(programs.length), icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
+          { label: 'Revenue', value: payments.reduce((s, p) => s + (p.status === 'PAID' ? Number(p.amount) : 0), 0).toLocaleString() + ' Birr', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Active Enrollments', value: String(enrollments.filter(e => e.status === 'ACTIVE').length), icon: UserCheck, color: 'text-amber-500', bg: 'bg-amber-50' },
         ].map((m, i) => {
           const MIcon = m.icon;
           return (
@@ -416,10 +416,10 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
             </h4>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'Students', value: students.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
-                { label: 'Programs', value: programs.length, icon: Award, color: 'text-purple-500', bg: 'bg-purple-50' },
-                { label: 'Enrollments', value: enrollments.length, icon: Building, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                { label: 'Payments', value: payments.length, icon: Handshake, color: 'text-amber-500', bg: 'bg-amber-50' },
+                { label: 'Students', value: students.length, icon: GraduationCap, color: 'text-blue-500', bg: 'bg-blue-50' },
+                { label: 'Programs', value: programs.length, icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
+                { label: 'Enrollments', value: enrollments.length, icon: ClipboardList, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                { label: 'Payments', value: payments.length, icon: CreditCard, color: 'text-amber-500', bg: 'bg-amber-50' },
               ].map((stat, i) => {
                 const StatIcon = stat.icon;
                 return (
@@ -497,9 +497,9 @@ function ReportsSection() {
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Students', value: students.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Students', value: students.length, icon: GraduationCap, color: 'text-blue-500', bg: 'bg-blue-50' },
           { label: 'Classes', value: classes.length, icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
-          { label: 'Active Enrollments', value: activeEnrollments.length, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Active Enrollments', value: activeEnrollments.length, icon: UserCheck, color: 'text-emerald-500', bg: 'bg-emerald-50' },
           { label: 'Programs', value: programs.length, icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
         ].map((s, i) => {
           const SIcon = s.icon;
