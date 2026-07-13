@@ -99,7 +99,10 @@ def verify_store_payment(reference: str) -> StorePayment:
         pending_order.save(update_fields=["payment_reference"])
 
         from apps.store.services.order_service import create_order_from_pending_order
-        create_order_from_pending_order(pending_order, actor=None)
+        order = create_order_from_pending_order(pending_order, actor=None)
+
+        from apps.store.services.notification_service import notify_payment_and_order_confirmed
+        notify_payment_and_order_confirmed(pending_order, order)
 
     elif result["status"] in ("failed", "cancelled"):
         payment.status = PaymentStatus.FAILED
