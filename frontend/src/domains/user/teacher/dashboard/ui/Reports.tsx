@@ -70,7 +70,7 @@ export default function Reports({ classId = '' }: Props) {
                   <p className="text-xs text-slate-500 mt-0.5">{report.desc}</p>
                 </div>
                 <button onClick={() => handleDownload(report.id)} disabled={isDownloading}
-                  className="flex items-center gap-1.5 text-xs font-bold bg-brand-red text-white px-3 py-2 rounded-lg hover:bg-brand-red-dark disabled:opacity-50 transition-colors shrink-0"
+                  className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
                 >
                   {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                   {isDownloading ? '...' : 'PDF'}

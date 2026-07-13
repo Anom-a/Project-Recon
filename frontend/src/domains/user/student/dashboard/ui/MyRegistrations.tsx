@@ -69,7 +69,7 @@ export default function MyRegistrations({ studentId }: Props) {
               <p className="text-sm font-medium text-slate-700 mb-3">Your Certificates ({certificates.length})</p>
               <div className="flex flex-wrap gap-2 justify-center">
                 {certificates.map(c => (
-                  <span key={c.id} className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand-red/5 text-brand-red px-3 py-1.5 rounded-full border border-brand-red/10">
+                  <span key={c.id} className="inline-flex items-center gap-1.5 text-xs font-medium bg-blue-600/5 text-blue-600 px-3 py-1.5 rounded-full border border-blue-600/10">
                     <Shield className="w-3.5 h-3.5" />
                     {c.certificate_title || c.sub_program_name || 'Certificate'}
                   </span>
@@ -77,7 +77,7 @@ export default function MyRegistrations({ studentId }: Props) {
               </div>
               <button
                 onClick={() => downloadEnrollmentReportPdf(studentId)}
-                className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-white bg-brand-red px-4 py-2 rounded-lg hover:bg-brand-red-dark transition-colors"
+                className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" /> Download PDF Report
               </button>
@@ -95,7 +95,7 @@ export default function MyRegistrations({ studentId }: Props) {
           { label: 'Total', value: registrations.length.toString(), color: 'text-brand-blue' },
           { label: 'Active', value: registrations.filter(r => r.status === 'ACTIVE').length.toString(), color: 'text-emerald-600' },
           { label: 'Pending', value: registrations.filter(r => r.status === 'PENDING_PAYMENT').length.toString(), color: 'text-amber-600' },
-          { label: 'Completed', value: registrations.filter(r => r.status === 'COMPLETED').length.toString(), color: 'text-brand-red' },
+          { label: 'Completed', value: registrations.filter(r => r.status === 'COMPLETED').length.toString(), color: 'text-blue-600' },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-brand-border rounded-xl px-4 py-3">
             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{s.label}</p>
@@ -109,11 +109,11 @@ export default function MyRegistrations({ studentId }: Props) {
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-brand-border rounded-lg text-xs text-slate-700 focus:outline-none focus:border-brand-red"
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-brand-border rounded-lg text-xs text-slate-700 focus:outline-none focus:border-blue-600"
             />
           </div>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-brand-border rounded-lg text-xs text-slate-700 focus:outline-none focus:border-brand-red"
+            className="px-3 py-1.5 bg-slate-50 border border-brand-border rounded-lg text-xs text-slate-700 focus:outline-none focus:border-blue-600"
           >
             <option value="all">All Status</option>
             <option value="ACTIVE">Active</option>

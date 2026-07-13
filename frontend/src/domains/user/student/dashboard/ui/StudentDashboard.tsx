@@ -240,12 +240,12 @@ function OverviewPage({ currentUser, studentId, onNavigate, enrollments }: Overv
     <div className="pb-8">
       {/* Welcome + Profile Card */}
       <div className="bg-white border border-brand-border rounded-2xl overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-brand-red/5 via-brand-blue/5 to-white px-5 py-4 flex items-center gap-4">
+        <div className="bg-gradient-to-r from-blue-600/5 via-brand-blue/5 to-white px-5 py-4 flex items-center gap-4">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden border-2 border-brand-border shadow-sm shrink-0">
             <img src={profileImg} alt="" className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-black text-brand-red uppercase tracking-widest mb-0.5">{getGreeting()}</p>
+            <p className="text-xs font-black text-blue-600 uppercase tracking-widest mb-0.5">{getGreeting()}</p>
             <h2 className="font-black text-2xl md:text-3xl text-slate-900 tracking-tight">Welcome back, {firstName}!</h2>
             <p className="text-sm text-slate-500 mt-0.5">{activeEnrollments.length} active enrollment{activeEnrollments.length !== 1 ? 's' : ''} · {currentUser.badges.length} badge{currentUser.badges.length !== 1 ? 's' : ''}</p>
           </div>
@@ -272,7 +272,7 @@ function OverviewPage({ currentUser, studentId, onNavigate, enrollments }: Overv
         <div className="lg:col-span-2 bg-white border border-brand-border rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-brand-border flex items-center justify-between">
             <h3 className="font-black text-lg text-slate-900">Your Active Tracks</h3>
-            <button onClick={() => onNavigate('progress')} className="text-sm font-black text-brand-red hover:underline flex items-center gap-1 uppercase tracking-wider">
+            <button onClick={() => onNavigate('progress')} className="text-sm font-black text-blue-600 hover:underline flex items-center gap-1 uppercase tracking-wider">
               View All <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -285,10 +285,10 @@ function OverviewPage({ currentUser, studentId, onNavigate, enrollments }: Overv
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 + i * 0.1 }}
-                className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-brand-border hover:border-brand-red/20 transition-all group"
+                className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-brand-border hover:border-blue-600/20 transition-all group"
               >
-                <div className="w-12 h-12 rounded-xl bg-brand-red/10 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-6 h-6 text-brand-red" />
+                <div className="w-12 h-12 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold text-sm text-slate-900 truncate">{enr.program_name || enr.sub_program_name || enr.class_name || 'Program'}</h4>
@@ -298,7 +298,7 @@ function OverviewPage({ currentUser, studentId, onNavigate, enrollments }: Overv
                       initial={{ width: 0 }}
                       animate={{ width: `${completedProjects > 0 ? Math.min(100, Math.round((completedProjects / (activeEnrollments.length + completedProjects)) * 100)) : 0}%` }}
                       transition={{ duration: 1, delay: 0.3 + i * 0.2 }}
-                      className="h-full bg-gradient-to-r from-brand-red to-brand-red-dark rounded-full"
+                      className="h-full bg-gradient-to-r from-blue-600 to-blue-700 rounded-full"
                     />
                   </div>
                 </div>
@@ -318,7 +318,7 @@ function OverviewPage({ currentUser, studentId, onNavigate, enrollments }: Overv
           <p className="text-sm text-slate-500 mb-6">Your learning at a glance</p>
           <div className="flex-1 space-y-4">
             {[
-              { label: 'Active Enrollments', value: activeEnrollments.length, icon: BookOpen, color: 'text-brand-red' },
+              { label: 'Active Enrollments', value: activeEnrollments.length, icon: BookOpen, color: 'text-blue-600' },
               { label: 'Completed', value: completedProjects, icon: CheckCircle2, color: 'text-emerald-500' },
               { label: 'XP Points', value: currentUser.xpPoints.toLocaleString(), icon: Zap, color: 'text-amber-500' },
               { label: 'Badges Earned', value: currentUser.badges.length, icon: Award, color: 'text-purple-500' },
@@ -341,7 +341,7 @@ function OverviewPage({ currentUser, studentId, onNavigate, enrollments }: Overv
         <div className="bg-white border border-brand-border rounded-2xl p-5">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-black text-lg text-slate-900">Upcoming Events</h3>
-            <button onClick={() => onNavigate('events')} className="text-sm font-black text-brand-red hover:underline flex items-center gap-1 uppercase tracking-wider">
+            <button onClick={() => onNavigate('events')} className="text-sm font-black text-blue-600 hover:underline flex items-center gap-1 uppercase tracking-wider">
               See All <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -350,9 +350,9 @@ function OverviewPage({ currentUser, studentId, onNavigate, enrollments }: Overv
               <div className="text-center py-6"><Loader2 className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
             ) : newsEvents.length > 0 ? newsEvents.map((ev, i) => (
               <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.1 }}
-                className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-brand-border hover:border-brand-red/20 transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-brand-border hover:border-blue-600/20 transition-colors"
               >
-                <div className={`w-3 h-3 rounded-full ${['bg-brand-blue', 'bg-brand-red', 'bg-emerald-500'][i % 3]} shrink-0`} />
+                <div className={`w-3 h-3 rounded-full ${['bg-brand-blue', 'bg-blue-600', 'bg-emerald-500'][i % 3]} shrink-0`} />
                 <div className="flex-1">
                   <h4 className="font-bold text-sm text-slate-900">{ev.title}</h4>
                   <p className="text-xs text-slate-500 font-medium">{ev.date}</p>
@@ -371,14 +371,14 @@ function OverviewPage({ currentUser, studentId, onNavigate, enrollments }: Overv
         <div className="bg-white border border-brand-border rounded-2xl p-5">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-black text-lg text-slate-900">Recent Badges</h3>
-            <button onClick={() => onNavigate('achievements')} className="text-sm font-black text-brand-red hover:underline flex items-center gap-1 uppercase tracking-wider">
+            <button onClick={() => onNavigate('achievements')} className="text-sm font-black text-blue-600 hover:underline flex items-center gap-1 uppercase tracking-wider">
               All Badges <ChevronRight className="w-4 h-4" />
             </button>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {currentUser.badges.slice(0, 6).map((badge, i) => (
               <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 + i * 0.1 }}
-                className="flex flex-col items-center p-4 rounded-xl bg-slate-50 border border-brand-border hover:-translate-y-0.5 hover:border-brand-red/20 transition-all"
+                className="flex flex-col items-center p-4 rounded-xl bg-slate-50 border border-brand-border hover:-translate-y-0.5 hover:border-blue-600/20 transition-all"
               >
                 <span className="text-2xl mb-2">{['🏆', '🛡️', '⭐', '🎖️', '🏅', '🔰'][i] || '🎖️'}</span>
                 <span className="font-bold text-xs text-slate-600 text-center leading-tight">{badge}</span>

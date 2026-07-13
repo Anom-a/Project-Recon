@@ -423,7 +423,7 @@ export default function GradeBook({ students }: Props) {
           </span>
           <div className="flex items-center gap-2">
             <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-1.5 text-xs font-bold bg-brand-red text-white px-4 py-2 rounded-lg hover:bg-brand-red-dark disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               {saving ? 'Saving...' : 'Save All'}

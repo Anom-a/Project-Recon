@@ -65,7 +65,7 @@ export default function LearningResources({ studentId }: Props) {
             const cfg = TYPE_ICONS[res.material_type] || DEFAULT_CFG;
             const Icon = cfg.icon;
             return (
-              <div key={res.id} className="group bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:bg-white hover:border-brand-red/30 hover:shadow-md transition-all cursor-pointer flex flex-col h-full">
+              <div key={res.id} className="group bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:bg-white hover:border-blue-600/30 hover:shadow-md transition-all cursor-pointer flex flex-col h-full">
                 <div className="flex justify-between items-start mb-4">
                   <div className={`w-10 h-10 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
                     <Icon className={`w-5 h-5 ${cfg.color}`} />
@@ -74,9 +74,9 @@ export default function LearningResources({ studentId }: Props) {
                     {res.material_type}
                   </span>
                 </div>
-                <h4 className="font-sans font-bold text-slate-900 text-sm leading-snug mb-1 group-hover:text-brand-red transition-colors">{res.title}</h4>
+                <h4 className="font-sans font-bold text-slate-900 text-sm leading-snug mb-1 group-hover:text-blue-600 transition-colors">{res.title}</h4>
                 {res.description && <p className="text-xs text-slate-500 font-medium mb-4 line-clamp-2">{res.description}</p>}
-                <div className="mt-auto pt-4 border-t border-slate-200/60 flex items-center justify-between text-brand-red opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="mt-auto pt-4 border-t border-slate-200/60 flex items-center justify-between text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
                   <a href={res.file_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold flex items-center gap-1">
                     <Download className="w-3.5 h-3.5" /> Download
                   </a>

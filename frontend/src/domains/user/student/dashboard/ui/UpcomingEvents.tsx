@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Loader2, Clock, ExternalLink } from 'lucide-react';
 import { cmsPublicApi } from '@/src/domains/cms/public/api/cmsPublicApi';
 
-const DOT_COLORS = ['bg-brand-blue', 'bg-brand-red', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-cyan-500'];
+const DOT_COLORS = ['bg-brand-blue', 'bg-blue-600', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-cyan-500'];
 
 export default function UpcomingEvents() {
   const [events, setEvents] = useState<{ title: string; date: string; slug: string }[]>([]);
