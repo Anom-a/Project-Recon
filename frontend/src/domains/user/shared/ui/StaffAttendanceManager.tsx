@@ -52,10 +52,11 @@ export default function StaffAttendanceManager() {
     setSaving(true);
     setError(null);
     try {
+      const payload = { branch: form.branch, session_date: form.date, notes: form.notes };
       if (editingSession) {
-        await updateStaffAttendanceSessionApi(editingSession.id, form);
+        await updateStaffAttendanceSessionApi(editingSession.id, payload);
       } else {
-        await createStaffAttendanceSessionApi(form);
+        await createStaffAttendanceSessionApi(payload);
       }
       setShowCreate(false);
       setEditingSession(null);
@@ -137,7 +138,7 @@ export default function StaffAttendanceManager() {
         {[
           { label: 'Total Sessions', value: sessions.length, icon: Calendar, color: 'text-brand-blue', bg: 'bg-brand-blue/5' },
           { label: 'Published', value: sessions.filter(s => s.status === 'PUBLISHED').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Staff Available', value: availableStaff.length, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Draft', value: sessions.filter(s => s.status !== 'PUBLISHED').length, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-brand-border rounded-xl px-4 py-3">
             <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-2`}>

@@ -12,6 +12,7 @@ export type Permission =
   | 'academic:payments:manage'
   | 'academic:attendance:manage'
   | 'academic:progress:manage'
+  | 'academic:materials:manage'
   | 'academic:certificates:manage'
   | 'academic:reports:view'
   | 'student:self:view'
@@ -31,6 +32,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'academic:payments:manage',
     'academic:attendance:manage',
     'academic:progress:manage',
+    'academic:materials:manage',
     'academic:certificates:manage',
     'academic:reports:view',
     'command-center:view',
@@ -44,6 +46,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'academic:payments:manage',
     'academic:attendance:manage',
     'academic:progress:manage',
+    'academic:materials:manage',
     'academic:certificates:manage',
     'academic:reports:view',
     'command-center:view',
@@ -60,6 +63,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'dashboard:view',
     'academic:attendance:manage',
     'academic:progress:manage',
+    'academic:materials:manage',
     'academic:reports:view',
   ],
   Student: ['dashboard:view', 'student:self:view'],
@@ -76,8 +80,6 @@ const PUBLIC_TABS: ActiveTab[] = [
   'registration',
   'simulator',
   'competitions',
-  'community',
-  'consultancy',
   'forgot-password',
   'reset-password',
 ];

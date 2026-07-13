@@ -6,6 +6,7 @@ import {
   ShieldCheck, Award, Zap, TrendingUp, BookOpen, Star, CheckCircle2
 } from 'lucide-react';
 import type { UserProfile } from '@/src/shared/types';
+import { updateUserProfile } from '@/src/shared/utils/storage';
 import { updateUserApi } from '@/src/domains/user/shared/api/adminApi';
 import { securityApi } from '@/src/domains/auth/login/api/securityApi';
 import profileImg from '@/assets/photo_2026-06-15_14-39-27.jpg';
@@ -62,8 +63,7 @@ export default function AdminAccount({ currentUser, onUserUpdate }: Props) {
         date_of_birth: form.date_of_birth,
         gender: form.gender,
       };
-      const existing = localStorage.getItem('ethio_robotics_user');
-      if (existing) localStorage.setItem('ethio_robotics_user', JSON.stringify(updatedUser));
+      updateUserProfile(updatedUser);
       onUserUpdate?.(updatedUser);
       setEditing(false);
     } catch (e) {
@@ -227,8 +227,7 @@ export default function AdminAccount({ currentUser, onUserUpdate }: Props) {
           {accountTab === 'password' && <ChangePasswordForm />}
           {accountTab === 'email' && <EmailVerificationForm currentUser={currentUser} onVerify={() => {
             const updated = { ...currentUser, is_email_verified: true };
-            const existing = localStorage.getItem('ethio_robotics_user');
-            if (existing) localStorage.setItem('ethio_robotics_user', JSON.stringify(updated));
+            updateUserProfile(updated);
             onUserUpdate?.(updated);
           }} />}
           {accountTab === 'devices' && <TrustedDevicesPanel />}

@@ -7,7 +7,7 @@ import {
   Cpu, Globe, Wrench, Laptop, Sparkles,
   Award, Calendar, MapPin, Search
 } from 'lucide-react';
-import NotificationCenter from '@/src/domains/notification/ui/NotificationCenter';
+
 import SearchOverlay from './SearchOverlay';
 import BrandLogo from './BrandLogo';
 import { useBranding } from '@/src/shared/hooks/useBranding';

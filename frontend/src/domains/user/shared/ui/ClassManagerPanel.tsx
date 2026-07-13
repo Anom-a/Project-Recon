@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, X, Loader2, AlertCircle, BookOpen, Users, UserCheck, Filter, CheckCircle2, RotateCcw } from 'lucide-react';
 import { AcademicClass } from '@/src/shared/types';
 import { fetchClassesApi, createClassApi, updateClassApi, assignClassInstructorApi, setClassActiveApi, fetchSubProgramsApi } from '@/src/domains/learning/academics/api/academicApi';
-import { fetchUsersApi, resolveRole, branchesApi } from '@/src/domains/user/shared/api/adminApi';
+import { fetchAllUsersApi, resolveRole, branchesApi } from '@/src/domains/user/shared/api/adminApi';
 
 const defaultForm = {
   sub_program: '', branch: '', instructor: '', name: '', class_type: 'GROUP', class_period: '', capacity: '', start_date: '', end_date: '',
@@ -33,8 +33,7 @@ export default function ClassManagerPanel() {
       fetchClassesApi(),
       fetchSubProgramsApi(),
       branchesApi.list().catch(() => []),
-      fetchUsersApi().then(res => {
-        const users = (res as any)?.results || [];
+      fetchAllUsersApi().then(users => {
         return users.filter((u: any) => {
           const role = resolveRole(u.assignments);
           return role === 'instructor' || role === 'Instructor';

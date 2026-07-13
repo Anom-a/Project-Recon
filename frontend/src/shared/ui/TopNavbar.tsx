@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, LogOut } from 'lucide-react';
-import NotificationCenter from '@/src/domains/notification/ui/NotificationCenter';
 
 interface TopNavbarProps {
   title: string;
@@ -66,8 +65,6 @@ export function TopNavbar({
               {actions}
             </div>
           )}
-
-          <NotificationCenter />
 
           {/* User button */}
           <div className="relative" ref={profileRef}>

@@ -5,7 +5,7 @@ import Navbar from '../shared/ui/Navbar';
 import AboutTab from '../domains/learning/programs/ui/AboutTab';
 import StudentRegistration from '../domains/auth/register/ui/StudentRegistration';
 import VexSimulator from '../domains/learning/simulator/ui/VexSimulator';
-import LabConsultancy from '../domains/learning/consultancy/ui/LabConsultancy';
+
 import EventCommandCenter from '../domains/competition/events/ui/EventCommandCenter';
 
 import AnimatedParticles from '../shared/ui/AnimatedParticles';
@@ -18,7 +18,7 @@ import HomePage from '../pages/HomePage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import StorePage from '../pages/store/StorePage';
 import CompetitionPage from '../pages/competition/CompetitionPage';
-import CommunityPage from '../pages/community/CommunityPage';
+
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 
 import { useAuth } from '../shared/hooks/useAuth';
@@ -185,12 +185,6 @@ export default function App() {
               currentUser={currentUser}
               onNavigateLogin={() => handleTabChange('login')}
             />
-          )}
-
-          {activeTab === 'consultancy' && (
-            <motion.div key="consultancy-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-              <LabConsultancy />
-            </motion.div>
           )}
 
           {activeTab === 'registration' && (

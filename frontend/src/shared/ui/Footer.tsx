@@ -10,8 +10,6 @@ const FOOTER_LINKS: { label: string; tab: ActiveTab }[] = [
   { label: 'Store', tab: 'store' },
   { label: 'Simulator', tab: 'simulator' },
   { label: 'Competitions', tab: 'competitions' },
-  { label: 'Community', tab: 'community' },
-  { label: 'Lab Consultancy', tab: 'consultancy' },
   { label: 'Pricing', tab: 'about' },
 ];
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertCircle, Eye, Edit3, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import type { Enrollment, EnrollmentPayment } from '@/src/shared/types';
 import { fetchEnrollmentsApi, fetchPaymentsApi } from '@/src/domains/learning/academics/api/academicApi';
 
@@ -56,7 +56,7 @@ export default function AdminRegistrationsPanel() {
                 <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{r.enrolled_at?.slice(0, 10) || '—'}</td>
                 <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusClass(r.status)}`}>{r.status.replace('_', ' ')}</span></td>
                 <td className="px-4 py-3 text-slate-600 font-medium hidden lg:table-cell">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} Birr` : '—'}</td>
-                <td className="px-4 py-3"><div className="flex gap-1"><button className="p-1.5 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/5"><Eye className="w-3.5 h-3.5" /></button><button className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-600/5"><Edit3 className="w-3.5 h-3.5" /></button></div></td>
+                <td className="px-4 py-3"><span className="text-xs text-slate-400">—</span></td>
               </tr>
             ))}
           </tbody>

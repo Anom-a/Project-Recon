@@ -1,17 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { fetchAuditLogsApi } from '../api/adminApi';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  BarChart3, Users, Shield, Settings, FileText, Bell, Activity,
-  Plus, RefreshCw, AlertTriangle, Clock, CheckCircle, XCircle, AlertCircle,
-  BookOpen, MessageSquare, GraduationCap, Award, DollarSign, Building,
-  Handshake, UserCog, Swords, Medal, Wrench, ClipboardList, Cpu, Star, Target,
-  Edit3, Trash2, Eye, EyeOff, Search, Filter, Download, ChevronDown, Save, X,
-  UserPlus, UserCheck, UserX, Lock, Globe, Zap, TrendingUp, TrendingDown,
-  Mail, Phone, MapPin, Camera, Sparkles, Send, Loader2, Archive, LayoutDashboard, GitBranch, BellOff, CheckCircle2, Calendar, UserCheck as UserCheckIcon, Trophy
+  BarChart3, Users, Shield, FileText, BookOpen, GraduationCap, Award,
+  Calendar, Trophy, Swords, UserPlus, ClipboardList, LayoutDashboard, GitBranch, RefreshCw,
 } from 'lucide-react';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/src/shared/ui/InlineAlert';
 import CmsDashboard from '@/src/domains/cms/admin/ui/CmsDashboard';
 import { NavItem } from '@/src/shared/ui/Sidebar';
 import { BranchSectionShell } from '@/src/domains/branches/ui/BranchSectionShell';
@@ -25,38 +19,27 @@ import MatchManager from '@/src/domains/competition/admin/MatchManager';
 import WorkshopManager from '@/src/domains/competition/admin/WorkshopManager';
 import RegistrationManager from '@/src/domains/competition/admin/RegistrationManager';
 import CertificateManager from '@/src/domains/user/shared/ui/CertificateManager';
-import { ErrorModal } from '@/src/shared/ui/ErrorModal';
-import type { UserProfile, AppNotification, Enrollment, EnrollmentPayment } from '@/src/shared/types';
-import { fetchEnrollmentsApi, fetchPaymentsApi } from '@/src/domains/learning/academics/api/academicApi';
+import type { UserProfile } from '@/src/shared/types';
 import {
-  fetchUsersApi,
-  toggleUserStatusApi,
-  archiveUserApi,
-  createStaffApi,
-  createBranchManagerApi,
-  updateUserApi,
-  resolveRole,
-  formatRelativeTime,
-  formatJoinDate,
-  branchesApi,
-  assignmentsApi,
-  type AdminUserResponse,
-  type PaginatedResponse,
-  type BranchResponse,
-  type AssignmentResponse,
+  fetchEnrollmentsApi, fetchPaymentsApi, fetchProgramsApi, fetchClassesApi,
+} from '@/src/domains/learning/academics/api/academicApi';
+import {
+  fetchAllUsersApi, branchesApi, resolveRole,
 } from '../api/adminApi';
-import { getNotifications } from '@/src/domains/notification/model/notificationApi';
-import { getAnalytics } from '@/src/domains/analytics/model/analyticsApi';
 import UserManagementPanel from './UserManagementPanel';
 import AdminAccount from './AdminAccount';
 import SystemLogs from './SystemLogs';
 import AdminOverviewDashboard from './AdminOverviewDashboard';
 import RolesPermissionsPanel from './RolesPermissionsPanel';
 import AdminRegistrationsPanel from './AdminRegistrationsPanel';
+import {
+  getAdminCommandCenter,
+  type AdminSectionId,
+  type AdminHubStats,
+} from '../adminCommandCenter';
+import { summarizeSettled } from '@/src/shared/utils/storage';
 
 interface Props { currentUser: UserProfile; onLogout: () => void; }
-
-type SectionId = 'overview' | 'users' | 'roles' | 'academics' | 'classes' | 'staff-attendance' | 'account' | 'audit' | 'branches' | 'registrations' | 'cms' | 'events' | 'tournaments' | 'tournament-teams' | 'matches' | 'workshops' | 'event-registrations' | 'certificates';
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Dashboard', icon: BarChart3, group: 'core' },
@@ -90,11 +73,75 @@ const pageTitle: Record<string, string> = {
   certificates: 'Certificate Management',
   audit: 'Audit Logs',
   cms: 'Content Management', account: 'My Account',
-}
+};
 
-/* ─── MAIN ─── */
 export default function AdminDashboard({ currentUser, onLogout }: Props) {
-  const [activeSection, setActiveSection] = useState<SectionId>('overview');
+  const [activeSection, setActiveSection] = useState<AdminSectionId>('overview');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hubStats, setHubStats] = useState<AdminHubStats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    students: 0,
+    activeEnrollments: 0,
+    pendingEnrollments: 0,
+    paidPayments: 0,
+    programs: 0,
+    classes: 0,
+    branches: 0,
+    loading: true,
+  });
+
+  const refreshSignals = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
+    setHubStats(prev => ({ ...prev, loading: true }));
+    Promise.allSettled([
+      fetchAllUsersApi(),
+      branchesApi.list(),
+      fetchProgramsApi(),
+      fetchClassesApi(),
+      fetchEnrollmentsApi(),
+      fetchPaymentsApi(),
+    ]).then(([usersRes, branchesRes, programsRes, classesRes, enrollmentsRes, paymentsRes]) => {
+      const summary = summarizeSettled([usersRes, branchesRes, programsRes, classesRes, enrollmentsRes, paymentsRes]);
+      if (summary.allFailed) {
+        setLoadError('Unable to load dashboard data. Check your connection and try again.');
+      } else if (summary.anyFailed) {
+        setLoadError('Some dashboard data could not be loaded. Figures may be incomplete.');
+      }
+
+      const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : [];
+      const branches = branchesRes.status === 'fulfilled' && Array.isArray(branchesRes.value) ? branchesRes.value : [];
+      const programs = programsRes.status === 'fulfilled' && Array.isArray(programsRes.value) ? programsRes.value : [];
+      const classes = classesRes.status === 'fulfilled' && Array.isArray(classesRes.value) ? classesRes.value : [];
+      const enrollments = enrollmentsRes.status === 'fulfilled' && Array.isArray(enrollmentsRes.value) ? enrollmentsRes.value : [];
+      const payments = paymentsRes.status === 'fulfilled' && Array.isArray(paymentsRes.value) ? paymentsRes.value : [];
+
+      const students = users.filter(u => resolveRole(u.assignments || []) === 'Student').length;
+      const activeUsers = users.filter(u => u.is_active !== false).length;
+
+      setHubStats({
+        totalUsers: users.length,
+        activeUsers,
+        students,
+        activeEnrollments: enrollments.filter(e => e.status === 'ACTIVE').length,
+        pendingEnrollments: enrollments.filter(e => e.status === 'PENDING_PAYMENT').length,
+        paidPayments: payments.filter(p => p.status === 'PAID').length,
+        programs: programs.length,
+        classes: classes.length,
+        branches: branches.length,
+        loading: false,
+      });
+    }).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { refreshSignals(); }, [refreshSignals]);
+
+  const commandCenter = useMemo(
+    () => getAdminCommandCenter(activeSection, hubStats),
+    [activeSection, hubStats],
+  );
 
   const renderPage = () => {
     switch (activeSection) {
@@ -108,7 +155,7 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       case 'audit': return <SystemLogs />;
       case 'account': return <AdminAccount currentUser={currentUser} />;
       case 'registrations': return <AdminRegistrationsPanel />;
-      case 'events': return <EventManager onNavigate={(section) => setActiveSection(section as SectionId)} />;
+      case 'events': return <EventManager onNavigate={(section) => setActiveSection(section as AdminSectionId)} />;
       case 'tournaments': return <TournamentManager />;
       case 'tournament-teams': return <TeamManager />;
       case 'matches': return <MatchManager />;
@@ -125,7 +172,7 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       sidebar={{
         items: NAV_ITEMS,
         activeSection,
-        onSectionChange: (id) => setActiveSection(id as SectionId),
+        onSectionChange: (id) => setActiveSection(id as AdminSectionId),
         title: 'Admin Panel',
         icon: Shield,
         accentColor: 'blue',
@@ -135,9 +182,26 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       topNavbar={{
         title: pageTitle[activeSection],
         subtitle: 'Admin Dashboard',
+        actions: (
+          <button onClick={refreshSignals} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors" title="Refresh">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        ),
       }}
       onLogout={onLogout}
     >
+      {loadError && (
+        <InlineAlert tone="warning" message={loadError} onRetry={refreshSignals} onDismiss={() => setLoadError(null)} />
+      )}
+
+      {commandCenter && (
+        <DashboardCommandCenter
+          title={commandCenter.title}
+          subtitle={commandCenter.subtitle}
+          signals={commandCenter.signals}
+          loading={hubStats.loading}
+        />
+      )}
       {renderPage()}
     </AppLayout>
   );

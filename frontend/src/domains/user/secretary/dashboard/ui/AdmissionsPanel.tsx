@@ -4,6 +4,7 @@ import { Plus, Search, X, Loader2, AlertCircle, UserPlus, Users, Mail, Phone, Sh
 import { StudentProfile, UserProfile } from '@/src/shared/types';
 import { fetchStudentsApi, admitStudentApi, fetchClassesApi } from '@/src/domains/learning/academics/api/academicApi';
 import { branchesApi } from '@/src/domains/user/shared/api/adminApi';
+import { cacheStudentId } from '@/src/domains/user/student/api/studentContext';
 
 export default function AdmissionsPanel({ currentUser }: { currentUser?: UserProfile }) {
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -59,7 +60,7 @@ export default function AdmissionsPanel({ currentUser }: { currentUser?: UserPro
     try {
       const created = await admitStudentApi(form);
       if (created?.id && created?.email) {
-        localStorage.setItem(`studentId_${created.email}`, created.id);
+        cacheStudentId(created.email, created.id);
       }
       loadStudents();
       setForm(prev => ({

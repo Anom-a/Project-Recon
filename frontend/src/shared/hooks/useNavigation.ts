@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ActiveTab, UserProfile } from '../types';
 import { canAccessTab, getDefaultAuthenticatedTab } from '../auth/permissions';
+import { getUserProfile } from '@/src/shared/utils/storage';
 
 function tabFromPath(path: string): ActiveTab {
   if (path.startsWith('/about')) return 'about';
@@ -24,8 +25,7 @@ function pathFromTab(tab: ActiveTab, currentUser: UserProfile | null): string {
 
 export function useNavigation(currentUser: UserProfile | null) {
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
-    const savedUser = localStorage.getItem('ethio_robotics_user');
-    const user = savedUser ? JSON.parse(savedUser) : null;
+    const user = getUserProfile();
     let tab = tabFromPath(window.location.pathname);
     tab = canAccessTab(user, tab) ? tab : getDefaultAuthenticatedTab(user);
     const authRoutes: ActiveTab[] = ['login', 'register', 'forgot-password', 'reset-password', 'registration'];

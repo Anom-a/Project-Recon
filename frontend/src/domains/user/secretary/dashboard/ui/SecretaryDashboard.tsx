@@ -1,94 +1,109 @@
-import React, { useState, useEffect } from 'react';
-import { UserPlus, Users, DollarSign, Award, FileText, LayoutDashboard, RefreshCw, Shield, Target, BookOpen, Calendar, Search } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { UserPlus, Users, DollarSign, Award, FileText, LayoutDashboard, RefreshCw, Shield, Calendar, Search } from 'lucide-react';
 import { UserProfile } from '@/src/shared/types';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import { NavItem } from '@/src/shared/ui/Sidebar';
-import DashboardCommandCenter, { type DashboardSignal } from '@/src/shared/ui/DashboardCommandCenter';
+import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/src/shared/ui/InlineAlert';
 import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
 import RegistrationManager from '@/src/domains/competition/admin/RegistrationManager';
-import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentCertificatesApi, fetchCertificateTemplatesApi, fetchMilestonesApi, fetchLearningMaterialsApi, fetchEnrollmentPeriodsApi } from '@/src/domains/learning/academics/api/academicApi';
+import {
+  fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentCertificatesApi,
+  fetchCertificateTemplatesApi, fetchEnrollmentPeriodsApi,
+} from '@/src/domains/learning/academics/api/academicApi';
+import {
+  getSecretaryCommandCenter,
+  type SecretarySectionId,
+  type SecretaryHubStats,
+} from '../secretaryCommandCenter';
 
 import Overview from './Overview';
 import AdmissionsPanel from './AdmissionsPanel';
 import EnrollmentsPanel from './EnrollmentsPanel';
 import PaymentsPanel from './PaymentsPanel';
-import CertificatesPanel from './CertificatesPanel';
 import ReportsPanel from './ReportsPanel';
 import CertificateManager from '@/src/domains/user/shared/ui/CertificateManager';
 import CertificateTemplateManager from './CertificateTemplateManager';
 import EnrollmentPeriodsPanel from './EnrollmentPeriodsPanel';
-import LearningMaterialsPanel from './LearningMaterialsPanel';
-import LearningMilestonesManager from './LearningMilestonesManager';
 import StudentDetailPanel from './StudentDetailPanel';
 
 interface Props { currentUser: UserProfile; onLogout: () => void; }
 
-type SectionId = 'overview' | 'admissions' | 'enrollments' | 'payments' | 'certificates' | 'templates' | 'reports' | 'periods' | 'materials' | 'milestones' | 'students' | 'event-registrations' | 'account';
-
+/** Nav and hub stats use only APIs the Secretary role can access (backend permissions). */
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, group: 'main' },
-  { id: 'admissions', label: 'Admissions', icon: UserPlus, group: 'main' },
-  { id: 'enrollments', label: 'Enrollments', icon: Users, group: 'main' },
-  { id: 'payments', label: 'Payments', icon: DollarSign, group: 'main' },
-  { id: 'certificates', label: 'Certificates', icon: Award, group: 'main' },
-  { id: 'templates', label: 'Cert. Templates', icon: Award, group: 'main' },
-  { id: 'periods', label: 'Enrollment Periods', icon: Calendar, group: 'main' },
-  { id: 'students', label: 'Student Details', icon: Search, group: 'main' },
-  { id: 'milestones', label: 'Milestones', icon: Target, group: 'main' },
-  { id: 'materials', label: 'Learning Materials', icon: BookOpen, group: 'main' },
-  { id: 'event-registrations', label: 'Event Registrations', icon: UserPlus, group: 'main' },
-  { id: 'reports', label: 'Reports', icon: FileText, group: 'main' },
+  { id: 'admissions', label: 'Admissions', icon: UserPlus, group: 'admissions' },
+  { id: 'students', label: 'Student Details', icon: Search, group: 'admissions' },
+  { id: 'enrollments', label: 'Enrollments', icon: Users, group: 'admissions' },
+  { id: 'periods', label: 'Enrollment Periods', icon: Calendar, group: 'admissions' },
+  { id: 'certificates', label: 'Certificates', icon: Award, group: 'academic' },
+  { id: 'templates', label: 'Cert. Templates', icon: Award, group: 'academic' },
+  { id: 'payments', label: 'Payments', icon: DollarSign, group: 'finances' },
+  { id: 'event-registrations', label: 'Event Registrations', icon: UserPlus, group: 'competition' },
+  { id: 'reports', label: 'Reports', icon: FileText, group: 'reports' },
   { id: 'account', label: 'Account', icon: Shield, group: 'system' },
 ];
 
 export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
-  const [activeSection, setActiveSection] = useState<SectionId>('overview');
-  const [loading, setLoading] = useState(false);
-  const [signals, setSignals] = useState<DashboardSignal[]>([
-    { label: 'Pending Payments', value: '—', detail: 'loading...', icon: UserPlus, tone: 'amber' as const },
-    { label: 'Active Enrollments', value: '—', detail: 'loading...', icon: Users, tone: 'emerald' as const },
-    { label: 'Today\'s Payments', value: '—', detail: 'loading...', icon: DollarSign, tone: 'blue' as const },
-    { label: 'Certificates', value: '—', detail: 'loading...', icon: Award, tone: 'emerald' as const },
-  ]);
+  const [activeSection, setActiveSection] = useState<SecretarySectionId>('overview');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hubStats, setHubStats] = useState<SecretaryHubStats>({
+    pendingPayments: 0,
+    activeEnrollments: 0,
+    todayPayments: 0,
+    certificatesIssued: 0,
+    templates: 0,
+    periods: 0,
+    loading: true,
+  });
 
-  const refreshSignals = () => {
+  const refreshSignals = useCallback(() => {
     setLoading(true);
-    const isSecretary = currentUser.role === 'Secretary';
+    setLoadError(null);
+    setHubStats(prev => ({ ...prev, loading: true }));
+
     Promise.allSettled([
       fetchEnrollmentsApi(),
       fetchPaymentsApi(),
       fetchStudentCertificatesApi(),
       fetchCertificateTemplatesApi(),
-      isSecretary ? Promise.resolve([]) : fetchMilestonesApi(''),
-      isSecretary ? Promise.resolve([]) : fetchLearningMaterialsApi(),
       fetchEnrollmentPeriodsApi(),
-    ]).then(([enr, pay, certs, templates, milestones, materials, periods]) => {
+    ]).then(([enr, pay, certs, templates, periods]) => {
       const enrollments = enr.status === 'fulfilled' && Array.isArray(enr.value) ? enr.value : [];
       const payments = pay.status === 'fulfilled' && Array.isArray(pay.value) ? pay.value : [];
       const certificates = certs.status === 'fulfilled' && Array.isArray(certs.value) ? certs.value : [];
       const tpl = templates.status === 'fulfilled' && Array.isArray(templates.value) ? templates.value : [];
-      const mls = milestones.status === 'fulfilled' && Array.isArray(milestones.value) ? milestones.value : [];
-      const mat = materials.status === 'fulfilled' && Array.isArray(materials.value) ? materials.value : [];
       const per = periods.status === 'fulfilled' && Array.isArray(periods.value) ? periods.value : [];
-      const active = enrollments.filter(e => e.status === 'ACTIVE');
-      const pendingEnrollments = enrollments.filter(e => e.status === 'PENDING_PAYMENT');
-      const todayPay = payments.filter(p =>
-        p.payment_date?.startsWith(new Date().toISOString().slice(0, 10))
-      );
-      setSignals([
-        { label: 'Pending Payments', value: String(pendingEnrollments.length), detail: 'awaiting payment', icon: UserPlus, tone: 'amber' },
-        { label: 'Active Enrollments', value: String(active.length), detail: 'current students', icon: Users, tone: 'emerald' },
-        { label: 'Today\'s Payments', value: String(todayPay.length), detail: 'recorded today', icon: DollarSign, tone: 'blue' },
-        { label: 'Certificates Issued', value: String(certificates.length), detail: 'total issued', icon: Award, tone: 'emerald' },
-        { label: 'Templates', value: String(tpl.length), detail: 'cert. templates', icon: Award, tone: 'blue' },
-        { label: 'Materials', value: String(mat.length), detail: 'learning materials', icon: BookOpen, tone: 'purple' },
-        { label: 'Milestones', value: String(mls.length), detail: 'active milestones', icon: Target, tone: 'emerald' },
-        { label: 'Periods', value: String(per.length), detail: 'enrollment periods', icon: Calendar, tone: 'amber' },
-      ]);
-    }).finally(() => setLoading(false));
-  };
 
-  useEffect(() => { refreshSignals(); }, []);
+      const coreFailed = enr.status === 'rejected' && pay.status === 'rejected';
+      const partialCoreFailed = enr.status === 'rejected' || pay.status === 'rejected';
+
+      if (coreFailed) {
+        setLoadError('Unable to load dashboard data. Check your connection and try again.');
+      } else if (partialCoreFailed) {
+        setLoadError('Enrollment or payment data could not be loaded. Some figures may be incomplete.');
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      setHubStats({
+        pendingPayments: enrollments.filter(e => e.status === 'PENDING_PAYMENT').length,
+        activeEnrollments: enrollments.filter(e => e.status === 'ACTIVE').length,
+        todayPayments: payments.filter(p => p.payment_date?.startsWith(today)).length,
+        certificatesIssued: certificates.length,
+        templates: tpl.length,
+        periods: per.length,
+        loading: false,
+      });
+    }).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { refreshSignals(); }, [refreshSignals]);
+
+  const commandCenter = useMemo(
+    () => getSecretaryCommandCenter(activeSection, hubStats),
+    [activeSection, hubStats],
+  );
 
   const renderPage = () => {
     switch (activeSection) {
@@ -100,8 +115,6 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
       case 'templates': return <CertificateTemplateManager />;
       case 'periods': return <EnrollmentPeriodsPanel currentUser={currentUser} />;
       case 'students': return <StudentDetailPanel />;
-      case 'milestones': return <LearningMilestonesManager currentUser={currentUser} />;
-      case 'materials': return <LearningMaterialsPanel currentUser={currentUser} />;
       case 'event-registrations': return <RegistrationManager />;
       case 'reports': return <ReportsPanel currentUser={currentUser} />;
       case 'account': return <AdminAccount currentUser={currentUser} />;
@@ -115,7 +128,7 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
       sidebar={{
         items: NAV_ITEMS,
         activeSection,
-        onSectionChange: (id) => setActiveSection(id as SectionId),
+        onSectionChange: (id) => setActiveSection(id as SecretarySectionId),
         title: 'Secretary Dashboard',
         icon: Shield,
         userName: currentUser.name,
@@ -132,11 +145,18 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
       }}
       onLogout={onLogout}
     >
-      <DashboardCommandCenter
-        title="Secretary Command Center"
-        subtitle="Student admissions, enrollments, payments, certificates, templates, periods, milestones, and materials."
-        signals={signals.slice(0, 4)}
-      />
+      {loadError && (
+        <InlineAlert tone="warning" message={loadError} onRetry={refreshSignals} onDismiss={() => setLoadError(null)} />
+      )}
+
+      {commandCenter && (
+        <DashboardCommandCenter
+          title={commandCenter.title}
+          subtitle={commandCenter.subtitle}
+          signals={commandCenter.signals}
+          loading={hubStats.loading}
+        />
+      )}
       {renderPage()}
     </AppLayout>
   );

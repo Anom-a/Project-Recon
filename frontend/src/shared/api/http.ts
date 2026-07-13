@@ -1,5 +1,6 @@
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 import { getToken, setTokens, clearTokens, getRefreshToken } from '@/src/shared/utils/auth';
+import { clearUserProfile } from '@/src/shared/utils/storage';
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string>;
@@ -83,7 +84,7 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
             onRefreshed(data.access);
           } else {
             clearTokens();
-            localStorage.removeItem('ethio_robotics_user');
+            clearUserProfile();
             window.dispatchEvent(new CustomEvent('auth:logout'));
           }
         } catch {
@@ -153,7 +154,7 @@ async function requestBlob(endpoint: string, config: RequestConfig = {}): Promis
             onRefreshed(data.access);
           } else {
             clearTokens();
-            localStorage.removeItem('ethio_robotics_user');
+            clearUserProfile();
             window.dispatchEvent(new CustomEvent('auth:logout'));
           }
         } catch {

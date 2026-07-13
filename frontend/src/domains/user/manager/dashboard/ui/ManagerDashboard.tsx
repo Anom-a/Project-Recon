@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Image, FileText, Handshake, ShoppingBag, MessageSquare, DollarSign,
@@ -11,6 +11,13 @@ import { UserProfile, AppNotification, Enrollment, EnrollmentPayment } from '@/s
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import { NavItem } from '@/src/shared/ui/Sidebar';
 import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/src/shared/ui/InlineAlert';
+import {
+  getManagerCommandCenter,
+  type ManagerSectionId,
+  type ManagerHubStats,
+} from '../managerCommandCenter';
+import { summarizeSettled } from '@/src/shared/utils/storage';
 import SponsorManagement from './SponsorManagement';
 import OnlineStoreHub from './OnlineStoreHub';
 import CommunicationsCenter from './CommunicationsCenter';
@@ -30,37 +37,37 @@ import RegistrationManager from '@/src/domains/competition/admin/RegistrationMan
 import MatchManager from '@/src/domains/competition/admin/MatchManager';
 import TeamManager from '@/src/domains/competition/admin/TeamManager';
 import CertificateManager from '@/src/domains/user/shared/ui/CertificateManager';
-import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/src/domains/learning/academics/api/academicApi';
+import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/src/domains/learning/academics/api/academicApi';
 
 interface Props {
   currentUser: UserProfile;
   onLogout: () => void;
 }
 
-type SectionId = 'overview' | 'analytics' | 'academic-catalog' | 'classes' | 'staff-attendance' | 'sponsors' | 'store' | 'events' | 'tournaments' | 'tournament-teams' | 'matches' | 'workshops' | 'participants' | 'announcements' | 'communications' | 'payments' | 'walkin' | 'reports' | 'schools' | 'enrollments' | 'event-registrations' | 'certificates' | 'account';
+type SectionId = ManagerSectionId;
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: Activity, group: 'main' },
-  { id: 'enrollments', label: 'Academic Enrollments', icon: UserPlus, group: 'main' },
-  { id: 'event-registrations', label: 'Event Registrations', icon: UserPlus, group: 'main' },
-  { id: 'certificates', label: 'Certificates', icon: Award, group: 'main' },
-  { id: 'academic-catalog', label: 'Academic Catalog', icon: BookOpen, group: 'main' },
-  { id: 'classes', label: 'Classes', icon: BookOpen, group: 'main' },
-  { id: 'staff-attendance', label: 'Staff Attendance', icon: Calendar, group: 'main' },
-  { id: 'schools', label: 'Branches', icon: Building, group: 'main' },
-  { id: 'payments', label: 'Payments & Sales', icon: DollarSign, group: 'main' },
-  { id: 'reports', label: 'Reports & Data', icon: BarChart3, group: 'main' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, group: 'main' },
-  { id: 'store', label: 'Store & Inventory', icon: ShoppingBag, group: 'main' },
-  { id: 'sponsors', label: 'Sponsors & Partners', icon: Handshake, group: 'main' },
-  { id: 'events', label: 'Events', icon: Calendar, group: 'main' },
-  { id: 'tournaments', label: 'Tournaments', icon: Trophy, group: 'main' },
-  { id: 'tournament-teams', label: 'Teams', icon: Users, group: 'main' },
-  { id: 'matches', label: 'Matches', icon: Trophy, group: 'main' },
-  { id: 'workshops', label: 'Workshops', icon: Building, group: 'main' },
-  { id: 'announcements', label: 'Announcements', icon: Bell, group: 'main' },
-  { id: 'communications', label: 'Communications', icon: MessageSquare, group: 'main' },
-  { id: 'walkin', label: 'Walk-In Registration', icon: Edit3, group: 'main' },
+  { id: 'academic-catalog', label: 'Academic Catalog', icon: BookOpen, group: 'academic' },
+  { id: 'classes', label: 'Classes', icon: BookOpen, group: 'academic' },
+  { id: 'enrollments', label: 'Academic Enrollments', icon: UserPlus, group: 'academic' },
+  { id: 'staff-attendance', label: 'Staff Attendance', icon: Calendar, group: 'academic' },
+  { id: 'certificates', label: 'Certificates', icon: Award, group: 'academic' },
+  { id: 'schools', label: 'Branches', icon: Building, group: 'branches' },
+  { id: 'payments', label: 'Payments & Sales', icon: DollarSign, group: 'finances' },
+  { id: 'store', label: 'Store & Inventory', icon: ShoppingBag, group: 'finances' },
+  { id: 'events', label: 'Events', icon: Calendar, group: 'competition' },
+  { id: 'tournaments', label: 'Tournaments', icon: Trophy, group: 'competition' },
+  { id: 'tournament-teams', label: 'Teams', icon: Users, group: 'competition' },
+  { id: 'matches', label: 'Matches', icon: Trophy, group: 'competition' },
+  { id: 'workshops', label: 'Workshops', icon: Building, group: 'competition' },
+  { id: 'event-registrations', label: 'Event Registrations', icon: UserPlus, group: 'competition' },
+  { id: 'announcements', label: 'Announcements', icon: Bell, group: 'communication' },
+  { id: 'communications', label: 'Communications', icon: MessageSquare, group: 'communication' },
+  { id: 'sponsors', label: 'Sponsors & Partners', icon: Handshake, group: 'partners' },
+  { id: 'reports', label: 'Reports & Data', icon: BarChart3, group: 'reports' },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, group: 'reports' },
+  { id: 'walkin', label: 'Walk-In Registration', icon: Edit3, group: 'operations' },
   { id: 'account', label: 'My Account', icon: User, group: 'system' },
 ];
 
@@ -71,27 +78,50 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
   const [payments, setPayments] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const refreshData = () => {
+  const refreshData = useCallback(() => {
     setLoading(true);
-    Promise.all([
-      fetchStudentsApi().catch(() => []),
-      fetchEnrollmentsApi().catch(() => []),
-      fetchPaymentsApi().catch(() => []),
-      fetchProgramsApi().catch(() => []),
+    setLoadError(null);
+    Promise.allSettled([
+      fetchStudentsApi(),
+      fetchEnrollmentsApi(),
+      fetchPaymentsApi(),
+      fetchProgramsApi(),
     ]).then(([stu, enr, pay, pro]) => {
-      setStudents(Array.isArray(stu) ? stu : []);
-      setEnrollments(Array.isArray(enr) ? enr : []);
-      setPayments(Array.isArray(pay) ? pay : []);
-      setPrograms(Array.isArray(pro) ? pro : []);
-    }).finally(() => setLoading(false));
-  };
+      const summary = summarizeSettled([stu, enr, pay, pro]);
+      if (summary.allFailed) {
+        setLoadError('Unable to load dashboard data. Check your connection and try again.');
+      } else if (summary.anyFailed) {
+        setLoadError('Some dashboard data could not be loaded. Figures may be incomplete.');
+      }
 
-  useEffect(() => { refreshData(); }, []);
+      setStudents(stu.status === 'fulfilled' && Array.isArray(stu.value) ? stu.value : []);
+      setEnrollments(enr.status === 'fulfilled' && Array.isArray(enr.value) ? enr.value : []);
+      setPayments(pay.status === 'fulfilled' && Array.isArray(pay.value) ? pay.value : []);
+      setPrograms(pro.status === 'fulfilled' && Array.isArray(pro.value) ? pro.value : []);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { refreshData(); }, [refreshData]);
 
   const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
   const pendingPayments = enrollments.filter(e => e.status === 'PENDING_PAYMENT');
   const paidPayments = payments.filter(p => p.status === 'PAID');
+
+  const hubStats: ManagerHubStats = useMemo(() => ({
+    students: students.length,
+    activeEnrollments: activeEnrollments.length,
+    pendingPayments: pendingPayments.length,
+    paidPayments: paidPayments.length,
+    programs: programs.length,
+    loading,
+  }), [students.length, activeEnrollments.length, pendingPayments.length, paidPayments.length, programs.length, loading]);
+
+  const commandCenter = useMemo(
+    () => getManagerCommandCenter(activeSection, hubStats),
+    [activeSection, hubStats],
+  );
 
   const renderPage = () => {
     switch (activeSection) {
@@ -136,19 +166,26 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       topNavbar={{
         title: activeLabel,
         subtitle: 'Manager Dashboard',
+        actions: (
+          <button onClick={refreshData} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors" title="Refresh">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        ),
       }}
       onLogout={onLogout}
     >
-      <DashboardCommandCenter
-        title="Operations Command Center"
-        subtitle="Branch activity, CMS work, payments, events, and registration queues."
-        signals={[
-          { label: 'Students', value: String(students.length), detail: 'registered', icon: Users, tone: 'blue' },
-          { label: 'Active Enrollments', value: String(activeEnrollments.length), detail: 'in progress', icon: UserPlus, tone: 'emerald' },
-          { label: 'Payments', value: String(paidPayments.length), detail: 'completed', icon: DollarSign, tone: 'emerald' },
-          { label: 'Programs', value: String(programs.length), detail: 'active offers', icon: BookOpen, tone: 'amber' },
-        ]}
-      />
+      {loadError && (
+        <InlineAlert tone="warning" message={loadError} onRetry={refreshData} onDismiss={() => setLoadError(null)} />
+      )}
+
+      {commandCenter && (
+        <DashboardCommandCenter
+          title={commandCenter.title}
+          subtitle={commandCenter.subtitle}
+          signals={commandCenter.signals}
+          loading={hubStats.loading}
+        />
+      )}
       {renderPage()}
     </AppLayout>
   );
@@ -414,6 +451,7 @@ function ReportsSection() {
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [subPrograms, setSubPrograms] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -425,11 +463,13 @@ function ReportsSection() {
       fetchStudentsApi().catch(() => []),
       fetchClassesApi().catch(() => []),
       fetchProgramsApi().catch(() => []),
+      fetchSubProgramsApi().catch(() => []),
       fetchEnrollmentsApi().catch(() => []),
-    ]).then(([stu, cls, pro, enr]) => {
+    ]).then(([stu, cls, pro, sp, enr]) => {
       setStudents(Array.isArray(stu) ? stu : []);
       setClasses(Array.isArray(cls) ? cls : []);
       setPrograms(Array.isArray(pro) ? pro : []);
+      setSubPrograms(Array.isArray(sp) ? sp : []);
       setEnrollments(Array.isArray(enr) ? enr : []);
     });
   }, []);
@@ -518,8 +558,8 @@ function ReportsSection() {
             className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-sky-400"
           >
             <option value="">Select a sub-program...</option>
-            {classes.map(c => (
-              <option key={c.id} value={c.id}>{c.sub_program_name || c.name}</option>
+            {subPrograms.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </div>
@@ -569,12 +609,20 @@ function RegistrationSection() {
   const [paymentFilter, setPaymentFilter] = useState('all');
 
   useEffect(() => {
-    Promise.all([fetchEnrollmentsApi(), fetchPaymentsApi()])
-      .then(([enrollmentData, paymentData]) => {
+    setLoading(true);
+    setError('');
+    Promise.allSettled([fetchEnrollmentsApi(), fetchPaymentsApi()])
+      .then(([enrollmentRes, paymentRes]) => {
+        const enrollmentData = enrollmentRes.status === 'fulfilled' && Array.isArray(enrollmentRes.value)
+          ? enrollmentRes.value : [];
+        const paymentData = paymentRes.status === 'fulfilled' && Array.isArray(paymentRes.value)
+          ? paymentRes.value : [];
         setRegistrations(enrollmentData);
         setPayments(paymentData);
+        if (enrollmentRes.status === 'rejected' && paymentRes.status === 'rejected') {
+          setError('Could not load registrations');
+        }
       })
-      .catch(err => setError(err instanceof Error ? err.message : 'Could not load registrations'))
       .finally(() => setLoading(false));
   }, []);
 

@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Edit3, BarChart3, Activity, BookOpen, Calendar, FileText, CheckCircle2, DollarSign, RefreshCw, Loader2, AlertCircle, User, GraduationCap, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Users, Edit3, BarChart3, Activity, BookOpen, Calendar, FileText, CheckCircle2, DollarSign, RefreshCw, Loader2, AlertCircle, User, GraduationCap, Clock, Target } from 'lucide-react';
 import { UserProfile, Enrollment, StudentProfile } from '@/src/shared/types';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import { NavItem } from '@/src/shared/ui/Sidebar';
 import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/src/shared/ui/InlineAlert';
+import PageSpinner from '@/src/shared/ui/PageSpinner';
+import EmptyState from '@/src/shared/ui/EmptyState';
+import { getTeacherCommandCenter, type TeacherSectionId } from '../teacherCommandCenter';
 import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
 import {
   loadTeacherDashboardData,
@@ -17,21 +21,25 @@ import PerformanceMetrics from './PerformanceMetrics';
 import ActivityFeed from './ActivityFeed';
 import AttendanceHistory from './AttendanceHistory';
 import Reports from './Reports';
+import LearningMaterialsPanel from '@/src/domains/user/secretary/dashboard/ui/LearningMaterialsPanel';
+import LearningMilestonesManager from '@/src/domains/user/secretary/dashboard/ui/LearningMilestonesManager';
 import { adminGetWorkshops } from '@/src/domains/competition/api/eventsApi';
 import type { BackendWorkshop } from '@/src/domains/competition/api/eventsApi';
 
 interface TeacherDashboardProps { currentUser: UserProfile; onLogout: () => void; }
 
-type SectionId = 'class' | 'workshops' | 'progress' | 'metrics' | 'attendance' | 'activity' | 'reports' | 'account';
+type SectionId = TeacherSectionId;
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'class', label: 'Class Management', icon: Users, group: 'main' },
   { id: 'workshops', label: 'My Workshops', icon: GraduationCap, group: 'main' },
-  { id: 'attendance', label: 'Attendance', icon: Calendar, group: 'main' },
-  { id: 'progress', label: 'Progress', icon: Edit3, group: 'main' },
-  { id: 'metrics', label: 'Performance', icon: BarChart3, group: 'main' },
-  { id: 'activity', label: 'Activity', icon: Activity, group: 'main' },
-  { id: 'reports', label: 'Reports', icon: FileText, group: 'main' },
+  { id: 'attendance', label: 'Attendance', icon: Calendar, group: 'teaching' },
+  { id: 'progress', label: 'Progress', icon: Edit3, group: 'teaching' },
+  { id: 'milestones', label: 'Milestones', icon: Target, group: 'teaching' },
+  { id: 'materials', label: 'Materials', icon: BookOpen, group: 'teaching' },
+  { id: 'metrics', label: 'Performance', icon: BarChart3, group: 'teaching' },
+  { id: 'activity', label: 'Activity', icon: Activity, group: 'teaching' },
+  { id: 'reports', label: 'Reports', icon: FileText, group: 'reports' },
   { id: 'account', label: 'Account', icon: User, group: 'system' },
 ];
 
@@ -68,21 +76,23 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser.role]);
 
-  useEffect(() => { refreshData(); }, []);
+  useEffect(() => { refreshData(); }, [refreshData]);
 
   const fetchMyWorkshops = useCallback(async () => {
     setWorkshopsLoading(true);
     try {
       const data = await adminGetWorkshops();
-      setMyWorkshops(Array.isArray(data) ? data : []);
+      const all = Array.isArray(data) ? data : [];
+      const mine = all.filter(w => w.instructor === currentUser.id);
+      setMyWorkshops(mine);
     } catch {
       setMyWorkshops([]);
     } finally {
       setWorkshopsLoading(false);
     }
-  }, []);
+  }, [currentUser.id]);
 
   useEffect(() => {
     if (activeSection === 'workshops') fetchMyWorkshops();
@@ -100,16 +110,22 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
     return () => { cancelled = true; };
   }, [selectedClassId, mode, allEnrollments, allStudents, loading]);
 
-  const activeEnrollments = allEnrollments.filter(e => e.status === 'ACTIVE');
-  const pendingEnrollments = allEnrollments.filter(e => e.status === 'PENDING_PAYMENT');
+  const classActive = classEnrollments.filter(e => e.status === 'ACTIVE').length;
+  const classPending = classEnrollments.filter(e => e.status === 'PENDING_PAYMENT').length;
+
+  const commandCenter = useMemo(() => getTeacherCommandCenter(activeSection, {
+    classStudents: classStudents.length,
+    classActive,
+    classPending,
+    classesCount: classes.length,
+    workshopsCount: myWorkshops.length,
+    mode,
+    loading,
+  }), [activeSection, classStudents.length, classActive, classPending, classes.length, myWorkshops.length, mode, loading]);
 
   const renderPage = () => {
     if (loading) {
-      return (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-        </div>
-      );
+      return <PageSpinner label="Loading class data" />;
     }
 
     switch (activeSection) {
@@ -136,11 +152,11 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
             {workshopsLoading ? (
               <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-brand-red" /></div>
             ) : myWorkshops.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
-                <GraduationCap className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-bold text-slate-500">No workshops assigned yet</p>
-                <p className="text-xs text-slate-400 mt-1">When an admin or manager assigns you as instructor, your workshops will appear here.</p>
-              </div>
+              <EmptyState
+                icon={GraduationCap}
+                title="No workshops assigned yet"
+                description="When an admin or manager assigns you as instructor, your workshops will appear here."
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {myWorkshops.map(w => (
@@ -178,6 +194,10 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
         );
       case 'progress':
         return <ProgressSubmissions students={classStudents} enrollments={classEnrollments} />;
+      case 'milestones':
+        return <LearningMilestonesManager currentUser={currentUser} />;
+      case 'materials':
+        return <LearningMaterialsPanel currentUser={currentUser} />;
       case 'metrics':
         return <PerformanceMetrics students={classStudents} enrollments={classEnrollments.length ? classEnrollments : allEnrollments} />;
       case 'attendance':
@@ -185,17 +205,7 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
       case 'activity':
         return <ActivityFeed mode={mode} classId={selectedClassId} />;
       case 'reports':
-        return (
-          <Reports
-            classId={selectedClassId}
-            sampleStudentId={
-              mode === 'staff' && classEnrollments[0]?.student
-                ? classEnrollments[0].student
-                : undefined
-            }
-            staffMode={mode === 'staff'}
-          />
-        );
+        return <Reports classId={selectedClassId} />;
       case 'account':
         return <AdminAccount currentUser={currentUser} />;
     }
@@ -226,29 +236,24 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
       onLogout={onLogout}
     >
       {loadError && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {loadError}
-        </div>
+        <InlineAlert tone="error" message={loadError} onRetry={refreshData} onDismiss={() => setLoadError(null)} />
       )}
 
       {mode === 'instructor' && !loading && classes.length === 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          Record attendance for a class first, or ask an administrator to assign you as class instructor.
-        </div>
+        <InlineAlert
+          tone="info"
+          message="Record attendance for a class first, or ask an administrator to assign you as class instructor."
+        />
       )}
 
-      <DashboardCommandCenter
-        title="Instructor Command Center"
-        subtitle="Attendance, progress tracking, and PDF reports via the academic API."
-        signals={[
-          { label: 'Class Students', value: String(classStudents.length), detail: 'selected class', icon: Users, tone: 'blue' },
-          { label: 'Active Enrollments', value: String(activeEnrollments.length || classEnrollments.length), detail: 'current', icon: CheckCircle2, tone: 'emerald' },
-          { label: 'Pending', value: String(pendingEnrollments.length), detail: 'awaiting payment', icon: DollarSign, tone: 'amber' },
-          { label: 'Classes', value: String(classes.length), detail: mode === 'staff' ? 'catalog' : 'from attendance', icon: BookOpen, tone: 'emerald' },
-        ]}
-      />
+      {commandCenter && (
+        <DashboardCommandCenter
+          title={commandCenter.title}
+          subtitle={commandCenter.subtitle}
+          signals={commandCenter.signals}
+          loading={loading}
+        />
+      )}
       {renderPage()}
     </AppLayout>
   );
