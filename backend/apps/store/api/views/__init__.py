@@ -37,6 +37,13 @@ from .checkout import (
     CheckoutView,
     PendingOrderDetailView,
 )
+from .order import (
+    AdminOrderDetailView,
+    AdminOrderListView,
+    AdminOrderStatusView,
+    UserOrderDetailView,
+    UserOrderListView,
+)
 from .payment import (
     PaymentVerifyView,
     PaymentWebhookView,
@@ -86,4 +93,9 @@ __all__ = [
     "PendingOrderDetailView",
     "PaymentVerifyView",
     "PaymentWebhookView",
+    "AdminOrderListView",
+    "AdminOrderDetailView",
+    "AdminOrderStatusView",
+    "UserOrderListView",
+    "UserOrderDetailView",
 ]

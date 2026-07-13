@@ -11,6 +11,9 @@ from apps.store.api.views import (
     AdminInventoryReduceView,
     AdminInventoryRetrieveUpdateView,
     AdminInventoryTransferView,
+    AdminOrderDetailView,
+    AdminOrderListView,
+    AdminOrderStatusView,
     AdminProductActivateView,
     AdminProductArchiveView,
     AdminProductDeactivateView,
@@ -37,6 +40,8 @@ from apps.store.api.views import (
     PublicProductAvailabilityView,
     PublicProductDetailView,
     PublicProductListView,
+    UserOrderDetailView,
+    UserOrderListView,
 )
 
 urlpatterns = [
@@ -205,5 +210,32 @@ urlpatterns = [
         "admin/inventory/transfer/",
         AdminInventoryTransferView.as_view(),
         name="store-admin-inventory-transfer",
+    ),
+    # Admin - Orders
+    path(
+        "admin/orders/",
+        AdminOrderListView.as_view(),
+        name="store-admin-order-list",
+    ),
+    path(
+        "admin/orders/<uuid:pk>/",
+        AdminOrderDetailView.as_view(),
+        name="store-admin-order-detail",
+    ),
+    path(
+        "admin/orders/<uuid:pk>/status/",
+        AdminOrderStatusView.as_view(),
+        name="store-admin-order-status",
+    ),
+    # User - Orders
+    path(
+        "orders/",
+        UserOrderListView.as_view(),
+        name="store-user-order-list",
+    ),
+    path(
+        "orders/<uuid:pk>/",
+        UserOrderDetailView.as_view(),
+        name="store-user-order-detail",
     ),
 ]

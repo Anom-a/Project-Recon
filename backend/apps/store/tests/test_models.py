@@ -9,6 +9,9 @@ from django.utils import timezone
 
 from apps.store.models import (
     BranchInventory,
+    Order,
+    OrderItem,
+    OrderStatusHistory,
     PendingOrder,
     PendingOrderItem,
     Product,
@@ -18,6 +21,7 @@ from apps.store.models import (
     ShoppingCartItem,
     StorePayment,
 )
+from apps.store.models.order import OrderStatus
 
 
 class ProductCategoryModelTest(TestCase):
@@ -416,3 +420,86 @@ class StorePaymentModelTest(TestCase):
         self.assertIsNotNone(payment.id)
         self.assertIsNotNone(payment.created_at)
         self.assertIn("STORE-abc12345-def123456789", str(payment))
+
+
+class OrderModelTest(TestCase):
+    def setUp(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.accounts.models import Branch, User
+
+        self.user = User.objects.create_user(
+            email="order@test.com", password="testpass123"
+        )
+        self.branch = Branch.objects.create(name="Branch", code="BR")
+        self.order = Order.objects.create(
+            order_number="ORD-BR-2026-000001",
+            user=self.user,
+            branch=self.branch,
+            payment_reference="STORE-pay-ref-001",
+            subtotal=100.00,
+            total=115.00,
+            status=OrderStatus.PAID,
+            paid_at=timezone.now(),
+        )
+
+    def test_create_order(self):
+        self.assertEqual(self.order.order_number, "ORD-BR-2026-000001")
+        self.assertEqual(self.order.user, self.user)
+        self.assertEqual(self.order.branch, self.branch)
+        self.assertEqual(float(self.order.subtotal), 100.00)
+        self.assertEqual(float(self.order.total), 115.00)
+        self.assertEqual(self.order.status, OrderStatus.PAID)
+        self.assertIsNotNone(self.order.id)
+        self.assertIsNotNone(self.order.paid_at)
+        self.assertIsNotNone(self.order.created_at)
+        self.assertIn("ORD-BR-2026-000001", str(self.order))
+
+    def test_order_item_creation(self):
+        category = ProductCategory.objects.create(name="Category")
+        product = Product.objects.create(
+            category=category, name="Item", slug="item", sku="ITEM", price=25
+        )
+        item = OrderItem.objects.create(
+            order=self.order,
+            product=product,
+            product_name=product.name,
+            sku=product.sku,
+            quantity=3,
+            unit_price=25.00,
+            subtotal=75.00,
+        )
+        self.assertEqual(item.order, self.order)
+        self.assertEqual(item.product_name, "Item")
+        self.assertEqual(item.quantity, 3)
+        self.assertIn("Item x3", str(item))
+
+    def test_order_status_history_creation(self):
+        history = OrderStatusHistory.objects.create(
+            order=self.order,
+            previous_status=None,
+            new_status=OrderStatus.PAID,
+            changed_by=self.user,
+            notes="Created",
+        )
+        self.assertEqual(history.order, self.order)
+        self.assertIsNone(history.previous_status)
+        self.assertEqual(history.new_status, OrderStatus.PAID)
+        self.assertEqual(history.changed_by, self.user)
+        self.assertIsNotNone(history.changed_at)
+        self.assertIn("(none) → PAID", str(history))
+
+    def test_order_unique_payment_reference(self):
+        with self.assertRaises(IntegrityError):
+            Order.objects.create(
+                order_number="ORD-BR-2026-000002",
+                user=self.user,
+                branch=self.branch,
+                payment_reference="STORE-pay-ref-001",
+                subtotal=50,
+                total=50,
+                status=OrderStatus.PAID,
+                paid_at=timezone.now(),
+            )

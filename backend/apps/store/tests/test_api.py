@@ -7,7 +7,7 @@ from rest_framework.throttling import SimpleRateThrottle
 
 from apps.accounts.models import Branch
 from apps.accounts.services import user_service
-from apps.store.models import Product, ProductCategory, ProductImage
+from apps.store.models import Order, Product, ProductCategory, ProductImage
 from apps.store.services.category_service import (
     create_category,
     deactivate_category,
@@ -758,3 +758,126 @@ class StoreApiTestCase(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # --- Admin Order Endpoints ---
+
+    def _create_paid_pending_order(self):
+        from unittest.mock import patch
+
+        from apps.store.models.pending_order import PendingOrder
+        from apps.store.services.branch_inventory_service import add_inventory
+        from apps.store.services.shopping_cart_service import add_to_cart, get_or_create_cart
+
+        add_inventory(self.branch, self.product, 10)
+        cart = get_or_create_cart(user=self.student)
+        add_to_cart(cart, self.product, self.branch, 2)
+
+        with patch(
+            "apps.store.services.payment_service.shared_initialize_payment"
+        ) as mock_init:
+            mock_init.return_value = {
+                "provider": "chapa",
+                "reference": "STORE-order-test-ref",
+                "status": "success",
+                "checkout_url": "https://checkout.test/",
+            }
+            from apps.store.services.checkout_service import checkout
+            order = checkout(cart, self.branch)
+
+        payment = order.payment
+        with patch(
+            "apps.store.services.payment_service.shared_verify_payment"
+        ) as mock_verify:
+            mock_verify.return_value = {
+                "status": "success",
+                "reference": payment.transaction_reference,
+                "provider": "chapa",
+                "amount": 199.98,
+                "currency": "ETB",
+            }
+            from apps.store.services.payment_service import verify_store_payment
+            verify_store_payment(payment.transaction_reference)
+        return PendingOrder.objects.get(pk=order.pk)
+
+    def test_admin_order_list(self):
+        self._create_paid_pending_order()
+        self._auth(self.super_admin)
+        resp = self.client.get(f"{self.base_url}/admin/orders/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(resp.data), 1)
+
+    def test_admin_order_list_forbidden(self):
+        self._create_paid_pending_order()
+        resp = self.client.get(f"{self.base_url}/admin/orders/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_admin_order_detail(self):
+        pending = self._create_paid_pending_order()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        self._auth(self.super_admin)
+        resp = self.client.get(f"{self.base_url}/admin/orders/{order.pk}/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["order_number"], order.order_number)
+
+    def test_admin_order_status_change(self):
+        pending = self._create_paid_pending_order()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        self._auth(self.super_admin)
+        resp = self.client.post(
+            f"{self.base_url}/admin/orders/{order.pk}/status/",
+            {"status": "PREPARING"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["status"], "PREPARING")
+
+    def test_admin_order_status_invalid_transition(self):
+        pending = self._create_paid_pending_order()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        self._auth(self.super_admin)
+        resp = self.client.post(
+            f"{self.base_url}/admin/orders/{order.pk}/status/",
+            {"status": "COMPLETED"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_admin_order_status_forbidden(self):
+        pending = self._create_paid_pending_order()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        resp = self.client.post(
+            f"{self.base_url}/admin/orders/{order.pk}/status/",
+            {"status": "PREPARING"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # --- User Order Endpoints ---
+
+    def test_user_order_list(self):
+        pending = self._create_paid_pending_order()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        self._auth(self.student)
+        resp = self.client.get(f"{self.base_url}/orders/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        order_ids = [o["id"] for o in resp.data]
+        self.assertIn(str(order.pk), order_ids)
+
+    def test_user_order_list_unauthenticated(self):
+        resp = self.client.get(f"{self.base_url}/orders/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_order_detail(self):
+        pending = self._create_paid_pending_order()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        self._auth(self.student)
+        resp = self.client.get(f"{self.base_url}/orders/{order.pk}/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["order_number"], order.order_number)
+
+    def test_user_order_detail_not_owner(self):
+        pending = self._create_paid_pending_order()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        self._auth(self.branch_manager)
+        resp = self.client.get(f"{self.base_url}/orders/{order.pk}/")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)

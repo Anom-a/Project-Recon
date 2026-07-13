@@ -45,11 +45,21 @@ from apps.store.services.branch_inventory_service import (
     transfer_inventory,
     validate_stock,
 )
+from apps.store.models.order import Order, OrderItem, OrderStatus
+from apps.store.models.payment import StorePayment
 from apps.store.models.pending_order import PendingOrder, PendingOrderItem
 from apps.store.services.checkout_service import checkout
 from apps.store.services.payment_service import (
     initialize_store_payment,
     verify_store_payment,
+)
+from apps.store.services.order_service import (
+    change_order_status,
+    create_order_from_pending_order,
+    generate_order_number,
+    get_admin_orders,
+    get_order_or_404,
+    get_user_orders,
 )
 from apps.store.services.pending_order_service import (
     expire_expired_pending_orders,
@@ -758,3 +768,162 @@ class StorePaymentServiceTest(TestCase):
 
         with self.assertRaises(ValidationError):
             verify_store_payment("STORE-abc12345-def123456789")
+
+
+class OrderServiceTest(TestCase):
+    def setUp(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.accounts.models import Branch, User
+
+        from apps.store.constants import PaymentStatus
+
+        self.user = User.objects.create_user(
+            email="ordersvc@test.com",
+            password="testpass123",
+        )
+        self.branch = Branch.objects.create(name="Branch", code="BR")
+        self.pending_order = PendingOrder.objects.create(
+            user=self.user,
+            branch=self.branch,
+            subtotal=100.00,
+            total=115.00,
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
+        self.payment = StorePayment.objects.create(
+            pending_order=self.pending_order,
+            amount=115.00,
+            transaction_reference="STORE-ordsvc-ref-001",
+            status=PaymentStatus.PAID,
+        )
+        self.pending_order.payment_reference = "STORE-ordsvc-ref-001"
+        self.pending_order.save(update_fields=["payment_reference"])
+
+    def test_generate_order_number(self):
+        num = generate_order_number(self.branch)
+        self.assertTrue(num.startswith(f"ORD-{self.branch.code}-"))
+        self.assertEqual(len(num.split("-")[-1]), 6)
+
+    def test_create_order_from_paid_pending_order(self):
+        order = create_order_from_pending_order(self.pending_order, actor=self.user)
+        self.assertEqual(order.user, self.user)
+        self.assertEqual(order.branch, self.branch)
+        self.assertEqual(float(order.subtotal), 100.00)
+        self.assertEqual(float(order.total), 115.00)
+        self.assertEqual(order.status, OrderStatus.PAID)
+        self.assertIsNotNone(order.paid_at)
+        self.assertIsNotNone(order.order_number)
+        self.assertTrue(
+            order.order_number.startswith(f"ORD-{self.branch.code}-")
+        )
+
+    def test_create_order_idempotent(self):
+        order1 = create_order_from_pending_order(self.pending_order, actor=self.user)
+        order2 = create_order_from_pending_order(self.pending_order, actor=self.user)
+        self.assertEqual(order1.pk, order2.pk)
+
+    def test_create_order_unpaid_raises_error(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        unpaid = PendingOrder.objects.create(
+            user=self.user,
+            branch=self.branch,
+            subtotal=50,
+            total=50,
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
+        StorePayment.objects.create(
+            pending_order=unpaid,
+            amount=50,
+            transaction_reference="STORE-ordsvc-unpaid",
+            status="PENDING",
+        )
+        with self.assertRaises(ValidationError):
+            create_order_from_pending_order(unpaid)
+
+    def test_create_order_with_items(self):
+        category = ProductCategory.objects.create(name="Category")
+        product = Product.objects.create(
+            category=category, name="Item", slug="item", sku="ITEM", price=25
+        )
+        PendingOrderItem.objects.create(
+            pending_order=self.pending_order,
+            product=product,
+            quantity=3,
+            unit_price=25.00,
+            subtotal=75.00,
+        )
+        product2 = Product.objects.create(
+            category=category, name="Item2", slug="item2", sku="ITEM2", price=20
+        )
+        PendingOrderItem.objects.create(
+            pending_order=self.pending_order,
+            product=product2,
+            quantity=2,
+            unit_price=20.00,
+            subtotal=40.00,
+        )
+        order = create_order_from_pending_order(self.pending_order, actor=self.user)
+        items = order.items.all()
+        self.assertEqual(len(items), 2)
+
+    def test_get_order_or_404(self):
+        order = create_order_from_pending_order(self.pending_order)
+        fetched = get_order_or_404(order.pk)
+        self.assertEqual(fetched.pk, order.pk)
+
+    def test_get_order_or_404_not_found(self):
+        with self.assertRaises(NotFound):
+            get_order_or_404("00000000-0000-0000-0000-000000000000")
+
+    def test_get_user_orders(self):
+        order = create_order_from_pending_order(self.pending_order)
+        qs = get_user_orders(self.user)
+        self.assertEqual(qs.count(), 1)
+        self.assertEqual(qs.first().pk, order.pk)
+
+    def test_get_user_orders_excludes_other_users(self):
+        from apps.accounts.models import User
+
+        other = User.objects.create_user(
+            email="other@test.com", password="testpass123"
+        )
+        create_order_from_pending_order(self.pending_order)
+        qs = get_user_orders(other)
+        self.assertEqual(qs.count(), 0)
+
+    def test_get_admin_orders(self):
+        create_order_from_pending_order(self.pending_order)
+        qs = get_admin_orders()
+        self.assertEqual(qs.count(), 1)
+
+    def test_change_order_status_valid_transition(self):
+        order = create_order_from_pending_order(self.pending_order)
+        change_order_status(order, OrderStatus.PREPARING, actor=self.user)
+        updated = get_order_or_404(order.pk)
+        self.assertEqual(updated.status, OrderStatus.PREPARING)
+        history = updated.status_history.all()
+        self.assertEqual(len(history), 2)
+        self.assertEqual(history[1].previous_status, OrderStatus.PAID)
+        self.assertEqual(history[1].new_status, OrderStatus.PREPARING)
+
+    def test_change_order_status_invalid_transition(self):
+        order = create_order_from_pending_order(self.pending_order)
+        with self.assertRaises(ValidationError):
+            change_order_status(order, OrderStatus.COMPLETED)
+
+    def test_change_order_status_invalid_status(self):
+        order = create_order_from_pending_order(self.pending_order)
+        with self.assertRaises(ValidationError):
+            change_order_status(order, "INVALID_STATUS")
+
+    def test_change_order_status_to_completed_sets_completed_at(self):
+        order = create_order_from_pending_order(self.pending_order)
+        change_order_status(order, OrderStatus.PREPARING, actor=self.user)
+        change_order_status(order, OrderStatus.READY_FOR_PICKUP, actor=self.user)
+        change_order_status(order, OrderStatus.COMPLETED, actor=self.user)
+        updated = get_order_or_404(order.pk)
+        self.assertEqual(updated.status, OrderStatus.COMPLETED)
+        self.assertIsNotNone(updated.completed_at)

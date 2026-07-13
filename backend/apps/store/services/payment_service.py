@@ -98,6 +98,9 @@ def verify_store_payment(reference: str) -> StorePayment:
         pending_order.payment_reference = reference
         pending_order.save(update_fields=["payment_reference"])
 
+        from apps.store.services.order_service import create_order_from_pending_order
+        create_order_from_pending_order(pending_order, actor=None)
+
     elif result["status"] in ("failed", "cancelled"):
         payment.status = PaymentStatus.FAILED
         payment.save(update_fields=["status"])
