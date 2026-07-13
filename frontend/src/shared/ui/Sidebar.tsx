@@ -72,7 +72,7 @@ export function Sidebar({
     const label = groupLabels[group] || group;
     return (
       <div key={group} className="mb-1">
-        <div className="sidebar-group-label px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+        <div className="sidebar-group-label px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
           {!collapsed && <span>{label}</span>}
         </div>
         <div className="flex flex-col gap-px">
@@ -86,20 +86,20 @@ export function Sidebar({
                   collapsed ? 'justify-center px-2 py-2.5 mx-auto' : 'gap-3 px-3 py-2'
                 } ${
                   isActive
-                    ? 'bg-brand-red/8 text-brand-red'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    ? 'bg-brand-blue/10 text-brand-blue shadow-sm ring-1 ring-brand-blue/10'
+                    : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100/80'
                 }`}
                 title={collapsed ? item.label : undefined}
               >
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active-indicator"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-brand-red"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-brand-blue"
                     transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                   />
                 )}
                 <item.icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${
-                  isActive ? 'text-brand-red' : 'text-slate-400 group-hover:text-slate-600'
+                  isActive ? 'text-brand-blue' : 'text-slate-400 group-hover:text-slate-700'
                 }`} />
                 <span className={`sidebar-nav-label text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis ${
                   isActive ? 'font-semibold' : ''
@@ -180,13 +180,13 @@ export function Sidebar({
         {/* Footer */}
         <div className="sidebar-footer">
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'}`}>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-blue-dark flex items-center justify-center text-white font-bold text-xs shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-brand-blue-dark flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
               {userName?.charAt(0) || 'U'}
             </div>
             {!collapsed && (
               <div className="sidebar-user-info min-w-0 flex-1">
-                <p className="text-xs font-semibold text-slate-800 truncate leading-tight">{userName || title}</p>
-                <p className="text-[10px] font-medium text-slate-400 truncate">{userRole || 'User'}</p>
+                <p className="text-xs font-semibold text-slate-900 truncate leading-tight">{userName || title}</p>
+                <p className="text-[10px] font-medium text-slate-500 truncate">{userRole || 'User'}</p>
               </div>
             )}
           </div>
@@ -212,7 +212,7 @@ export function Sidebar({
             return (
               <button key={item.id} onClick={() => onSectionChange(item.id)}
                 className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[44px] ${
-                  isActive ? 'text-brand-red' : 'text-slate-400'
+                  isActive ? 'text-brand-blue' : 'text-slate-400'
                 }`}
               >
                 <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} />

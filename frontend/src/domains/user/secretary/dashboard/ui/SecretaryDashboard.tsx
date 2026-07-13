@@ -3,7 +3,7 @@ import { UserPlus, Users, DollarSign, Award, FileText, LayoutDashboard, RefreshC
 import { UserProfile } from '@/src/shared/types';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import { NavItem } from '@/src/shared/ui/Sidebar';
-import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
+import DashboardCommandCenter, { type DashboardSignal } from '@/src/shared/ui/DashboardCommandCenter';
 import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
 import RegistrationManager from '@/src/domains/competition/admin/RegistrationManager';
 import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentCertificatesApi, fetchCertificateTemplatesApi, fetchMilestonesApi, fetchLearningMaterialsApi, fetchEnrollmentPeriodsApi } from '@/src/domains/learning/academics/api/academicApi';
@@ -44,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
 export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
   const [loading, setLoading] = useState(false);
-  const [signals, setSignals] = useState([
+  const [signals, setSignals] = useState<DashboardSignal[]>([
     { label: 'Pending Payments', value: '—', detail: 'loading...', icon: UserPlus, tone: 'amber' as const },
     { label: 'Active Enrollments', value: '—', detail: 'loading...', icon: Users, tone: 'emerald' as const },
     { label: 'Today\'s Payments', value: '—', detail: 'loading...', icon: DollarSign, tone: 'blue' as const },

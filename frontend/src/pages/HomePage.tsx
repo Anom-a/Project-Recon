@@ -121,9 +121,10 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
-        className="bg-gradient-to-r from-brand-blue via-brand-blue-dark to-brand-blue py-12 relative overflow-hidden"
+        className="relative overflow-hidden bg-slate-950 py-12"
       >
-        <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div className="absolute inset-0 opacity-[0.18] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-brand-blue via-brand-red to-brand-blue" />
         <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
@@ -142,7 +143,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                     transition={{ delay: Math.min(i * 0.1, 0.6) }}
                   className="text-center"
                 >
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl ring-1 ring-white/15 flex items-center justify-center mx-auto mb-3">
                     <StatIcon className="w-5 h-5 text-white" />
                   </div>
                   <p className="font-black text-3xl md:text-4xl text-white tracking-tight">{stat.value}</p>
@@ -154,7 +155,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         </div>
       </motion.section>
 
-      <section className="border-y border-brand-border/70 bg-white/80 py-10 overflow-hidden relative shadow-premium-sm" id="sponsor-banner">
+      <section className="border-y border-brand-border/70 bg-white/90 py-10 overflow-hidden relative shadow-premium-sm" id="sponsor-banner">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#25338d]/5 to-transparent animate-glow-shift opacity-50" />
 
         <div className="max-w-7xl mx-auto px-6 md:px-12 relative">
@@ -222,7 +223,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-6 md:px-12 py-20" id="academic-programs">
+      <section className="section-shell py-20" id="academic-programs">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -230,8 +231,8 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
           transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="text-center max-w-xl mx-auto mb-14"
         >
-          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#25338d]">Coaching Curriculum</span>
-          <h3 className="font-display font-medium text-slate-900 tracking-tight mt-1" style={{ fontSize: 'clamp(28px, 4vw, 36px)' }}>
+          <span className="eyebrow">Coaching Curriculum</span>
+          <h3 className="font-display font-semibold text-slate-950 tracking-tight mt-2" style={{ fontSize: 'clamp(28px, 4vw, 38px)' }}>
             World-Class Robotics Tracks
           </h3>
           <p className="font-sans text-sm text-brand-muted-dark mt-2">
@@ -242,7 +243,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         {programsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[0, 1, 2].map((item) => (
-              <div key={item} className="bg-white rounded-card shadow-premium-sm border border-brand-border-light/45 overflow-hidden">
+              <div key={item} className="surface-card rounded-card overflow-hidden">
                 <div className="aspect-video w-full bg-slate-100 animate-pulse" />
                 <div className="p-6 space-y-4">
                   <div className="h-4 w-28 rounded-full bg-slate-100 animate-pulse" />
@@ -258,7 +259,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
             ))}
           </div>
         ) : programs.length === 0 ? (
-          <div className="border border-dashed border-brand-border bg-white/80 px-6 py-12 text-center shadow-premium-sm">
+            <div className="surface-card rounded-card border-dashed px-6 py-12 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#25338d]/10">
               <BookOpen className="h-5 w-5 text-[#25338d]" />
             </div>
@@ -276,7 +277,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: Math.min(idx * 0.15, 0.6) }}
-              className="bg-white rounded-card shadow-premium-sm hover:shadow-premium-lg border border-brand-border-light/45 overflow-hidden flex flex-col group h-full transition-all duration-500 card-float hover:shadow-[0_20px_60px_-8px_rgba(37,51,141,0.15)] hover:border-[#25338d]/20"
+              className="surface-card interactive-lift rounded-card overflow-hidden flex flex-col group h-full"
             >
               <div className="relative aspect-video w-full bg-slate-100 overflow-hidden cursor-pointer" onClick={() => onSetSelectedProgramSpec(prog)}>
                 {prog.image && <img src={prog.image} alt={prog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />}
@@ -314,14 +315,14 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               <div className="px-6 pb-6 pt-1 flex items-center gap-2">
                 <button
                   onClick={() => onEnrollInProgram(prog.id)}
-                  className="btn-ripple flex-1 bg-gradient-to-r from-brand-red to-brand-red-dark text-white hover:shadow-lg hover:shadow-brand-red/25 font-sans font-semibold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  className="btn-ripple flex-1 bg-gradient-to-r from-brand-red to-brand-red-dark text-white hover:shadow-lg hover:shadow-brand-red/25 font-sans font-semibold text-xs py-3 rounded-lg transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
                 >
                   <BookOpen className="w-4 h-4" />
                   <span>Enroll Now</span>
                 </button>
                 <button
                   onClick={() => onSetSelectedProgramSpec(prog)}
-                  className="p-3 text-slate-400 hover:text-brand-red hover:bg-brand-red/5 rounded-xl border border-slate-200 transition-colors"
+                  className="p-3 text-slate-400 hover:text-brand-red hover:bg-brand-red/5 rounded-lg border border-slate-200 transition-colors"
                   title="View Curriculum Details"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -333,7 +334,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         )}
       </section>
 
-      <section className="max-w-7xl mx-auto px-6 md:px-12 py-10" id="video-demo">
+      <section className="section-shell py-10" id="video-demo">
         {(() => {
           const DEMO_SLIDES = [
             {
@@ -372,7 +373,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
             
             <div className="flex flex-col gap-3">
               {faqs.map((faq) => (
-                <div key={faq.id} className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                <div key={faq.id} className="border border-slate-200 rounded-card overflow-hidden bg-slate-50/50 hover:bg-slate-50 transition-colors">
                   <button 
                     onClick={() => setOpenFaq(openFaq === faq.id ? null : faq.id)}
                     className="w-full flex items-center justify-between p-4 text-left font-sans font-semibold text-slate-900 focus:outline-none"
@@ -401,7 +402,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         </section>
       )}
 
-      <section className="max-w-7xl mx-auto px-6 md:px-12 py-20" id="photo-gallery">
+      <section className="section-shell py-20" id="photo-gallery">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -409,8 +410,8 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
           transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="text-center max-w-xl mx-auto mb-14"
         >
-          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#25338d]">Photo Gallery</span>
-          <h3 className="font-display font-medium text-slate-900 tracking-tight mt-1" style={{ fontSize: 'clamp(28px, 4vw, 36px)' }}>
+          <span className="eyebrow">Photo Gallery</span>
+          <h3 className="font-display font-semibold text-slate-950 tracking-tight mt-2" style={{ fontSize: 'clamp(28px, 4vw, 38px)' }}>
             Stories in Snapshots
           </h3>
           <p className="font-sans text-sm text-brand-muted-dark mt-2">
@@ -435,7 +436,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: Math.min(idx * 0.08, 0.6) }}
-              className="group relative rounded-xl overflow-hidden border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all aspect-[4/3]"
+              className="group relative rounded-card overflow-hidden border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all aspect-[4/3]"
             >
               <img src={photo.src} alt={photo.label} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
@@ -499,7 +500,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="bg-slate-900/40 backdrop-blur-md p-6 md:p-8 rounded-modal border border-slate-800/80"
+            className="bg-slate-900/60 backdrop-blur-md p-6 md:p-8 rounded-modal border border-slate-800/80 shadow-2xl shadow-black/20"
           >
             <h4 className="font-display font-bold text-lg text-white mb-2 flex items-center gap-2">
               <Globe2 className="w-5 h-5 text-[#ed1c24]" />

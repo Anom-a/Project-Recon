@@ -23,10 +23,20 @@ const SLIDER_IMAGES = [
 
 const SLIDE_DURATION = 6000;
 
+const HERO_PARTICLES = Array.from({ length: 15 }, (_, i) => ({
+  width: 2 + ((i * 7) % 5),
+  left: (i * 23 + 11) % 100,
+  top: (i * 31 + 17) % 100,
+  drift: i % 2 === 0 ? 15 : -15,
+  duration: 4 + (i % 5),
+  delay: (i % 6) * 0.45,
+  color: i % 3 === 0 ? 'rgba(237,28,36,0.3)' : i % 3 === 1 ? 'rgba(87,223,254,0.25)' : 'rgba(255,255,255,0.2)',
+}));
+
 const stagger = (delay: number) => ({
   initial: { opacity: 0, y: 24 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.7, delay, ease: [0.25, 0.46, 0.45, 0.94] },
+  transition: { duration: 0.7, delay, ease: 'easeOut' as const },
 });
 
 interface HeroProps {
@@ -63,7 +73,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
 
   return (
     <section
-      className="relative w-full min-h-[720px] lg:min-h-[820px] flex items-center justify-center overflow-hidden pt-12"
+      className="relative flex min-h-[calc(100svh-32px)] w-full items-center justify-center overflow-hidden pt-12"
       id="hero-banner"
     >
       {/* Background Image Slider */}
@@ -85,11 +95,11 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
         {/* Vibrant brand gradient overlay */}
         <div 
           className="absolute inset-0 z-[1]" 
-          style={{ background: 'linear-gradient(135deg, rgba(37,51,141,0.55) 0%, rgba(17,26,95,0.40) 35%, rgba(8,12,50,0.45) 65%, rgba(237,28,36,0.12) 100%)' }}
+          style={{ background: 'linear-gradient(135deg, rgba(11,18,50,0.78) 0%, rgba(17,26,95,0.58) 36%, rgba(8,12,50,0.54) 65%, rgba(237,28,36,0.18) 100%)' }}
         />
         <div 
           className="absolute inset-0 z-[2]" 
-          style={{ background: 'linear-gradient(180deg, rgba(37,51,141,0.08) 0%, transparent 40%, rgba(237,28,36,0.08) 100%)', mixBlendMode: 'overlay' }}
+          style={{ background: 'linear-gradient(180deg, rgba(5,8,24,0.24) 0%, transparent 42%, rgba(5,8,24,0.62) 100%)' }}
         />
 
         {/* Watermark logo */}
@@ -99,26 +109,26 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
 
         {/* Parallax particles */}
         <div className="absolute inset-0 z-[3] pointer-events-none overflow-hidden">
-          {[...Array(15)].map((_, i) => (
+          {HERO_PARTICLES.map((particle, i) => (
             <motion.div
               key={i}
               className="absolute rounded-full"
               style={{
-                width: Math.random() * 4 + 2 + 'px',
-                height: Math.random() * 4 + 2 + 'px',
-                left: Math.random() * 100 + '%',
-                top: Math.random() * 100 + '%',
-                background: i % 3 === 0 ? 'rgba(237,28,36,0.3)' : i % 3 === 1 ? 'rgba(87,223,254,0.25)' : 'rgba(255,255,255,0.2)',
+                width: `${particle.width}px`,
+                height: `${particle.width}px`,
+                left: `${particle.left}%`,
+                top: `${particle.top}%`,
+                background: particle.color,
               }}
               animate={{
                 y: [0, -30, 0],
-                x: [0, Math.random() > 0.5 ? 15 : -15, 0],
+                x: [0, particle.drift, 0],
                 opacity: [0.2, 0.6, 0.2],
               }}
               transition={{
-                duration: 4 + Math.random() * 4,
+                duration: particle.duration,
                 repeat: Infinity,
-                delay: Math.random() * 3,
+                delay: particle.delay,
                 ease: 'easeInOut',
               }}
             />
@@ -135,7 +145,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
             className={`rounded-full transition-all duration-500 ${
               idx === currentSlide 
                 ? 'w-6 h-2 bg-white shadow-[0_0_8px_rgba(255,255,255,0.4)]' 
-                : 'w-2 h-2 bg-white/30 hover:bg-slate-1000'
+                : 'w-2 h-2 bg-white/30 hover:bg-white/70'
             }`}
             aria-label={`Go to slide ${idx + 1}`}
           />
@@ -143,8 +153,8 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 py-14 lg:py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr] gap-10 lg:gap-14 items-center">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-14 md:px-12 lg:py-20">
+        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,0.78fr)] lg:gap-12">
           <div className="flex flex-col items-center lg:items-start gap-6 text-center lg:text-left">
           
             {/* Logo */}
@@ -152,7 +162,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
               initial={{ opacity: 0, scale: 0.85, y: -20 }}
               animate={mounted ? { opacity: 1, scale: 1, y: 0 } : {}}
               transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="rounded-2xl bg-white/92 p-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)] ring-1 ring-white/40"
+              className="rounded-xl bg-white/95 p-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)] ring-1 ring-white/40"
             >
               <BrandLogo className="h-20 w-[220px] sm:h-24 sm:w-[270px]" />
             </motion.div>
@@ -201,7 +211,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
             {/* Description */}
             <motion.p
               {...stagger(0.45)}
-              className="font-sans text-slate-200/95 max-w-2xl leading-relaxed drop-shadow-[0_1px_6px_rgba(0,0,0,0.4)]"
+              className="font-sans text-slate-100/95 max-w-2xl leading-relaxed drop-shadow-[0_1px_6px_rgba(0,0,0,0.4)]"
               style={{ fontSize: 'clamp(16px, 2.5vw, 19px)' }}
               id="hero-description"
             >
@@ -305,7 +315,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
 
               <button
                 onClick={onShopStore}
-                className="group relative inline-flex items-center justify-center font-sans font-semibold text-sm bg-slate-100 text-slate-900 border border-slate-200 px-8 py-4 rounded-xl hover:bg-slate-200 hover:-translate-y-1 active:scale-[0.97] transition-all duration-300 overflow-hidden"
+                className="group relative inline-flex items-center justify-center font-sans font-semibold text-sm bg-white/12 text-white border border-white/25 px-8 py-4 rounded-xl backdrop-blur-md hover:bg-white/20 hover:-translate-y-1 active:scale-[0.97] transition-all duration-300 overflow-hidden"
                 id="btn-shop-store"
               >
                 <span className="relative z-[1] flex items-center gap-2">
