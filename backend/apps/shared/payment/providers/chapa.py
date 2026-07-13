@@ -34,7 +34,11 @@ from apps.shared.payment.exceptions import (
     PaymentServerError,
 )
 from apps.shared.payment.providers.base import BasePaymentProvider
-from apps.shared.payment.types import InitializationResponse, VerificationResponse
+from apps.shared.payment.types import (
+    InitializationResponse,
+    RefundResponse,
+    VerificationResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -231,6 +235,57 @@ class ChapaPaymentProvider(BasePaymentProvider):
         self._check_http_errors(response, data, context="verification")
 
         return self._normalize_verify_response(data, reference)
+
+    def refund(self, reference: str, amount: Decimal) -> RefundResponse:
+        """Refund a Chapa payment by transaction reference.
+
+        Sends a POST request to Chapa's ``/transaction/refund`` endpoint
+        and normalises the response.
+
+        Args:
+            reference: The transaction reference to refund.
+            amount: The amount to refund as a ``Decimal``.
+
+        Returns:
+            Normalised ``RefundResponse``.
+
+        Raises:
+            PaymentAuthenticationError: On 401/403 responses.
+            PaymentRateLimitError: On 429 responses.
+            PaymentServerError: On 5xx responses.
+            PaymentProviderError: On network errors or malformed JSON.
+        """
+        logger.info(
+            "Chapa refund: reference=%s amount=%s", reference, amount
+        )
+
+        payload = {"tx_ref": reference, "amount": str(amount)}
+        url = f"{self._base_url}/transaction/refund"
+
+        response = self._make_request("POST", url, json=payload)
+        data = self._parse_json(response, context="refund")
+        self._check_http_errors(response, data, context="refund")
+
+        return self._normalize_refund_response(data, reference, amount)
+
+    @staticmethod
+    def _normalize_refund_response(
+        data: dict,
+        reference: str,
+        amount: Decimal,
+    ) -> RefundResponse:
+        """Normalise a successful Chapa refund response."""
+        inner: dict = data.get("data", {})
+        return RefundResponse(
+            provider=PROVIDER_NAME,
+            status=data.get("status", ""),
+            provider_status=data.get("status", ""),
+            reference=reference,
+            provider_refund_id=inner.get("reference"),
+            amount=amount,
+            currency="ETB",
+            raw=data,
+        )
 
     # ------------------------------------------------------------------
     # Request helpers

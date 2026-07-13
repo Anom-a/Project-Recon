@@ -421,6 +421,21 @@ class StorePaymentModelTest(TestCase):
         self.assertIsNotNone(payment.created_at)
         self.assertIn("STORE-abc12345-def123456789", str(payment))
 
+    def test_payment_refund_fields(self):
+        from apps.store.constants import PaymentStatus
+        from django.utils import timezone
+        payment = StorePayment.objects.create(
+            pending_order=self.order,
+            amount=100.00,
+            transaction_reference="STORE-refund-test-ref",
+            status=PaymentStatus.REFUNDED,
+            refunded_at=timezone.now(),
+            refund_reference="PROVIDER-REFUND-001",
+        )
+        self.assertEqual(payment.status, PaymentStatus.REFUNDED)
+        self.assertIsNotNone(payment.refunded_at)
+        self.assertEqual(payment.refund_reference, "PROVIDER-REFUND-001")
+
 
 class OrderModelTest(TestCase):
     def setUp(self):
@@ -503,3 +518,13 @@ class OrderModelTest(TestCase):
                 status=OrderStatus.PAID,
                 paid_at=timezone.now(),
             )
+
+    def test_order_cancelled_and_refunded_timestamps(self):
+        from django.utils import timezone
+        now = timezone.now()
+        self.order.cancelled_at = now
+        self.order.refunded_at = now
+        self.order.save(update_fields=["cancelled_at", "refunded_at"])
+        self.order.refresh_from_db()
+        self.assertIsNotNone(self.order.cancelled_at)
+        self.assertIsNotNone(self.order.refunded_at)

@@ -26,7 +26,11 @@ from django.conf import settings
 
 from apps.shared.payment.exceptions import PaymentConfigurationError
 from apps.shared.payment.providers.base import BasePaymentProvider
-from apps.shared.payment.types import InitializationResponse, VerificationResponse
+from apps.shared.payment.types import (
+    InitializationResponse,
+    RefundResponse,
+    VerificationResponse,
+)
 from apps.shared.audit.services import log_action
 
 def initialize_payment(
@@ -89,6 +93,25 @@ def verify_payment(reference: str) -> VerificationResponse:
 
     provider = _get_provider()
     return provider.verify(reference)
+
+
+def refund_payment(reference: str, amount: Decimal) -> RefundResponse:
+    """Refund a payment through the active provider.
+
+    Args:
+        reference: The transaction reference of the payment to refund.
+        amount: The amount to refund.
+
+    Returns:
+        Normalised ``RefundResponse`` dict.
+
+    Raises:
+        PaymentConfigurationError: If the provider key is unknown.
+        PaymentProviderError: If the provider encounters an
+            infrastructure failure.
+    """
+    provider = _get_provider()
+    return provider.refund(reference=reference, amount=amount)
 
 
 def _get_provider() -> BasePaymentProvider:

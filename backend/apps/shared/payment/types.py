@@ -66,3 +66,28 @@ class VerificationResponse(TypedDict):
     amount: Optional[Decimal]
     currency: str
     raw: dict
+
+
+class RefundResponse(TypedDict):
+    """Normalised response from a payment refund request.
+
+    Attributes:
+        provider: Identifier of the payment provider (e.g. ``"chapa"``).
+        status: Normalised status string (e.g. ``"success"``, ``"failed"``).
+        provider_status: Raw status string returned by the provider.
+        reference: Original transaction reference that was refunded.
+        provider_refund_id: Provider-assigned refund identifier, or
+            ``None`` if not returned.
+        amount: Refund amount as a ``Decimal``.
+        currency: ISO 4217 currency code (e.g. ``"ETB"``).
+        raw: Complete raw response payload from the provider.
+    """
+
+    provider: str
+    status: str
+    provider_status: str
+    reference: str
+    provider_refund_id: Optional[str]
+    amount: Decimal
+    currency: str
+    raw: dict

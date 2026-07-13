@@ -13,7 +13,11 @@ from abc import ABC, abstractmethod
 from decimal import Decimal
 from typing import Optional
 
-from apps.shared.payment.types import InitializationResponse, VerificationResponse
+from apps.shared.payment.types import (
+    InitializationResponse,
+    RefundResponse,
+    VerificationResponse,
+)
 
 
 class BasePaymentProvider(ABC):
@@ -64,6 +68,25 @@ class BasePaymentProvider(ABC):
 
         Returns:
             Normalised ``VerificationResponse`` dict.
+
+        Raises:
+            PaymentProviderError: On infrastructure failure.
+        """
+
+    @abstractmethod
+    def refund(
+        self,
+        reference: str,
+        amount: Decimal,
+    ) -> RefundResponse:
+        """Refund a previous payment transaction.
+
+        Args:
+            reference: The transaction reference of the payment to refund.
+            amount: The amount to refund as a ``Decimal``.
+
+        Returns:
+            Normalised ``RefundResponse`` dict.
 
         Raises:
             PaymentProviderError: On infrastructure failure.

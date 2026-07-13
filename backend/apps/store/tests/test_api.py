@@ -934,3 +934,144 @@ class StoreApiTestCase(APITestCase):
 
         inv = BranchInventory.objects.get(branch=self.branch, product=self.product)
         self.assertEqual(inv.quantity, 7)
+
+    # --- Admin Refund / Cancel Endpoints ---
+
+    def test_admin_cancel_order_via_status(self):
+        from unittest.mock import patch
+
+        from apps.store.models import BranchInventory
+        from apps.store.services.branch_inventory_service import add_inventory
+        from apps.store.services.shopping_cart_service import add_to_cart, get_or_create_cart
+
+        add_inventory(self.branch, self.product, 10)
+        self._auth(self.student)
+        cart = get_or_create_cart(user=self.student)
+        add_to_cart(cart, self.product, self.branch, 2)
+
+        with patch(
+            "apps.store.services.payment_service.shared_initialize_payment"
+        ) as mock_init:
+            mock_init.return_value = {
+                "provider": "chapa",
+                "reference": "STORE-cancel-test-ref",
+                "status": "success",
+                "checkout_url": "https://checkout.test/",
+            }
+            resp = self.client.post(
+                f"{self.base_url}/cart/checkout/",
+                {"branch": str(self.branch.pk)},
+                format="json",
+            )
+            pending_id = resp.data["id"]
+
+        from apps.store.models.pending_order import PendingOrder
+        pending = PendingOrder.objects.get(pk=pending_id)
+        payment = pending.payment
+
+        with patch(
+            "apps.store.services.payment_service.shared_verify_payment"
+        ) as mock_verify:
+            mock_verify.return_value = {
+                "status": "success",
+                "reference": payment.transaction_reference,
+                "provider": "chapa",
+                "amount": 199.98,
+                "currency": "ETB",
+            }
+            self.client.post(
+                f"{self.base_url}/payments/verify/",
+                {"reference": payment.transaction_reference},
+                format="json",
+            )
+
+        pending.refresh_from_db()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        self._auth(self.super_admin)
+
+        resp = self.client.post(
+            f"{self.base_url}/admin/orders/{order.pk}/status/",
+            {"status": "CANCELLED", "notes": "Admin cancelled"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["status"], "CANCELLED")
+
+        inv = BranchInventory.objects.get(branch=self.branch, product=self.product)
+        self.assertEqual(inv.quantity, 10)
+
+    def test_admin_refund_order_via_status(self):
+        from unittest.mock import patch
+
+        from apps.store.models import BranchInventory
+        from apps.store.services.branch_inventory_service import add_inventory
+        from apps.store.services.shopping_cart_service import add_to_cart, get_or_create_cart
+
+        add_inventory(self.branch, self.product, 10)
+        self._auth(self.student)
+        cart = get_or_create_cart(user=self.student)
+        add_to_cart(cart, self.product, self.branch, 2)
+
+        with patch(
+            "apps.store.services.payment_service.shared_initialize_payment"
+        ) as mock_init:
+            mock_init.return_value = {
+                "provider": "chapa",
+                "reference": "STORE-refund-api-ref",
+                "status": "success",
+                "checkout_url": "https://checkout.test/",
+            }
+            resp = self.client.post(
+                f"{self.base_url}/cart/checkout/",
+                {"branch": str(self.branch.pk)},
+                format="json",
+            )
+            pending_id = resp.data["id"]
+
+        from apps.store.models.pending_order import PendingOrder
+        pending = PendingOrder.objects.get(pk=pending_id)
+        payment = pending.payment
+
+        with patch(
+            "apps.store.services.payment_service.shared_verify_payment"
+        ) as mock_verify:
+            mock_verify.return_value = {
+                "status": "success",
+                "reference": payment.transaction_reference,
+                "provider": "chapa",
+                "amount": 199.98,
+                "currency": "ETB",
+            }
+            self.client.post(
+                f"{self.base_url}/payments/verify/",
+                {"reference": payment.transaction_reference},
+                format="json",
+            )
+
+        pending.refresh_from_db()
+        order = Order.objects.get(payment_reference=pending.payment_reference)
+        self._auth(self.super_admin)
+
+        with patch(
+            "apps.shared.payment.payment_service.refund_payment"
+        ) as mock_refund:
+            mock_refund.return_value = {
+                "status": "success",
+                "provider": "chapa",
+                "provider_status": "success",
+                "reference": payment.transaction_reference,
+                "provider_refund_id": "PROVIDER-API-REFUND",
+                "amount": 199.98,
+                "currency": "ETB",
+                "raw": {},
+            }
+            resp = self.client.post(
+                f"{self.base_url}/admin/orders/{order.pk}/status/",
+                {"status": "REFUNDED", "notes": "Admin refund"},
+                format="json",
+            )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["status"], "REFUNDED")
+
+        inv = BranchInventory.objects.get(branch=self.branch, product=self.product)
+        self.assertEqual(inv.quantity, 10)

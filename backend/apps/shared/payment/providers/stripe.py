@@ -13,7 +13,11 @@ from decimal import Decimal
 from typing import Optional
 
 from apps.shared.payment.providers.base import BasePaymentProvider
-from apps.shared.payment.types import InitializationResponse, VerificationResponse
+from apps.shared.payment.types import (
+    InitializationResponse,
+    RefundResponse,
+    VerificationResponse,
+)
 
 
 class StripePaymentProvider(BasePaymentProvider):
@@ -56,6 +60,21 @@ class StripePaymentProvider(BasePaymentProvider):
 
         Args:
             reference: The transaction reference to verify.
+
+        Raises:
+            NotImplementedError: Always.
+        """
+        raise NotImplementedError(
+            "Stripe payment provider is not yet implemented. "
+            "Set PAYMENT_PROVIDER=chapa to use an active provider."
+        )
+
+    def refund(self, reference: str, amount: Decimal) -> RefundResponse:
+        """Raise NotImplementedError — Stripe is not yet integrated.
+
+        Args:
+            reference: The transaction reference to refund.
+            amount: The amount to refund.
 
         Raises:
             NotImplementedError: Always.
