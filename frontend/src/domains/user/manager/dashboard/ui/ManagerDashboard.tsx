@@ -7,7 +7,7 @@ import {
   BookOpen, RefreshCw, Monitor,
   User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard, ClipboardCheck, Receipt, LayoutDashboard
 } from 'lucide-react';
-import { UserProfile, AppNotification, Enrollment, EnrollmentPayment } from '@/src/shared/types';
+import { UserProfile, AppNotification, Enrollment, EnrollmentPayment, StudentProfile, Program, AcademicClass } from '@/src/shared/types';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
 import { NavItem } from '@/src/shared/ui/Sidebar';
 import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
@@ -73,10 +73,10 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function ManagerDashboard({ currentUser, onLogout }: Props) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
-  const [students, setStudents] = useState<any[]>([]);
-  const [enrollments, setEnrollments] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [programs, setPrograms] = useState<any[]>([]);
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [payments, setPayments] = useState<EnrollmentPayment[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -194,10 +194,10 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
 function OverviewPage({ currentUser, onNavigate, students, enrollments, payments, programs }: {
   currentUser: UserProfile;
   onNavigate: (id: SectionId) => void;
-  students: any[];
-  enrollments: any[];
-  payments: any[];
-  programs: any[];
+  students: StudentProfile[];
+  enrollments: Enrollment[];
+  payments: EnrollmentPayment[];
+  programs: Program[];
 }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   useEffect(() => {
@@ -448,11 +448,11 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
 
 function ReportsSection() {
   const [downloading, setDownloading] = useState<string | null>(null);
-  const [students, setStudents] = useState<any[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
-  const [programs, setPrograms] = useState<any[]>([]);
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [classes, setClasses] = useState<AcademicClass[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [subPrograms, setSubPrograms] = useState<any[]>([]);
-  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedProgramId, setSelectedProgramId] = useState<string>('');

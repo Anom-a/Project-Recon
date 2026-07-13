@@ -2,9 +2,11 @@ import React from 'react';
 import { BarChart3, TrendingUp, Users, Award, AlertTriangle, Zap, BookOpen, Target, Star, BrainCircuit } from 'lucide-react';
 import { motion } from 'motion/react';
 
+import { StudentProfile, Enrollment } from '@/src/shared/types';
+
 interface Props {
-  students: any[];
-  enrollments: any[];
+  students: StudentProfile[];
+  enrollments: Enrollment[];
 }
 
 export default function PerformanceMetrics({ students, enrollments }: Props) {

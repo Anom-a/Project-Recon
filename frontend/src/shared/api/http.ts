@@ -43,6 +43,49 @@ function onRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
+async function handleTokenRefresh<T>(retryRequest: () => Promise<T>): Promise<T> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) throw new Error('No refresh token');
+
+  if (!isRefreshing) {
+    isRefreshing = true;
+    try {
+      const refreshUrl = new URL(`${BASE_URL}/accounts/token/refresh/`, window.location.origin);
+      const refreshRes = await fetch(refreshUrl.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        setTokens(data.access, data.refresh);
+        onRefreshed(data.access);
+      } else {
+        clearTokens();
+        localStorage.removeItem('ethio_robotics_user');
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+        onRefreshed('');
+      }
+    } catch (e) {
+      clearTokens();
+      onRefreshed('');
+    } finally {
+      isRefreshing = false;
+    }
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    subscribeTokenRefresh((newToken) => {
+      if (newToken) {
+        retryRequest().then(resolve).catch(reject);
+      } else {
+        reject(new Error('Session expired'));
+      }
+    });
+  });
+}
+
 async function request<T>(endpoint: string, config: RequestConfig = {}): Promise<T> {
   const { params, _isRetry, ...init } = config;
   const urlStr = `${BASE_URL}${endpoint}`;
@@ -66,42 +109,10 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
   });
 
   if (res.status === 401 && !_isRetry && token) {
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        try {
-          const refreshUrl = new URL(`${BASE_URL}/accounts/token/refresh/`, window.location.origin);
-          const refreshRes = await fetch(refreshUrl.toString(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh: refreshToken }),
-          });
-
-          if (refreshRes.ok) {
-            const data = await refreshRes.json();
-            setTokens(data.access, data.refresh);
-            onRefreshed(data.access);
-          } else {
-            clearTokens();
-            clearUserProfile();
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-          }
-        } catch {
-          clearTokens();
-        } finally {
-          isRefreshing = false;
-        }
-      }
-
-      // Wait for refresh to complete and retry
-      return new Promise<T>((resolve, reject) => {
-        subscribeTokenRefresh((newToken) => {
-          // Retry the original request
-          config._isRetry = true;
-          // The retry will pick up the new token automatically because we don't pass headers with Authorization directly here
-          request<T>(endpoint, config).then(resolve).catch(reject);
-        });
+    if (getRefreshToken()) {
+      return handleTokenRefresh(() => {
+        config._isRetry = true;
+        return request<T>(endpoint, config);
       });
     }
   }
@@ -136,39 +147,10 @@ async function requestBlob(endpoint: string, config: RequestConfig = {}): Promis
   });
 
   if (res.status === 401 && !_isRetry && token) {
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        try {
-          const refreshUrl = new URL(`${BASE_URL}/accounts/token/refresh/`, window.location.origin);
-          const refreshRes = await fetch(refreshUrl.toString(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh: refreshToken }),
-          });
-
-          if (refreshRes.ok) {
-            const data = await refreshRes.json();
-            setTokens(data.access, data.refresh);
-            onRefreshed(data.access);
-          } else {
-            clearTokens();
-            clearUserProfile();
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-          }
-        } catch {
-          clearTokens();
-        } finally {
-          isRefreshing = false;
-        }
-      }
-
-      return new Promise<Blob>((resolve, reject) => {
-        subscribeTokenRefresh((newToken) => {
-          config._isRetry = true;
-          requestBlob(endpoint, config).then(resolve).catch(reject);
-        });
+    if (getRefreshToken()) {
+      return handleTokenRefresh(() => {
+        config._isRetry = true;
+        return requestBlob(endpoint, config);
       });
     }
   }

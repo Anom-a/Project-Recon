@@ -3,9 +3,11 @@ import { Edit3, CheckCircle2, Search, FileText, Clock, Eye, ChevronDown, Star, L
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchStudentProgressApi, updateStudentProgressApi } from '@/src/domains/learning/academics/api/academicApi';
 
+import { StudentProfile, Enrollment, StudentProgress } from '@/src/shared/types';
+
 interface Props {
-  students: any[];
-  enrollments: any[];
+  students: StudentProfile[];
+  enrollments: Enrollment[];
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -16,7 +18,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function ProgressSubmissions({ students, enrollments }: Props) {
   const [progressSearch, setProgressSearch] = useState('');
-  const [progressMap, setProgressMap] = useState<Record<string, any[]>>({});
+  const [progressMap, setProgressMap] = useState<Record<string, StudentProgress[]>>({});
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function ProgressSubmissions({ students, enrollments }: Props) {
     if (enrollments.length === 0) { setLoading(false); return; }
     setLoading(true);
     Promise.all(enrollments.map(e => fetchStudentProgressApi(e.id))).then(results => {
-      const map: Record<string, any[]> = {};
+      const map: Record<string, StudentProgress[]> = {};
       enrollments.forEach((e, i) => { map[e.id] = Array.isArray(results[i]) ? results[i] : []; });
       setProgressMap(map);
     }).catch(() => {}).finally(() => setLoading(false));
@@ -45,16 +47,16 @@ export default function ProgressSubmissions({ students, enrollments }: Props) {
         return next;
       });
     } catch (e) {
-      console.error('Failed to update progress', e);
+      /* console.error */('Failed to update progress', e);
     } finally {
       setUpdating(null);
     }
   };
 
-  const allProgressEntries: any[] = useMemo(() => {
-    const entries: any[] = [];
-    const vals: any[][] = Object.values(progressMap);
-    vals.forEach((arr: any[]) => entries.push(...arr));
+  const allProgressEntries: StudentProgress[] = useMemo(() => {
+    const entries: StudentProgress[] = [];
+    const vals: StudentProgress[][] = Object.values(progressMap);
+    vals.forEach((arr: StudentProgress[]) => entries.push(...arr));
     return entries;
   }, [progressMap]);
 

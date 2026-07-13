@@ -6,17 +6,24 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchAttendanceSessionsApi } from '@/src/domains/learning/academics/api/academicApi';
+import { AttendanceSession } from '@/src/shared/types';
+
+interface AttendanceSessionExtended extends AttendanceSession {
+  records_count?: number;
+  students_present?: number;
+  absent_count?: number;
+}
 
 interface Props { classId?: string; }
 
 export default function AttendanceHistory({ classId = '' }: Props) {
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<AttendanceSessionExtended[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [selectedSession, setSelectedSession] = useState<any | null>(null);
+  const [selectedSession, setSelectedSession] = useState<AttendanceSessionExtended | null>(null);
   const [view, setView] = useState<'calendar' | 'students' | 'trend'>('calendar');
   const [studentSearch, setStudentSearch] = useState('');
 
@@ -51,7 +58,7 @@ export default function AttendanceHistory({ classId = '' }: Props) {
     ? Math.min(...monthSessions.map(s => s.records_count || s.students_present || 0)) : 0;
 
   const weeklyBreakdown = useMemo(() => {
-    const weeks: { week: string; sessions: any[]; present: number; total: number }[] = [];
+    const weeks: { week: string; sessions: AttendanceSessionExtended[]; present: number; total: number }[] = [];
     const sorted = [...monthSessions].sort((a, b) => String(a.session_date).localeCompare(String(b.session_date)));
     sorted.forEach(s => {
       const date = String(s.session_date || '');
@@ -402,7 +409,7 @@ export default function AttendanceHistory({ classId = '' }: Props) {
   );
 }
 
-function AttendanceCalendar({ month, sessions, onSelect }: { month: string; sessions: any[]; onSelect: (s: any) => void }) {
+function AttendanceCalendar({ month, sessions, onSelect }: { month: string; sessions: AttendanceSessionExtended[]; onSelect: (s: AttendanceSessionExtended) => void }) {
   const [year, mon] = month.split('-').map(Number);
   const daysInMonth = new Date(year, mon, 0).getDate();
   const firstDay = new Date(year, mon - 1, 1).getDay();

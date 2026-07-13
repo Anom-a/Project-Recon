@@ -52,16 +52,16 @@ export default function AboutTab() {
   const [team, setTeam] = useState<{ name: string; role: string; bio: string; image: string }[]>([]);
 
   useEffect(() => {
-    cmsPublicApi.getAboutUs().then(data => setAboutData(data.filter(a => a.is_active))).catch(console.error);
-    cmsPublicApi.getPartners().then(data => setPartners(data.filter(p => p.is_active))).catch(console.error);
+    cmsPublicApi.getAboutUs().then(data => setAboutData(data.filter(a => a.is_active))).catch(() => {});
+    cmsPublicApi.getPartners().then(data => setPartners(data.filter(p => p.is_active))).catch(() => {});
     cmsPublicApi.getMapNodes().then(data => setMapNodes((Array.isArray(data) ? data : []).filter(n => n.is_active).map(n => ({
       id: n.id, city: n.city, country: n.country, title: n.title,
       achievement: n.achievement, x: n.x, y: n.y, lat: n.lat, lng: n.lng,
       image: n.image, category: n.category as MapNode['category'],
-    })))).catch(console.error);
+    })))).catch(() => {});
     cmsPublicApi.getTeamMembers().then(data => setTeam((Array.isArray(data) ? data : []).filter(m => m.is_active).map(m => ({
       name: m.name, role: m.role, bio: m.bio, image: m.image,
-    })))).catch(console.error);
+    })))).catch(() => {});
   }, []);
 
   // Dynamically calculate lat/lng depending on mouse coords relative to container

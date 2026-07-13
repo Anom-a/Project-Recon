@@ -28,7 +28,7 @@ export default function EventDashboard() {
       setUpcomingEvents(upcoming);
       setPastEvents(past);
       setRegistrations(Array.isArray(regs) ? regs : []);
-    }).catch(console.error)
+    }).catch(() => {})
     .finally(() => setLoading(false));
   }, []);
 

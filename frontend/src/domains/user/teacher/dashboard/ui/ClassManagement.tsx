@@ -3,9 +3,16 @@ import { Users, Search, X, CheckCircle2, Clock, UserCheck, AlertCircle, Calendar
 import { motion } from 'motion/react';
 import { createAttendanceSessionApi, recordBulkAttendanceApi, fetchAttendanceSessionsApi } from '@/src/domains/learning/academics/api/academicApi';
 
+import { StudentProfile, Enrollment, AttendanceSession } from '@/src/shared/types';
+
+interface AttendanceSessionExtended extends AttendanceSession {
+  records_count?: number;
+  students_present?: number;
+}
+
 interface Props {
-  students: any[];
-  enrollments: any[];
+  students: StudentProfile[];
+  enrollments: Enrollment[];
   classes?: { id: string; name: string }[];
   selectedClassId?: string;
   onClassChange?: (id: string) => void;
@@ -25,7 +32,7 @@ export default function ClassManagement({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyData, setHistoryData] = useState<AttendanceSessionExtended[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyDate, setHistoryDate] = useState(new Date().toISOString().slice(0, 10));
 
@@ -72,7 +79,7 @@ export default function ClassManagement({
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
-      console.error('Failed to record attendance', e);
+      /* console.error */('Failed to record attendance', e);
     } finally {
       setSaving(false);
     }
@@ -314,7 +321,7 @@ export default function ClassManagement({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {historyData.map((s: any, i: number) => (
+                    {historyData.map((s: AttendanceSessionExtended, i: number) => (
                       <div key={s.id || i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">{s.topic || 'Attendance'}</p>
