@@ -1,5 +1,5 @@
-import { http } from '@/src/shared/api/http';
-import type { BranchInventory } from '@/src/domains/store/model/types';
+import { http } from '@/shared/api/http';
+import type { BranchInventory } from '@/domains/store/model/types';
 
 export async function getBranchInventory(branchId: string): Promise<BranchInventory[]> {
   return await http.get<BranchInventory[]>('/store/inventory/', { params: { branch: branchId } });

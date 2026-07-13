@@ -1,10 +1,10 @@
 import { FormEvent, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, X, Plus, Minus, Trash2, CheckCircle2, Loader, Award, Building2 } from 'lucide-react';
-import { ShoppingCart, ShoppingCartItem } from '@/src/domains/store/model/types';
-import { UserProfile } from '@/src/shared/types';
-import checkout from '@/src/domains/store/checkout/api/checkoutApi';
-import { Button } from '@/src/shared/ui/Button';
+import { ShoppingCart, ShoppingCartItem } from '@/domains/store/model/types';
+import { UserProfile } from '@/shared/types';
+import checkout from '@/domains/store/checkout/api/checkoutApi';
+import { Button } from '@/shared/ui/Button';
 
 interface CartDrawerProps {
   cartOpen: boolean;

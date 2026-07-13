@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { verifyOnlinePaymentApi } from '@/src/domains/learning/academics/api/academicApi';
-import { verifyEventPayment } from '@/src/domains/competition/api/eventsApi';
+import { verifyOnlinePaymentApi } from '@/domains/learning/academics/api/academicApi';
+import { verifyEventPayment } from '@/domains/competition/api/eventsApi';
 
 export type PaymentVerifyStatus = 'idle' | 'verifying' | 'success' | 'error';
 

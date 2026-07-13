@@ -1,6 +1,6 @@
-import { http } from '@/src/shared/api/http';
-import { getStoreRequestHeaders } from '@/src/domains/store/utils/session';
-import type { ShoppingCart, ShoppingCartItem, CartAddPayload } from '@/src/domains/store/model/types';
+import { http } from '@/shared/api/http';
+import { getStoreRequestHeaders } from '@/domains/store/utils/session';
+import type { ShoppingCart, ShoppingCartItem, CartAddPayload } from '@/domains/store/model/types';
 
 const BASE = '/store/cart';
 

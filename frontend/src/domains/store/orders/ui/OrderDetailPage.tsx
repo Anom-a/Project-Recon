@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, ShoppingBag, Clock, CheckCircle2, Package, Truck, Building2 } from 'lucide-react';
 import { getOrder } from '../api/orderApi';
-import { Order } from '@/src/domains/store/model/types';
-import EmptyState from '@/src/shared/ui/EmptyState';
-import LoadingSkeleton from '@/src/shared/ui/LoadingSkeleton';
-import { Button } from '@/src/shared/ui/Button';
+import { Order } from '@/domains/store/model/types';
+import EmptyState from '@/shared/ui/EmptyState';
+import LoadingSkeleton from '@/shared/ui/LoadingSkeleton';
+import { Button } from '@/shared/ui/Button';
 
 const statusConfig = {
   'pending': { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50', label: 'Pending' },

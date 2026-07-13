@@ -11,6 +11,7 @@ export interface ProductCategory {
 export interface ProductImage {
   id: string;
   image: string;
+  image_url?: string;
   alt_text: string;
   is_primary: boolean;
   display_order: number;
@@ -28,8 +29,10 @@ export interface Product {
   sku: string;
   barcode: string;
   price: number;
+  currency: string;
   weight: number;
   is_active: boolean;
+  stock_status: string;
   images: ProductImage[];
   primary_image: ProductImage | null;
   created_at: string;

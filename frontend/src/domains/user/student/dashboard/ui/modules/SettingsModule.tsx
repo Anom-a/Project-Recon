@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Moon, Sun, Bell, Globe, Eye, Monitor, Check } from 'lucide-react';
-import type { UserProfile } from '@/src/shared/types';
-import { updateUserApi } from '@/src/domains/user/shared/api/adminApi';
+import type { UserProfile } from '@/shared/types';
+import { updateUserApi } from '@/domains/user/shared/api/adminApi';
 import PageHeader from '../../../shared/ui/PageHeader';
 import TabBar from '../../../shared/ui/TabBar';
 

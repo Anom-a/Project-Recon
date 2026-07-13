@@ -4,7 +4,7 @@ import {
   fetchEnrollmentsApi,
   fetchPaymentsApi,
   fetchAttendanceSessionsApi,
-} from '@/src/domains/learning/academics/api/academicApi';
+} from '@/domains/learning/academics/api/academicApi';
 
 const ICON_MAP: Record<string, { icon: typeof CheckCircle2; bg: string; color: string }> = {
   ENROLLMENT: { icon: CheckCircle2, bg: 'bg-blue-100', color: 'text-blue-600' },

@@ -9,8 +9,8 @@ import {
 import { fetchAllUsersApi, branchesApi, resolveRole, type AdminUserResponse, type BranchResponse } from '../api/adminApi';
 import {
   fetchProgramsApi, fetchClassesApi, fetchEnrollmentsApi, fetchPaymentsApi,
-} from '@/src/domains/learning/academics/api/academicApi';
-import LiveLeaderboardWidget from '@/src/domains/competition/shared/LiveLeaderboardWidget';
+} from '@/domains/learning/academics/api/academicApi';
+import LiveLeaderboardWidget from '@/domains/competition/shared/LiveLeaderboardWidget';
 
 type StatCard = {
   label: string;

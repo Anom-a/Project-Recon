@@ -5,11 +5,11 @@ import {
   Zap, CheckCircle2, Clock, AlertCircle, GraduationCap, Target, FileText,
   CalendarDays, TrendingUp, Loader2,
 } from 'lucide-react';
-import type { UserProfile, Enrollment, StudentCertificate } from '@/src/shared/types';
-import { fetchEnrollmentsApi, fetchStudentCertificatesApi, fetchAttendanceSessionsApi } from '@/src/domains/learning/academics/api/academicApi';
-import { getUpcomingEvents } from '@/src/domains/competition/api/eventsApi';
-import { cmsPublicApi } from '@/src/domains/cms/public/api/cmsPublicApi';
-import { getNotifications, getUnreadCount } from '@/src/domains/notification/model/notificationApi';
+import type { UserProfile, Enrollment, StudentCertificate } from '@/shared/types';
+import { fetchEnrollmentsApi, fetchStudentCertificatesApi, fetchAttendanceSessionsApi } from '@/domains/learning/academics/api/academicApi';
+import { getUpcomingEvents } from '@/domains/competition/api/eventsApi';
+import { cmsPublicApi } from '@/domains/cms/public/api/cmsPublicApi';
+import { getNotifications, getUnreadCount } from '@/domains/notification/model/notificationApi';
 import profileImg from '@/assets/photo_2026-06-15_14-39-27.jpg';
 import EmptyState from '../../shared/ui/EmptyState';
 import { GridSkeleton } from '../../shared/ui/LoadingSkeleton';

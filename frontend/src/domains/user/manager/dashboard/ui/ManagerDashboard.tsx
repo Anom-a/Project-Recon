@@ -7,17 +7,17 @@ import {
   BookOpen, RefreshCw, Monitor,
   User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard, ClipboardCheck, Receipt, LayoutDashboard
 } from 'lucide-react';
-import { UserProfile, AppNotification, Enrollment, EnrollmentPayment, StudentProfile, Program, AcademicClass } from '@/src/shared/types';
-import { AppLayout } from '@/src/shared/ui/AppLayout';
-import { NavItem } from '@/src/shared/ui/Sidebar';
-import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
-import InlineAlert from '@/src/shared/ui/InlineAlert';
+import { UserProfile, AppNotification, Enrollment, EnrollmentPayment, StudentProfile, Program, AcademicClass } from '@/shared/types';
+import { AppLayout } from '@/shared/ui/AppLayout';
+import { NavItem } from '@/shared/ui/Sidebar';
+import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/shared/ui/InlineAlert';
 import {
   getManagerCommandCenter,
   type ManagerSectionId,
   type ManagerHubStats,
 } from '../managerCommandCenter';
-import { summarizeSettled } from '@/src/shared/utils/storage';
+import { summarizeSettled } from '@/shared/utils/storage';
 import SponsorManagement from './SponsorManagement';
 import OnlineStoreHub from './OnlineStoreHub';
 import CommunicationsCenter from './CommunicationsCenter';
@@ -27,17 +27,17 @@ import AnnouncementsManager from './AnnouncementsManager';
 import WalkInRegistration from './WalkInRegistration';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import SchoolManagement from './SchoolManagement';
-import AcademicCatalogManager from '@/src/domains/learning/academics/ui/AcademicCatalogManager';
-import ClassManagerPanel from '@/src/domains/user/shared/ui/ClassManagerPanel';
-import StaffAttendanceManager from '@/src/domains/user/shared/ui/StaffAttendanceManager';
-import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
-import TournamentManager from '@/src/domains/competition/admin/TournamentManager';
-import WorkshopManager from '@/src/domains/competition/admin/WorkshopManager';
-import RegistrationManager from '@/src/domains/competition/admin/RegistrationManager';
-import MatchManager from '@/src/domains/competition/admin/MatchManager';
-import TeamManager from '@/src/domains/competition/admin/TeamManager';
-import CertificateManager from '@/src/domains/user/shared/ui/CertificateManager';
-import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/src/domains/learning/academics/api/academicApi';
+import AcademicCatalogManager from '@/domains/learning/academics/ui/AcademicCatalogManager';
+import ClassManagerPanel from '@/domains/user/shared/ui/ClassManagerPanel';
+import StaffAttendanceManager from '@/domains/user/shared/ui/StaffAttendanceManager';
+import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
+import TournamentManager from '@/domains/competition/admin/TournamentManager';
+import WorkshopManager from '@/domains/competition/admin/WorkshopManager';
+import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
+import MatchManager from '@/domains/competition/admin/MatchManager';
+import TeamManager from '@/domains/competition/admin/TeamManager';
+import CertificateManager from '@/domains/user/shared/ui/CertificateManager';
+import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/domains/learning/academics/api/academicApi';
 
 interface Props {
   currentUser: UserProfile;
@@ -201,7 +201,7 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
 }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   useEffect(() => {
-    import('@/src/domains/notification/model/notificationApi').then(m =>
+    import('@/domains/notification/model/notificationApi').then(m =>
       m.getNotifications().then(setNotifications)
     );
   }, []);

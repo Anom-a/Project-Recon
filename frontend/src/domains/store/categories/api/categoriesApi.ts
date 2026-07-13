@@ -1,5 +1,5 @@
-import { http } from '@/src/shared/api/http';
-import type { ProductCategory } from '@/src/domains/store/model/types';
+import { http } from '@/shared/api/http';
+import type { ProductCategory } from '@/domains/store/model/types';
 
 export async function listActiveCategories(): Promise<ProductCategory[]> {
   return await http.get<ProductCategory[]>('/store/categories/');

@@ -1,4 +1,4 @@
-import type { DashboardSignal } from '@/src/shared/ui/DashboardCommandCenter';
+import type { DashboardSignal } from '@/shared/ui/DashboardCommandCenter';
 import {
   LayoutDashboard, UserPlus, Users, DollarSign, Award, Calendar,
   FileText, Search, Shield,

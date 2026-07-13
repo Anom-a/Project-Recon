@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, Send, CheckCircle2, Clock, AlertTriangle, ThumbsUp, Shield, Loader2 } from 'lucide-react';
-import { cmsPublicApi } from '@/src/domains/cms/public/api/cmsPublicApi';
+import { cmsPublicApi } from '@/domains/cms/public/api/cmsPublicApi';
 
 type TicketCategory = 'academic' | 'safety' | 'facility' | 'general' | 'appreciation';
 

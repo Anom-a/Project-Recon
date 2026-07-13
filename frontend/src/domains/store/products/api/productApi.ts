@@ -1,5 +1,5 @@
-import { http } from '@/src/shared/api/http';
-import type { Product, ProductFilters } from '@/src/domains/store/model/types';
+import { http } from '@/shared/api/http';
+import type { Product, ProductFilters } from '@/domains/store/model/types';
 
 const BASE = '/store/products';
 

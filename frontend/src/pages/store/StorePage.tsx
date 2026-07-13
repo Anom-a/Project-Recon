@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import StoreTab from '@/src/domains/store/products/ui/StoreTab';
+import { StoreTab } from '@/domains/store/products/ui/StoreTab';
 
 export default function StorePage() {
   return (

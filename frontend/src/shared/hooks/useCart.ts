@@ -5,12 +5,12 @@ import {
   updateCartItemQuantity, 
   removeCartItem, 
   clearCart as clearCartApi 
-} from '@/src/domains/store/cart/api/cartApi';
+} from '@/domains/store/cart/api/cartApi';
 import type { 
   ShoppingCart, 
   ShoppingCartItem, 
   CartAddPayload 
-} from '@/src/domains/store/model/types';
+} from '@/domains/store/model/types';
 
 export function useCart() {
   const [cart, setCart] = useState<ShoppingCart | null>(null);

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, X, Loader2, AlertCircle, User, Mail, Phone, BookOpen, Calendar, Award, Target, Clock, CheckCircle2, Shield, MapPin, TrendingUp } from 'lucide-react';
-import { StudentProfile, Enrollment, AttendanceRecord, StudentProgress, StudentCertificate } from '@/src/shared/types';
-import { fetchStudentsApi, fetchEnrollmentsApi, fetchEnrollmentAttendanceSummaryApi, fetchStudentProgressSummaryApi, fetchStudentCertificatesApi } from '@/src/domains/learning/academics/api/academicApi';
+import { StudentProfile, Enrollment, AttendanceRecord, StudentProgress, StudentCertificate } from '@/shared/types';
+import { fetchStudentsApi, fetchEnrollmentsApi, fetchEnrollmentAttendanceSummaryApi, fetchStudentProgressSummaryApi, fetchStudentCertificatesApi } from '@/domains/learning/academics/api/academicApi';
 
 export default function StudentDetailPanel() {
   const [students, setStudents] = useState<StudentProfile[]>([]);

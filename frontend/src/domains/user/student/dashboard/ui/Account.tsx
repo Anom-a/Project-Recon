@@ -5,9 +5,9 @@ import {
   Edit3, Save, X, Loader2, Shield, Star, TrendingUp, Zap, Medal,
   Target, Clock, GraduationCap, Eye, EyeOff, ChevronRight
 } from 'lucide-react';
-import type { UserProfile, Enrollment } from '@/src/shared/types';
-import { updateUserApi } from '@/src/domains/user/shared/api/adminApi';
-import { fetchEnrollmentsApi } from '@/src/domains/learning/academics/api/academicApi';
+import type { UserProfile, Enrollment } from '@/shared/types';
+import { updateUserApi } from '@/domains/user/shared/api/adminApi';
+import { fetchEnrollmentsApi } from '@/domains/learning/academics/api/academicApi';
 import profileImg from '@/assets/photo_2026-06-15_14-39-27.jpg';
 
 interface Props {

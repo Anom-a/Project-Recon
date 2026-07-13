@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import {
   AlertCircle, ArrowLeft, CheckCircle2, DollarSign, Loader2, Lock, Shield, User, X,
 } from 'lucide-react';
-import type { Tournament, Workshop, UserProfile } from '@/src/shared/types';
+import type { Tournament, Workshop, UserProfile } from '@/shared/types';
 import { registerForEvent, type PublicRegistrationData } from '../api/competitionApi';
-import { cacheStudentId } from '@/src/domains/user/student/api/studentContext';
+import { cacheStudentId } from '@/domains/user/student/api/studentContext';
 import {
   formatRegistrationDeadline,
   getRegistrationEligibility,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { listActiveCategories } from '../api/categoriesApi';
-import type { ProductCategory } from '@/src/domains/store/model/types';
+import type { ProductCategory } from '@/domains/store/model/types';
 
 export function useCategories() {
   const [categories, setCategories] = useState<ProductCategory[]>([]);

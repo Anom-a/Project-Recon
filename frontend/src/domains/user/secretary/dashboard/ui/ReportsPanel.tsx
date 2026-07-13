@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { FileText, Users, BookOpen, DollarSign, Award, Download, Loader2 } from 'lucide-react';
-import { Enrollment, EnrollmentPayment, StudentProfile, StudentCertificate, AcademicClass, UserProfile } from '@/src/shared/types';
+import { Enrollment, EnrollmentPayment, StudentProfile, StudentCertificate, AcademicClass, UserProfile } from '@/shared/types';
 import {
   fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchStudentCertificatesApi,
   fetchClassesApi, fetchProgramsApi, fetchSubProgramsApi,
@@ -9,8 +9,8 @@ import {
   downloadAttendanceReportPdf, downloadProgressReportPdf,
   downloadCertificateReportPdf, downloadClassReportPdf,
   downloadSubProgramReportPdf, downloadProgramReportPdf
-} from '@/src/domains/learning/academics/api/academicApi';
-import type { Program, SubProgram } from '@/src/shared/types';
+} from '@/domains/learning/academics/api/academicApi';
+import type { Program, SubProgram } from '@/shared/types';
 
 export default function ReportsPanel({ currentUser }: { currentUser?: UserProfile }) {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);

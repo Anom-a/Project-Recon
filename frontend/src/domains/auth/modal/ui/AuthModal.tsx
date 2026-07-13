@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Mail, Lock, User, ShieldCheck, Info, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
-import BrandLogo from '@/src/shared/ui/BrandLogo';
-import { useBranding } from '@/src/shared/hooks/useBranding';
-import { UserProfile } from '@/src/shared/types';
-import { http } from '@/src/shared/api/http';
+import BrandLogo from '@/shared/ui/BrandLogo';
+import { useBranding } from '@/shared/hooks/useBranding';
+import { UserProfile } from '@/shared/types';
+import { http } from '@/shared/api/http';
 
 interface AuthModalProps {
   isOpen: boolean;

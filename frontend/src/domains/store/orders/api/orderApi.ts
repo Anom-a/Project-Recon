@@ -1,5 +1,5 @@
-import { http } from '@/src/shared/api/http';
-import type { Order } from '@/src/domains/store/model/types';
+import { http } from '@/shared/api/http';
+import type { Order } from '@/domains/store/model/types';
 
 export async function getUserOrders(): Promise<Order[]> {
   return await http.get<Order[]>('/store/orders/');

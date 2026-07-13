@@ -1,5 +1,5 @@
-import { http } from '@/src/shared/api/http';
-import { fetchAllPages, type PaginatedResponse } from '@/src/shared/api/pagination';
+import { http } from '@/shared/api/http';
+import { fetchAllPages, type PaginatedResponse } from '@/shared/api/pagination';
 
 /* ─── Backend-Matching Types ─── */
 

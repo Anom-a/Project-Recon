@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User, Mail, Phone, BookOpen, ShieldCheck, Check, CreditCard, Lock, MapPin, CheckCircle2, ChevronRight, ChevronLeft, Laptop, Cpu, Globe, Info, ArrowRight, Clock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { registerApi } from '../api/registerApi';
 import { fetchProgramsApi, fetchSubProgramsApi } from '../../../learning/academics/api/academicApi';
-import type { Program, SubProgram } from '@/src/shared/types';
+import type { Program, SubProgram } from '@/shared/types';
 
 interface SavedEnrollment {
   ref: string;

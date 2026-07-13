@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, CreditCard, Loader2 } from 'lucide-react';
-import { fetchPaymentsApi, fetchEnrollmentsApi } from '@/src/domains/learning/academics/api/academicApi';
+import { fetchPaymentsApi, fetchEnrollmentsApi } from '@/domains/learning/academics/api/academicApi';
 
 export default function PaymentTracker() {
   const [payments, setPayments] = useState<any[]>([]);

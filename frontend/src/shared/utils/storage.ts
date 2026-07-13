@@ -1,4 +1,4 @@
-import type { UserProfile } from '@/src/shared/types';
+import type { UserProfile } from '@/shared/types';
 
 /** Centralized localStorage keys — do not duplicate these strings elsewhere. */
 export const STORAGE_KEYS = {

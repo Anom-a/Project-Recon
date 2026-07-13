@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Users, CheckCircle2, DollarSign, Award, Calendar, Shield, UserPlus, X, Filter, Download, Loader2, RefreshCw } from 'lucide-react';
-import { Enrollment, EnrollmentPayment, StudentCertificate } from '@/src/shared/types';
-import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchStudentCertificatesApi } from '@/src/domains/learning/academics/api/academicApi';
+import { Enrollment, EnrollmentPayment, StudentCertificate } from '@/shared/types';
+import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchStudentCertificatesApi } from '@/domains/learning/academics/api/academicApi';
 
 export default function Overview() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);

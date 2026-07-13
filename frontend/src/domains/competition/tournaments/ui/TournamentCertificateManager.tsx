@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import { adminGetTournamentTeams, adminGetRegistrations, type BackendTournamentTeam, type BackendEventRegistration } from '../../api/eventsApi';
 import { getTournamentById, getTournamentStandings, type StandingEntry } from '../../api/competitionApi';
-import { type Tournament, type Certificate } from '@/src/shared/types';
-import { fetchCertificateTemplatesApi, issueStudentCertificateApi, fetchStudentCertificatesApi } from '@/src/domains/learning/academics/api/academicApi';
+import { type Tournament, type Certificate } from '@/shared/types';
+import { fetchCertificateTemplatesApi, issueStudentCertificateApi, fetchStudentCertificatesApi } from '@/domains/learning/academics/api/academicApi';
 
 const VEX_AWARDS = [
   { key: 'participation', label: 'Participation', desc: 'Awarded to all competing teams', icon: Users, color: 'text-slate-600', bg: 'bg-slate-100' },

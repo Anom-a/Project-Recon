@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Calendar, Download, Filter, CheckCircle, Clock, XCircle, AlertCircle, Eye, X, Loader2, Shield, ShieldOff } from 'lucide-react';
-import { fetchEnrollmentsApi, cancelEnrollmentApi, fetchStudentCertificatesApi, downloadEnrollmentReportPdf } from '@/src/domains/learning/academics/api/academicApi';
-import type { Enrollment, StudentCertificate } from '@/src/shared/types';
+import { fetchEnrollmentsApi, cancelEnrollmentApi, fetchStudentCertificatesApi, downloadEnrollmentReportPdf } from '@/domains/learning/academics/api/academicApi';
+import type { Enrollment, StudentCertificate } from '@/shared/types';
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: 'bg-emerald-100 text-emerald-700',

@@ -1,5 +1,5 @@
-import { http } from '@/src/shared/api/http';
-import type { AppNotification } from '@/src/shared/types';
+import { http } from '@/shared/api/http';
+import type { AppNotification } from '@/shared/types';
 
 const BASE = '/notifications';
 

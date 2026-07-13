@@ -1,7 +1,7 @@
 import { ShoppingBag, Clock, CheckCircle2, Package, Truck } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders';
-import EmptyState from '@/src/shared/ui/EmptyState';
-import LoadingSkeleton from '@/src/shared/ui/LoadingSkeleton';
+import EmptyState from '@/shared/ui/EmptyState';
+import LoadingSkeleton from '@/shared/ui/LoadingSkeleton';
 
 const statusConfig = {
   'pending': { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50', label: 'Pending' },

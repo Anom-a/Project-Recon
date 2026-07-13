@@ -1,4 +1,4 @@
-import type { DashboardSignal } from '@/src/shared/ui/DashboardCommandCenter';
+import type { DashboardSignal } from '@/shared/ui/DashboardCommandCenter';
 import {
   BookOpen, GraduationCap, Bell, Zap, Award, Calendar, ClipboardList,
   Trophy, FileText, Megaphone, MessageCircle,

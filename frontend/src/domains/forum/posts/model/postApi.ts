@@ -1,5 +1,5 @@
-import { http } from '@/src/shared/api/http';
-import type { ForumPost } from '@/src/shared/types';
+import { http } from '@/shared/api/http';
+import type { ForumPost } from '@/shared/types';
 
 const BASE = '/forum/posts';
 

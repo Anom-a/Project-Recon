@@ -7,7 +7,7 @@ import AttendanceTracker from '../AttendanceTracker';
 import ProgressMilestones from '../ProgressMilestones';
 import LearningResources from '../LearningResources';
 import Achievements from '../Achievements';
-import type { UserProfile } from '@/src/shared/types';
+import type { UserProfile } from '@/shared/types';
 
 interface Props {
   studentId: string;

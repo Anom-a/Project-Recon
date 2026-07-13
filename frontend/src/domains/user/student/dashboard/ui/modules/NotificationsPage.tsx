@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, CheckCheck, Loader2, BellOff, ExternalLink, X, Filter } from 'lucide-react';
-import { getNotifications, markAsRead, markAllAsRead, dismissNotification } from '@/src/domains/notification/model/notificationApi';
-import type { AppNotification } from '@/src/shared/types';
+import { getNotifications, markAsRead, markAllAsRead, dismissNotification } from '@/domains/notification/model/notificationApi';
+import type { AppNotification } from '@/shared/types';
 import PageHeader from '../../../shared/ui/PageHeader';
 import EmptyState from '../../../shared/ui/EmptyState';
 import LoadingSkeleton from '../../../shared/ui/LoadingSkeleton';

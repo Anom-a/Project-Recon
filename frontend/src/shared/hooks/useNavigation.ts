@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ActiveTab, UserProfile } from '../types';
 import { canAccessTab, getDefaultAuthenticatedTab } from '../auth/permissions';
-import { getUserProfile } from '@/src/shared/utils/storage';
+import { getUserProfile } from '@/shared/utils/storage';
 
 function tabFromPath(path: string): ActiveTab {
   if (path.startsWith('/store/orders/')) return 'store-order-detail';

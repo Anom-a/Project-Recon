@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, CheckCheck, Loader2, BellOff, ExternalLink, X } from 'lucide-react';
 import { getNotifications, markAsRead, markAllAsRead, dismissNotification } from '../model/notificationApi';
-import type { AppNotification } from '@/src/shared/types';
+import type { AppNotification } from '@/shared/types';
 
 const TYPE_ICONS: Record<string, string> = { info: '🏆', success: '✅', warning: '⚠️', alert: '🚨' };
 const TYPE_COLORS: Record<string, string> = { info: 'text-brand-blue bg-brand-blue/10', success: 'text-emerald-500 bg-emerald-50', warning: 'text-amber-500 bg-amber-50', alert: 'text-brand-red bg-brand-red/10' };

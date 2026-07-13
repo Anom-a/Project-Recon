@@ -3,19 +3,19 @@ import {
   User, Home, GraduationCap, Briefcase, Calendar, Bell, Megaphone,
   MessageCircle, FileText, Settings, Loader2,
 } from 'lucide-react';
-import { UserProfile, Enrollment } from '@/src/shared/types';
+import { UserProfile, Enrollment } from '@/shared/types';
 import {
   fetchStudentsApi, fetchEnrollmentsApi, fetchStudentCertificatesApi,
-} from '@/src/domains/learning/academics/api/academicApi';
-import { getMyRegistrations } from '@/src/domains/competition/api/competitionApi';
-import { getUnreadCount } from '@/src/domains/notification/model/notificationApi';
-import { cacheStudentId } from '@/src/domains/user/student/api/studentContext';
-import { getCachedStudentId } from '@/src/shared/utils/storage';
-import { AppLayout } from '@/src/shared/ui/AppLayout';
-import { NavItem } from '@/src/shared/ui/Sidebar';
-import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
-import InlineAlert from '@/src/shared/ui/InlineAlert';
-import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
+} from '@/domains/learning/academics/api/academicApi';
+import { getMyRegistrations } from '@/domains/competition/api/competitionApi';
+import { getUnreadCount } from '@/domains/notification/model/notificationApi';
+import { cacheStudentId } from '@/domains/user/student/api/studentContext';
+import { getCachedStudentId } from '@/shared/utils/storage';
+import { AppLayout } from '@/shared/ui/AppLayout';
+import { NavItem } from '@/shared/ui/Sidebar';
+import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/shared/ui/InlineAlert';
+import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
 import {
   getSectionCommandCenter,
   type StudentSectionId,
@@ -131,7 +131,7 @@ export default function StudentDashboard({ currentUser, onLogout, onUserUpdate }
         return;
       }
 
-      const students = await fetchStudentsApi().catch(() => [] as import('@/src/shared/types').StudentProfile[]);
+      const students = await fetchStudentsApi().catch(() => [] as import('@/shared/types').StudentProfile[]);
       const match = students.find(st => st.user === currentUser.id || st.email === currentUser.email);
       if (match) {
         await tryLoadForId(match.id);

@@ -10,7 +10,7 @@ import {
 
 import SearchOverlay from './SearchOverlay';
 import BrandLogo from './BrandLogo';
-import { useBranding } from '@/src/shared/hooks/useBranding';
+import { useBranding } from '@/shared/hooks/useBranding';
 import { ActiveTab, UserProfile } from '../types';
 
 interface NavbarProps {

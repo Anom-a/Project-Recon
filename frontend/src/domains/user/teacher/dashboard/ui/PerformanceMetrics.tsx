@@ -2,7 +2,7 @@ import React from 'react';
 import { BarChart3, TrendingUp, Users, Award, AlertTriangle, Zap, BookOpen, Target, Star, BrainCircuit } from 'lucide-react';
 import { motion } from 'motion/react';
 
-import { StudentProfile, Enrollment } from '@/src/shared/types';
+import { StudentProfile, Enrollment } from '@/shared/types';
 
 interface Props {
   students: StudentProfile[];

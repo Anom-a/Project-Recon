@@ -3,26 +3,26 @@ import {
   BarChart3, Users, Shield, FileText, BookOpen, GraduationCap, Award,
   Calendar, Trophy, Swords, UserPlus, ClipboardList, LayoutDashboard, GitBranch, RefreshCw,
 } from 'lucide-react';
-import { AppLayout } from '@/src/shared/ui/AppLayout';
-import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
-import InlineAlert from '@/src/shared/ui/InlineAlert';
-import CmsDashboard from '@/src/domains/cms/admin/ui/CmsDashboard';
-import { NavItem } from '@/src/shared/ui/Sidebar';
-import { BranchSectionShell } from '@/src/domains/branches/ui/BranchSectionShell';
-import AcademicCatalogManager from '@/src/domains/learning/academics/ui/AcademicCatalogManager';
+import { AppLayout } from '@/shared/ui/AppLayout';
+import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/shared/ui/InlineAlert';
+import CmsDashboard from '@/domains/cms/admin/ui/CmsDashboard';
+import { NavItem } from '@/shared/ui/Sidebar';
+import { BranchSectionShell } from '@/domains/branches/ui/BranchSectionShell';
+import AcademicCatalogManager from '@/domains/learning/academics/ui/AcademicCatalogManager';
 import ClassManagerPanel from './ClassManagerPanel';
 import StaffAttendanceManager from './StaffAttendanceManager';
-import EventManager from '@/src/domains/competition/admin/EventManager';
-import TournamentManager from '@/src/domains/competition/admin/TournamentManager';
-import TeamManager from '@/src/domains/competition/admin/TeamManager';
-import MatchManager from '@/src/domains/competition/admin/MatchManager';
-import WorkshopManager from '@/src/domains/competition/admin/WorkshopManager';
-import RegistrationManager from '@/src/domains/competition/admin/RegistrationManager';
-import CertificateManager from '@/src/domains/user/shared/ui/CertificateManager';
-import type { UserProfile } from '@/src/shared/types';
+import EventManager from '@/domains/competition/admin/EventManager';
+import TournamentManager from '@/domains/competition/admin/TournamentManager';
+import TeamManager from '@/domains/competition/admin/TeamManager';
+import MatchManager from '@/domains/competition/admin/MatchManager';
+import WorkshopManager from '@/domains/competition/admin/WorkshopManager';
+import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
+import CertificateManager from '@/domains/user/shared/ui/CertificateManager';
+import type { UserProfile } from '@/shared/types';
 import {
   fetchEnrollmentsApi, fetchPaymentsApi, fetchProgramsApi, fetchClassesApi,
-} from '@/src/domains/learning/academics/api/academicApi';
+} from '@/domains/learning/academics/api/academicApi';
 import {
   fetchAllUsersApi, branchesApi, resolveRole,
 } from '../api/adminApi';
@@ -37,7 +37,7 @@ import {
   type AdminSectionId,
   type AdminHubStats,
 } from '../adminCommandCenter';
-import { summarizeSettled } from '@/src/shared/utils/storage';
+import { summarizeSettled } from '@/shared/utils/storage';
 
 interface Props { currentUser: UserProfile; onLogout: () => void; }
 
