@@ -4,8 +4,8 @@ import {
   Image, FileText, Handshake, ShoppingBag, MessageSquare, DollarSign,
   Calendar, Bell, UserPlus, BarChart3, Users, Zap, Award,
   Clock, CheckCircle, CheckCircle2, Activity, Trophy, Building, Sparkles, Download,
-  BookOpen, RefreshCw, Monitor, Globe,
-  Edit3, User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard
+  BookOpen, RefreshCw, Monitor,
+  User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard, ClipboardCheck, Receipt, LayoutDashboard
 } from 'lucide-react';
 import { UserProfile, AppNotification, Enrollment, EnrollmentPayment } from '@/src/shared/types';
 import { AppLayout } from '@/src/shared/ui/AppLayout';
@@ -47,7 +47,7 @@ interface Props {
 type SectionId = ManagerSectionId;
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'overview', label: 'Overview', icon: Activity, group: 'main' },
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard, group: 'main' },
   { id: 'academic-catalog', label: 'Academic Catalog', icon: BookOpen, group: 'academic' },
   { id: 'classes', label: 'Classes', icon: BookOpen, group: 'academic' },
   { id: 'enrollments', label: 'Academic Enrollments', icon: UserPlus, group: 'academic' },
@@ -67,7 +67,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'sponsors', label: 'Sponsors & Partners', icon: Handshake, group: 'partners' },
   { id: 'reports', label: 'Reports & Data', icon: BarChart3, group: 'reports' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, group: 'reports' },
-  { id: 'walkin', label: 'Walk-In Registration', icon: Edit3, group: 'operations' },
+  { id: 'walkin', label: 'Walk-In Registration', icon: ClipboardList, group: 'operations' },
   { id: 'account', label: 'My Account', icon: User, group: 'system' },
 ];
 
@@ -210,13 +210,13 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
   const quickActions: { id: SectionId; label: string; desc: string; icon: React.ElementType; color: string }[] = [
     { id: 'academic-catalog', label: 'Academic Catalog', desc: 'Programs & classes', icon: BookOpen, color: 'from-blue-500 to-blue-600' },
     { id: 'enrollments', label: 'Academic Enrollments', desc: 'View student enrollments', icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
-    { id: 'event-registrations', label: 'Event Registrations', desc: 'Manage event registrations', icon: UserPlus, color: 'from-purple-500 to-purple-600' },
-    { id: 'payments', label: 'Payment Reports', desc: 'Track transactions', icon: DollarSign, color: 'from-cyan-500 to-cyan-600' },
+    { id: 'event-registrations', label: 'Event Registrations', desc: 'Manage event registrations', icon: ClipboardCheck, color: 'from-purple-500 to-purple-600' },
+    { id: 'payments', label: 'Payment Reports', desc: 'Track transactions', icon: CreditCard, color: 'from-cyan-500 to-cyan-600' },
     { id: 'reports', label: 'Download Reports', desc: 'PDF reports & data', icon: FileText, color: 'from-rose-500 to-rose-600' },
     { id: 'events', label: 'Events Calendar', desc: 'Manage all events', icon: Calendar, color: 'from-purple-500 to-purple-600' },
-    { id: 'command-center' as SectionId, label: 'Event Command Center', desc: 'Live match & tournament control', icon: Trophy, color: 'from-rose-600 to-red-700' },
+    { id: 'command-center' as SectionId, label: 'Event Command Center', desc: 'Live match & tournament control', icon: Zap, color: 'from-rose-600 to-red-700' },
     { id: 'tournaments', label: 'Tournaments', desc: 'Manage competitions', icon: Trophy, color: 'from-rose-500 to-rose-600' },
-    { id: 'workshops', label: 'Workshops', desc: 'Schedule workshops', icon: Building, color: 'from-emerald-500 to-emerald-600' },
+    { id: 'workshops', label: 'Workshops', desc: 'Schedule workshops', icon: Monitor, color: 'from-emerald-500 to-emerald-600' },
     { id: 'store', label: 'Store Inventory', desc: 'Manage products & stock', icon: ShoppingBag, color: 'from-amber-500 to-amber-600' },
     { id: 'analytics', label: 'View Analytics', desc: 'Business performance metrics', icon: BarChart3, color: 'from-blue-500 to-blue-600' },
     { id: 'schools', label: 'Branches', desc: 'Manage branches', icon: Building, color: 'from-sky-500 to-blue-600' },
@@ -264,7 +264,7 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
           { label: 'Pending Payments', value: String(enrollments.filter(e => e.status === 'PENDING_PAYMENT').length), icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
-          { label: 'Paid Today', value: String(payments.filter(p => p.payment_date?.startsWith(new Date().toISOString().slice(0, 10)) && p.status === 'PAID').length), icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Paid Today', value: String(payments.filter(p => p.payment_date?.startsWith(new Date().toISOString().slice(0, 10)) && p.status === 'PAID').length), icon: Receipt, color: 'text-emerald-500', bg: 'bg-emerald-50' },
           { label: 'Programs', value: String(programs.length), icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
           { label: 'Notifications', value: String(unreadNotifications.length), icon: Bell, color: 'text-blue-500', bg: 'bg-blue-50' },
         ].map((s, i) => {
@@ -650,7 +650,7 @@ function RegistrationSection() {
           { label: 'Total Registrations', value: registrations.length, icon: UserPlus, color: 'text-sky-600', bg: 'bg-sky-50' },
           { label: 'Confirmed', value: confirmedCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Pending', value: pendingCount, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Revenue', value: `${(totalRevenue / 1000).toFixed(1)}K Birr`, icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Revenue', value: `${(totalRevenue / 1000).toFixed(1)}K Birr`, icon: Receipt, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((stat, i) => {
           const SIcon = stat.icon;
           return (
