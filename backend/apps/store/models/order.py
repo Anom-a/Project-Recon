@@ -20,8 +20,9 @@ class OrderStatus(models.TextChoices):
 ORDER_STATUS_TRANSITIONS = {
     OrderStatus.PENDING_PAYMENT: [OrderStatus.PAID],
     OrderStatus.PAID: [OrderStatus.PREPARING, OrderStatus.CANCELLED, OrderStatus.REFUNDED],
-    OrderStatus.PREPARING: [OrderStatus.READY_FOR_PICKUP],
-    OrderStatus.READY_FOR_PICKUP: [OrderStatus.COMPLETED],
+    OrderStatus.PREPARING: [OrderStatus.READY_FOR_PICKUP, OrderStatus.CANCELLED],
+    OrderStatus.READY_FOR_PICKUP: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+    OrderStatus.COMPLETED: [OrderStatus.REFUNDED],
 }
 
 
@@ -49,6 +50,8 @@ class Order(models.Model):
     )
     paid_at = models.DateTimeField()
     completed_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
     guest_name = models.CharField(max_length=255, blank=True, default="")
     guest_email = models.EmailField(max_length=255, blank=True, default="")
     guest_phone = models.CharField(max_length=20, blank=True, default="")

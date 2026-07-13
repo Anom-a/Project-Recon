@@ -119,6 +119,42 @@ def verify_store_payment(reference: str) -> StorePayment:
     return payment
 
 
+def refund_store_payment(
+    payment: StorePayment, actor=None
+) -> StorePayment:
+    """Refund a store payment through the payment provider."""
+    if payment.status != PaymentStatus.PAID:
+        raise ValidationError(
+            f"Cannot refund payment in status '{payment.status}'."
+        )
+
+    from apps.shared.payment.payment_service import refund_payment as shared_refund_payment
+
+    try:
+        result = shared_refund_payment(
+            reference=payment.transaction_reference,
+            amount=payment.amount,
+        )
+    except PaymentError as e:
+        logger.error("Payment refund infrastructure error: %s", e)
+        raise ValidationError(f"Payment refund temporarily unavailable.")
+
+    if result["status"] == "success":
+        payment.status = PaymentStatus.REFUNDED
+        payment.refunded_at = timezone.now()
+        payment.refund_reference = result.get("provider_refund_id", "")
+        payment.save(update_fields=["status", "refunded_at", "refund_reference"])
+    else:
+        logger.error(
+            "Payment refund failed: reference=%s provider_status=%s",
+            payment.transaction_reference,
+            result.get("provider_status"),
+        )
+        raise ValidationError("Payment refund failed.")
+
+    return payment
+
+
 def _get_payment_by_reference(reference: str) -> StorePayment:
     try:
         return StorePayment.objects.select_related("pending_order").get(

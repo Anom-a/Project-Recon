@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
+from apps.shared.audit.services import log_action
 from apps.store.constants import PaymentStatus
 from apps.store.models.order import (
     ORDER_STATUS_TRANSITIONS,
@@ -13,7 +14,7 @@ from apps.store.models.order import (
     OrderStatusHistory,
 )
 from apps.store.models.pending_order import PendingOrder
-from apps.store.services.branch_inventory_service import reduce_inventory
+from apps.store.services.branch_inventory_service import add_inventory, reduce_inventory
 
 logger = logging.getLogger(__name__)
 
@@ -126,11 +127,31 @@ def change_order_status(
 
     previous_status = order.status
 
+    if new_status == OrderStatus.REFUNDED:
+        from apps.store.models.payment import StorePayment
+        from apps.store.services.payment_service import refund_store_payment
+
+        try:
+            store_payment = StorePayment.objects.get(
+                transaction_reference=order.payment_reference
+            )
+            refund_store_payment(store_payment, actor=actor)
+        except StorePayment.DoesNotExist:
+            logger.warning(
+                "No payment record found for refund. order=%s ref=%s",
+                order.order_number,
+                order.payment_reference,
+            )
+
     with transaction.atomic():
         order.status = new_status
         if new_status == OrderStatus.COMPLETED:
             order.completed_at = timezone.now()
-        order.save(update_fields=["status", "completed_at"])
+        elif new_status == OrderStatus.CANCELLED:
+            order.cancelled_at = timezone.now()
+        elif new_status == OrderStatus.REFUNDED:
+            order.refunded_at = timezone.now()
+        order.save(update_fields=["status", "completed_at", "cancelled_at", "refunded_at"])
 
         OrderStatusHistory.objects.create(
             order=order,
@@ -140,12 +161,32 @@ def change_order_status(
             notes=notes,
         )
 
+        if new_status in (OrderStatus.CANCELLED, OrderStatus.REFUNDED):
+            for item in order.items.select_related("product"):
+                add_inventory(order.branch, item.product, item.quantity, actor=actor)
+
+    log_action(
+        actor=actor,
+        action="ORDER_STATUS_CHANGED",
+        resource_type="Order",
+        resource_id=str(order.pk),
+        details={
+            "order_number": order.order_number,
+            "previous_status": previous_status,
+            "new_status": new_status,
+            "notes": notes,
+        },
+    )
+
     if new_status == OrderStatus.READY_FOR_PICKUP:
         from apps.store.services.notification_service import notify_ready_for_pickup
         notify_ready_for_pickup(order)
     elif new_status == OrderStatus.COMPLETED:
         from apps.store.services.notification_service import notify_order_completed
         notify_order_completed(order)
+    elif new_status == OrderStatus.CANCELLED:
+        from apps.store.services.notification_service import notify_cancelled
+        notify_cancelled(order)
     elif new_status == OrderStatus.REFUNDED:
         from apps.store.services.notification_service import notify_refund
         notify_refund(order)

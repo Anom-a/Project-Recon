@@ -964,6 +964,99 @@ class OrderServiceTest(TestCase):
         self.assertEqual(updated.status, OrderStatus.COMPLETED)
         self.assertIsNotNone(updated.completed_at)
 
+    def test_cancel_order_restores_inventory(self):
+        from apps.store.models import BranchInventory
+
+        category = ProductCategory.objects.create(name="Category")
+        product = Product.objects.create(
+            category=category, name="Widget", slug="widget", sku="WDG", price=10
+        )
+        PendingOrderItem.objects.create(
+            pending_order=self.pending_order,
+            product=product,
+            quantity=3,
+            unit_price=10.00,
+            subtotal=30.00,
+        )
+        add_inventory(self.branch, product, 10)
+        order = create_order_from_pending_order(self.pending_order)
+        self.assertEqual(
+            BranchInventory.objects.get(branch=self.branch, product=product).quantity,
+            7,
+        )
+        change_order_status(order, OrderStatus.CANCELLED, actor=self.user)
+        self.assertEqual(
+            BranchInventory.objects.get(branch=self.branch, product=product).quantity,
+            10,
+        )
+
+    def test_cancel_order_sets_cancelled_at(self):
+        order = create_order_from_pending_order(self.pending_order)
+        change_order_status(order, OrderStatus.CANCELLED, actor=self.user)
+        self.assertIsNotNone(order.cancelled_at)
+        self.assertEqual(order.status, OrderStatus.CANCELLED)
+
+    def test_cancel_order_creates_audit_log(self):
+        from apps.shared.audit.models import AuditLog
+
+        order = create_order_from_pending_order(self.pending_order)
+        change_order_status(
+            order, OrderStatus.CANCELLED, actor=self.user, notes="Test cancel"
+        )
+        log_entry = AuditLog.objects.filter(
+            resource_type="Order", resource_id=str(order.pk)
+        ).first()
+        self.assertIsNotNone(log_entry)
+        self.assertEqual(log_entry.action, "ORDER_STATUS_CHANGED")
+        self.assertIn("CANCELLED", log_entry.details.get("new_status", ""))
+
+    def test_refund_order_requires_paid_status(self):
+        from apps.store.constants import PaymentStatus
+        from apps.store.models.payment import StorePayment
+
+        category = ProductCategory.objects.create(name="Category")
+        product = Product.objects.create(
+            category=category, name="Widget", slug="widget", sku="WDG", price=10
+        )
+        PendingOrderItem.objects.create(
+            pending_order=self.pending_order,
+            product=product,
+            quantity=1,
+            unit_price=10.00,
+            subtotal=10.00,
+        )
+        add_inventory(self.branch, product, 5)
+        order = create_order_from_pending_order(self.pending_order)
+
+        StorePayment.objects.filter(
+            transaction_reference="STORE-ordsvc-ref-001"
+        ).update(status=PaymentStatus.PAID)
+
+        from unittest.mock import patch
+
+        with patch(
+            "apps.shared.payment.payment_service.refund_payment"
+        ) as mock_refund:
+            mock_refund.return_value = {
+                "status": "success",
+                "provider": "chapa",
+                "provider_status": "success",
+                "reference": "STORE-ordsvc-ref-001",
+                "provider_refund_id": "PROVIDER-REF-001",
+                "amount": 115.00,
+                "currency": "ETB",
+                "raw": {},
+            }
+            change_order_status(order, OrderStatus.REFUNDED, actor=self.user)
+
+        updated = get_order_or_404(order.pk)
+        self.assertEqual(updated.status, OrderStatus.REFUNDED)
+        self.assertIsNotNone(updated.refunded_at)
+        payment = StorePayment.objects.get(transaction_reference="STORE-ordsvc-ref-001")
+        self.assertEqual(payment.status, PaymentStatus.REFUNDED)
+        self.assertIsNotNone(payment.refunded_at)
+        self.assertEqual(payment.refund_reference, "PROVIDER-REF-001")
+
 
 class NotificationServiceTest(TestCase):
     def setUp(self):
@@ -1055,6 +1148,20 @@ class NotificationServiceTest(TestCase):
         mock_send.assert_called_once()
         args, _ = mock_send.call_args
         self.assertIn("Order Completed", args[1])
+
+    def test_notify_cancelled(self):
+        from unittest.mock import patch
+
+        from apps.store.services.notification_service import notify_cancelled
+
+        self.order.status = OrderStatus.CANCELLED
+        with patch(
+            "apps.store.services.notification_service.send_email"
+        ) as mock_send:
+            notify_cancelled(self.order)
+        mock_send.assert_called_once()
+        args, _ = mock_send.call_args
+        self.assertIn("Order Cancelled", args[1])
 
     def test_notify_refund(self):
         from unittest.mock import patch

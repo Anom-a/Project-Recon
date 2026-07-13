@@ -85,6 +85,25 @@ def notify_order_completed(order: Order) -> None:
     send_email(recipient, subject, body)
 
 
+def notify_cancelled(order: Order) -> None:
+    recipient = _resolve_recipient(order)
+    if not recipient:
+        logger.warning(
+            "No recipient for cancellation notification (order %s)",
+            order.order_number,
+        )
+        return
+
+    subject = f"Order Cancelled — Order {order.order_number}"
+    body = (
+        f"Dear customer,\n\n"
+        f"Your order has been cancelled.\n\n"
+        f"Order Number: {order.order_number}\n"
+        f"If you have any questions, please contact us."
+    )
+    send_email(recipient, subject, body)
+
+
 def notify_refund(order: Order) -> None:
     recipient = _resolve_recipient(order)
     if not recipient:

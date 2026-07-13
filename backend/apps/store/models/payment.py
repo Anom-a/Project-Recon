@@ -35,6 +35,8 @@ class StorePayment(models.Model):
         db_index=True,
     )
     payment_date = models.DateTimeField(null=True, blank=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
+    refund_reference = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
