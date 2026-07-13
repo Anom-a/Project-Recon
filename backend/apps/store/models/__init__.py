@@ -1,5 +1,6 @@
 from .branch_inventory import BranchInventory
 from .category import ProductCategory
+from .order import Order, OrderItem, OrderStatusHistory
 from .product import Product
 from .product_image import ProductImage
 from .payment import StorePayment
@@ -16,4 +17,7 @@ __all__ = [
     "PendingOrder",
     "PendingOrderItem",
     "StorePayment",
+    "Order",
+    "OrderItem",
+    "OrderStatusHistory",
 ]

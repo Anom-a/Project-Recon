@@ -2,6 +2,9 @@ from django.contrib import admin
 
 from apps.store.models import (
     BranchInventory,
+    Order,
+    OrderItem,
+    OrderStatusHistory,
     PendingOrder,
     PendingOrderItem,
     Product,
@@ -70,3 +73,22 @@ class StorePaymentAdmin(admin.ModelAdmin):
     list_display = ("transaction_reference", "pending_order", "amount", "status", "payment_provider", "payment_date")
     search_fields = ("transaction_reference",)
     list_filter = ("status",)
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ("order_number", "branch", "status", "total", "paid_at", "completed_at", "created_at")
+    search_fields = ("order_number", "payment_reference", "guest_name")
+    list_filter = ("status", "branch")
+
+
+@admin.register(OrderItem)
+class OrderItemAdmin(admin.ModelAdmin):
+    list_display = ("order", "product", "product_name", "quantity", "unit_price", "subtotal")
+    search_fields = ("product_name",)
+
+
+@admin.register(OrderStatusHistory)
+class OrderStatusHistoryAdmin(admin.ModelAdmin):
+    list_display = ("order", "previous_status", "new_status", "changed_by", "changed_at")
+    list_filter = ("new_status",)
