@@ -57,7 +57,7 @@ export default function AnalyticsDashboard() {
 
   const programDistribution = programs.map((p, i) => {
     const colors = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DC2626', '#0891B2', '#DB2777', '#65A30D'];
-    const count = enrollments.filter(e => e.program === p.id || e.sub_program_name === p.name).length;
+    const count = enrollments.filter(e => e.program_name === p.name || e.sub_program_name === p.name).length;
     return { program: p.name, count, color: colors[i % colors.length] };
   });
 
@@ -94,7 +94,7 @@ export default function AnalyticsDashboard() {
     id: p.id || String(Math.random()),
     student: (p as any).student_name || (p as any).student_email || 'Student',
     amount: Number(p.amount || 0),
-    type: p.payment_type || 'Enrollment',
+    type: p.payment_method || 'Enrollment',
     date: (p.created_at || p.payment_date || '').slice(0, 10),
     status: p.status === 'PAID' ? 'completed' : 'pending',
   }));

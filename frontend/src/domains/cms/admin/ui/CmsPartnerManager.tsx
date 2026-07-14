@@ -39,7 +39,7 @@ export default function CmsPartnerManager({ addToast }: Props) {
     if (!search) return items;
     const q = search.toLowerCase();
     return items.filter(item =>
-      item.name.toLowerCase().includes(q) ||
+      item.name?.toLowerCase().includes(q) ||
       item.description?.toLowerCase().includes(q) ||
       item.websiteUrl?.toLowerCase().includes(q)
     );
@@ -78,7 +78,7 @@ export default function CmsPartnerManager({ addToast }: Props) {
     setSaving(false);
   };
 
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm('Remove this partner?')) return;
     try { await api.delete('partners', id); addToast('Partner removed', 'success'); load(); }
     catch { addToast('Delete failed', 'error'); }

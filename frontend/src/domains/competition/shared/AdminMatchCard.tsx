@@ -15,8 +15,8 @@ export default function AdminMatchCard({ match, onClick, onStart, compact = fals
   const sideA = match.sides?.find(s => s.side === 'SIDE_A');
   const sideB = match.sides?.find(s => s.side === 'SIDE_B');
   const sides = [
-    { side: 'SIDE_A' as const, score: sideA?.score ?? null, teams: getSideTeamNames(sideA?.participants) },
-    { side: 'SIDE_B' as const, score: sideB?.score ?? null, teams: getSideTeamNames(sideB?.participants) },
+    { side: 'SIDE_A' as const, score: sideA?.score ?? 0, teams: getSideTeamNames(sideA?.participants) },
+    { side: 'SIDE_B' as const, score: sideB?.score ?? 0, teams: getSideTeamNames(sideB?.participants) },
   ];
   const { sideA: red, sideB: blue } = sidesFromMatch(sides);
   const isLive = match.status === 'LIVE';

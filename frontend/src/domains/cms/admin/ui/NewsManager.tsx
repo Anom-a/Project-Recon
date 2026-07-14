@@ -82,7 +82,7 @@ export default function NewsManager({ addToast }: Props) {
     setSaving(false);
   };
 
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm('Delete this news article?')) return;
     try { await api.delete('news', id); addToast('Article deleted', 'success'); load(); }
     catch { addToast('Delete failed', 'error'); }

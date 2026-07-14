@@ -3,6 +3,8 @@ export * from '../../domains/forum/model/types';
 export * from '../../domains/learning/model/types';
 export * from '../../domains/competition/model/types';
 
+import type { SessionStatus, AttendanceStatus } from '../../domains/learning/model/types';
+
 export interface UpdatePost {
   id: string;
   title: string;

@@ -135,7 +135,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'enrollments': return <RegistrationSection />;
       case 'event-registrations': return <RegistrationManager />;
       case 'store': return <OnlineStoreHub />;
-      case 'events': return <EventsManagement onNavigate={setActiveSection} />;
+      case 'events': return <EventsManagement onNavigate={(id: string) => setActiveSection(id as SectionId)} />;
       case 'tournaments': return <TournamentManager />;
       case 'tournament-teams': return <TeamManager />;
       case 'matches': return <MatchManager />;
@@ -526,7 +526,7 @@ function ReportsSection() {
           >
             <option value="">Select a student...</option>
             {students.map(s => (
-              <option key={s.id} value={s.id}>{s.full_name || s.first_name || s.email}</option>
+              <option key={s.id} value={s.id}>{`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email}</option>
             ))}
           </select>
         </div>
