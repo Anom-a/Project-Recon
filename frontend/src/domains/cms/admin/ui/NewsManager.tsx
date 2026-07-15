@@ -33,7 +33,7 @@ export default function NewsManager({ addToast }: Props) {
   const load = async () => {
     setLoading(true);
     try { setItems(await api.getAll<News>('news')); }
-    catch { setItems([]); }
+    catch { setItems([]); addToast('Failed to load news', 'error'); }
     setLoading(false);
   };
 

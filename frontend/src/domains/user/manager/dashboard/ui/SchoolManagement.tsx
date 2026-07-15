@@ -52,7 +52,6 @@ export default function SchoolManagement({ currentUser }: Props) {
   });
 
   const activeSchools = schools.filter(s => s.status === 'Active').length;
-  const totalStudents = 0;
 
   const openAdd = () => {
     setEditing(null);
@@ -136,7 +135,7 @@ export default function SchoolManagement({ currentUser }: Props) {
         {[
           { label: 'Total Schools', value: schools.length, icon: Building, color: 'text-sky-600', bg: 'bg-sky-50' },
           { label: 'Active', value: activeSchools, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Total Students', value: totalStudents, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Active Schools', value: activeSchools, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
           { label: 'Inactive', value: schools.filter(s => s.status !== 'Active').length, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((stat, i) => {
           const SIcon = stat.icon;

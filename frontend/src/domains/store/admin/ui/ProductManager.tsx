@@ -102,10 +102,10 @@ export default function ProductManager({ addToast }: Props) {
     }
   };
 
-  const handleImageDelete = async (productId: string, imageId: string) => {
+  const handleImageDelete = async (imageId: string) => {
     if (!window.confirm('Delete this image?')) return;
     try {
-      await storeAdminApi.products.deleteImage(productId, imageId);
+      await storeAdminApi.products.deleteImage(imageId);
       addToast('Image deleted', 'success');
       fetchItems();
     } catch (e: any) {
@@ -247,7 +247,7 @@ export default function ProductManager({ addToast }: Props) {
                     <div key={img.id} className="flex items-center gap-2 mb-1">
                       <img src={img.image_url || img.image} alt={img.alt_text} className="w-8 h-8 rounded object-cover" />
                       <span className="text-xs text-slate-500 flex-1">{img.is_primary ? 'Primary' : img.alt_text || 'Image'}</span>
-                      <button onClick={() => handleImageDelete(editing, img.id)}
+                      <button onClick={() => handleImageDelete(img.id)}
                         className="p-1 text-slate-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
                     </div>
                   ))}

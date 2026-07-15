@@ -86,7 +86,9 @@ export default function CmsDashboard({ currentUser }: Props) {
           'contact-requests': contactRequests.length,
           'map-nodes': mapNodes.length,
         });
-      } catch {}
+      } catch {
+        setCounts(prev => Object.fromEntries(Object.entries(prev).map(([k]) => [k, 0])) as SectionCounts);
+      }
     })();
   }, []);
 

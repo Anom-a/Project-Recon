@@ -21,13 +21,14 @@ const PREFIX = '/cms/admin';
 
 const STATUS_TO_BACKEND: Record<string, string> = {
   pending: 'OPEN',
+  'in-progress': 'IN_PROGRESS',
   resolved: 'RESOLVED',
   archived: 'CLOSED',
 };
 
 const STATUS_TO_UI: Record<string, string> = {
   OPEN: 'pending',
-  IN_PROGRESS: 'pending',
+  IN_PROGRESS: 'in-progress',
   RESOLVED: 'resolved',
   CLOSED: 'archived',
 };
