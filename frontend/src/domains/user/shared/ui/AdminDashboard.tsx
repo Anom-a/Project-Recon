@@ -201,7 +201,7 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       case 'certificates': return <CertificateManager currentUser={currentUser} />;
       case 'store': return <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-200 shadow-sm"><StoreDashboard currentUser={currentUser} /></div>;
       case 'cms': return <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-200 shadow-sm"><CmsDashboard currentUser={currentUser} /></div>;
-      case 'announcements': return <AnnouncementsManager currentUser={currentUser} />;
+      case 'announcements': return <AnnouncementsManager />;
       case 'communications': return <CommunicationsCenter currentUser={currentUser} />;
       default: return (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-sm text-slate-600">

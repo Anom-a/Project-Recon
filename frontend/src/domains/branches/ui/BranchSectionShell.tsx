@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Building, RefreshCw, Plus, Lock } from 'lucide-react';
+import { Building, RefreshCw, Plus } from 'lucide-react';
 import { branchesApi, assignmentsApi, type BranchResponse } from '@/domains/user/shared/api/adminApi';
 import { BranchListTable } from './BranchListTable';
 import { BranchFormModal, type BranchFormData } from './BranchFormModal';
 import { BranchDetailPanel } from './BranchDetailPanel';
 import { AssignManagerModal } from './AssignManagerModal';
 import type { UserProfile } from '@/shared/types';
-import { canManageBranches } from '@/shared/auth/permissions';
+import { isSuperAdmin } from '@/shared/auth/permissions';
 
 interface UserOption {
   id: string;
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function BranchSectionShell({ currentUser }: Props) {
-  const canManage = canManageBranches(currentUser);
+  const canManage = isSuperAdmin(currentUser);
   const [branches, setBranches] = useState<BranchResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');

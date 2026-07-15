@@ -167,7 +167,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'academic-catalog': return <AcademicCatalogManager />;
       case 'classes': return <ClassManagerPanel />;
       case 'staff-attendance': return <StaffAttendanceManager currentUser={currentUser} />;
-      case 'sponsors': return <SponsorManagement />;
+      case 'sponsors': return <SponsorManagement currentUser={currentUser} />;
       case 'schools': return <SchoolManagement currentUser={currentUser} />;
       case 'enrollments': return <RegistrationSection />;
       case 'event-registrations': return <RegistrationManager />;
@@ -179,7 +179,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'tournament-teams': return <TeamManager />;
       case 'matches': return <MatchManager />;
       case 'workshops': return <WorkshopManager />;
-      case 'announcements': return <AnnouncementsManager currentUser={currentUser} />;
+      case 'announcements': return <AnnouncementsManager />;
       case 'communications': return <CommunicationsCenter currentUser={currentUser} />;
       case 'payments': return <PaymentTracker />;
       case 'walkin': return <WalkInRegistration currentUser={currentUser} />;
