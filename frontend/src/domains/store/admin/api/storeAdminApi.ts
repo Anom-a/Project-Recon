@@ -36,16 +36,21 @@ export interface OrderStatusPayload {
   notes?: string;
 }
 
-export type InventoryAction = 'add' | 'reduce' | 'correct' | 'transfer';
 
-export interface InventoryActionPayload {
-  action: InventoryAction;
-  branch: string;
+
+export interface InventoryAdjustPayload {
+  quantity: number;
+}
+
+export interface InventoryCorrectPayload {
+  quantity: number;
+}
+
+export interface InventoryTransferPayload {
+  from_branch: string;
+  to_branch: string;
   product: string;
-  quantity?: number;
-  new_quantity?: number;
-  to_branch?: string;
-  reason?: string;
+  quantity: number;
 }
 
 export const storeAdminApi = {
@@ -53,7 +58,7 @@ export const storeAdminApi = {
     list: () => http.get<ProductCategory[]>(`${PREFIX}/categories/`),
     get: (id: string) => http.get<ProductCategory>(`${PREFIX}/categories/${id}/`),
     create: (data: CategoryPayload) => http.post<ProductCategory>(`${PREFIX}/categories/`, data),
-    update: (id: string, data: Partial<CategoryPayload>) => http.put<ProductCategory>(`${PREFIX}/categories/${id}/`, data),
+    update: (id: string, data: Partial<CategoryPayload>) => http.patch<ProductCategory>(`${PREFIX}/categories/${id}/`, data),
     delete: (id: string) => http.delete<void>(`${PREFIX}/categories/${id}/`),
     activate: (id: string) => http.post<void>(`${PREFIX}/categories/${id}/activate/`, {}),
     deactivate: (id: string) => http.post<void>(`${PREFIX}/categories/${id}/deactivate/`, {}),
@@ -67,14 +72,17 @@ export const storeAdminApi = {
     delete: (id: string) => http.delete<void>(`${PREFIX}/products/${id}/`),
     uploadImage: (productId: string, formData: FormData) =>
       http.post<Product>(`${PREFIX}/products/${productId}/images/`, formData),
-    deleteImage: (productId: string, imageId: string) =>
-      http.delete<void>(`${PREFIX}/products/${productId}/images/${imageId}/`),
+    deleteImage: (imageId: string) =>
+      http.delete<void>(`/store/admin/product-images/${imageId}/`),
   },
 
   inventory: {
     list: (params?: Record<string, string>) => http.get<BranchInventory[]>(`${PREFIX}/inventory/`, { params }),
     create: (data: InventoryPayload) => http.post<BranchInventory>(`${PREFIX}/inventory/`, data),
-    action: (data: InventoryActionPayload) => http.post<BranchInventory>(`${PREFIX}/inventory/action/`, data),
+    adjust: (id: string, data: InventoryAdjustPayload) => http.post<BranchInventory>(`${PREFIX}/inventory/${id}/add/`, data),
+    reduce: (id: string, data: InventoryAdjustPayload) => http.post<BranchInventory>(`${PREFIX}/inventory/${id}/reduce/`, data),
+    correct: (id: string, data: InventoryCorrectPayload) => http.post<BranchInventory>(`${PREFIX}/inventory/${id}/correct/`, data),
+    transfer: (data: InventoryTransferPayload) => http.post<BranchInventory>(`${PREFIX}/inventory/transfer/`, data),
   },
 
   orders: {

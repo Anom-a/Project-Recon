@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
-import { storeAdminApi, type InventoryPayload, type InventoryAction, type InventoryActionPayload } from '../api/storeAdminApi';
+import { storeAdminApi, type InventoryPayload, type InventoryTransferPayload } from '../api/storeAdminApi';
 import { branchesApi } from '@/domains/user/shared/api/adminApi';
 import type { BranchInventory } from '@/domains/store/model/types';
 
@@ -17,16 +17,27 @@ const emptyInventory = (): InventoryPayload => ({
   branch: '', product: '', quantity: 0, minimum_quantity: 0,
 });
 
-const emptyAction = (): InventoryActionPayload => ({
-  action: 'add', branch: '', product: '', quantity: 0, reason: '',
-});
+type ActionType = 'add' | 'reduce' | 'correct' | 'transfer';
 
-const ACTIONS: { value: InventoryAction; label: string }[] = [
-  { value: 'add', label: 'Add Stock' },
-  { value: 'reduce', label: 'Reduce Stock' },
-  { value: 'correct', label: 'Correct Quantity' },
-  { value: 'transfer', label: 'Transfer to Branch' },
-];
+interface ActionState {
+  type: ActionType;
+  inventoryId: string;
+  branch: string;
+  product: string;
+  quantity: string;
+  newQuantity: string;
+  toBranch: string;
+}
+
+const initialAction = (): ActionState => ({
+  type: 'add',
+  inventoryId: '',
+  branch: '',
+  product: '',
+  quantity: '',
+  newQuantity: '',
+  toBranch: '',
+});
 
 export default function InventoryManager({ addToast }: Props) {
   const [items, setItems] = useState<BranchInventory[]>([]);
@@ -40,7 +51,7 @@ export default function InventoryManager({ addToast }: Props) {
   const [creating, setCreating] = useState(false);
 
   const [showActionModal, setShowActionModal] = useState(false);
-  const [actionForm, setActionForm] = useState<InventoryActionPayload>(emptyAction());
+  const [action, setAction] = useState<ActionState>(initialAction());
   const [actioning, setActioning] = useState(false);
 
   const fetchAll = async () => {
@@ -83,8 +94,9 @@ export default function InventoryManager({ addToast }: Props) {
   };
 
   const openAction = (item?: BranchInventory) => {
-    setActionForm({
-      ...emptyAction(),
+    setAction({
+      ...initialAction(),
+      inventoryId: item?.id || '',
       product: item?.product || '',
       branch: item?.branch || '',
     });
@@ -94,7 +106,27 @@ export default function InventoryManager({ addToast }: Props) {
   const handleAction = async () => {
     setActioning(true);
     try {
-      await storeAdminApi.inventory.action(actionForm);
+      switch (action.type) {
+        case 'add':
+          await storeAdminApi.inventory.adjust(action.inventoryId, { quantity: parseInt(action.quantity) || 0 });
+          break;
+        case 'reduce':
+          await storeAdminApi.inventory.reduce(action.inventoryId, { quantity: parseInt(action.quantity) || 0 });
+          break;
+        case 'correct':
+          await storeAdminApi.inventory.correct(action.inventoryId, { quantity: parseInt(action.newQuantity) || 0 });
+          break;
+        case 'transfer': {
+          const payload: InventoryTransferPayload = {
+            from_branch: action.branch,
+            to_branch: action.toBranch,
+            product: action.product,
+            quantity: parseInt(action.quantity) || 0,
+          };
+          await storeAdminApi.inventory.transfer(payload);
+          break;
+        }
+      }
       addToast('Inventory action completed', 'success');
       setShowActionModal(false);
       fetchAll();
@@ -229,56 +261,43 @@ export default function InventoryManager({ addToast }: Props) {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1">Action</label>
-                <select value={actionForm.action} onChange={e => setActionForm(p => ({ ...p, action: e.target.value as InventoryAction }))}
+                <select value={action.type} onChange={e => setAction(p => ({ ...p, type: e.target.value as ActionType }))}
                   className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-                  {ACTIONS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                  <option value="add">Add Stock</option>
+                  <option value="reduce">Reduce Stock</option>
+                  <option value="correct">Correct Quantity</option>
+                  <option value="transfer">Transfer to Branch</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Product ID</label>
-                <input type="text" value={actionForm.product} onChange={e => setActionForm(p => ({ ...p, product: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Branch</label>
-                <select value={actionForm.branch} onChange={e => setActionForm(p => ({ ...p, branch: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-                  <option value="">-- Select --</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              </div>
-              {actionForm.action === 'add' || actionForm.action === 'reduce' ? (
+              {(action.type === 'add' || action.type === 'reduce' || action.type === 'transfer') && (
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">Quantity</label>
-                  <input type="number" min="0" value={actionForm.quantity || ''} onChange={e => setActionForm(p => ({ ...p, quantity: parseInt(e.target.value) || 0 }))}
+                  <input type="number" min="0" value={action.quantity} onChange={e => setAction(p => ({ ...p, quantity: e.target.value }))}
                     className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                 </div>
-              ) : actionForm.action === 'correct' ? (
+              )}
+              {action.type === 'correct' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">New Quantity</label>
-                  <input type="number" min="0" value={actionForm.new_quantity || ''} onChange={e => setActionForm(p => ({ ...p, new_quantity: parseInt(e.target.value) || 0 }))}
+                  <input type="number" min="0" value={action.newQuantity} onChange={e => setAction(p => ({ ...p, newQuantity: e.target.value }))}
                     className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                 </div>
-              ) : (
+              )}
+              {action.type === 'transfer' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">Destination Branch</label>
-                  <select value={actionForm.to_branch || ''} onChange={e => setActionForm(p => ({ ...p, to_branch: e.target.value }))}
+                  <select value={action.toBranch} onChange={e => setAction(p => ({ ...p, toBranch: e.target.value }))}
                     className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                     <option value="">-- Select --</option>
-                    {branches.filter(b => b.id !== actionForm.branch).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    {branches.filter(b => b.id !== action.branch).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                 </div>
               )}
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Reason (optional)</label>
-                <input type="text" value={actionForm.reason || ''} onChange={e => setActionForm(p => ({ ...p, reason: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-              </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">
               <button onClick={() => setShowActionModal(false)}
                 className="px-3 py-1.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">Cancel</button>
-              <button onClick={handleAction} disabled={actioning || !actionForm.product || !actionForm.branch || (actionForm.action === 'transfer' && !actionForm.to_branch)}
+              <button onClick={handleAction} disabled={actioning}
                 className="px-3 py-1.5 text-sm font-bold text-white bg-amber-500 rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors">
                 {actioning ? 'Processing...' : 'Execute'}
               </button>

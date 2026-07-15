@@ -17,9 +17,8 @@ export async function getProduct(id: string): Promise<Product> {
   return await http.get<Product>(`${BASE}/${id}/`);
 }
 
-export async function getProductBySlug(slug: string): Promise<Product> {
-  // TODO: Check if backend has slug endpoint or we need to filter
-  // For now, just use getProduct, assuming id is slug (but adjust as needed)
-  return await http.get<Product>(`${BASE}/${slug}/`);
+export async function getProductBySlug(slug: string): Promise<Product | undefined> {
+  const products = await listProducts({ search: slug });
+  return products.find(p => p.slug === slug || p.name.toLowerCase() === slug.toLowerCase());
 }
 

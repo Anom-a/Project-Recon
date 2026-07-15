@@ -1,22 +1,14 @@
 import type { DashboardSignal } from '@/shared/ui/DashboardCommandCenter';
 import {
-  BookOpen, GraduationCap, Bell, Zap, Award, Calendar, ClipboardList,
-  Trophy, FileText, Megaphone, MessageCircle,
-  CheckCircle2, AlertCircle,
+  BookOpen, Calendar, ClipboardList,
+  Trophy, FileText, Megaphone, ShoppingBag,
 } from 'lucide-react';
 
 export type StudentSectionId =
-  | 'home' | 'account' | 'academics' | 'career' | 'events'
-  | 'notifications' | 'announcements' | 'messaging' | 'certificates';
+  | 'home' | 'account' | 'store' | 'career' | 'events'
+  | 'announcements' | 'messaging' | 'certificates';
 
 export interface StudentHubStats {
-  activeCount: number;
-  enrolledCount: number;
-  completedCount: number;
-  pendingCount: number;
-  unreadCount: number;
-  xpPoints: number;
-  badgeCount: number;
   certificateCount: number;
   eventRegCount: number;
   announcementCount: number;
@@ -29,14 +21,12 @@ export interface CommandCenterConfig {
   signals: DashboardSignal[];
 }
 
-/** Section-specific command center — avoids showing the same "Student Hub" on every page. */
 export function getSectionCommandCenter(
   section: StudentSectionId,
   stats: StudentHubStats,
 ): CommandCenterConfig | null {
   const {
-    activeCount, enrolledCount, completedCount, pendingCount,
-    unreadCount, xpPoints, badgeCount, certificateCount, eventRegCount,
+    certificateCount, eventRegCount, announcementCount,
     loading = false,
   } = stats;
 
@@ -45,10 +35,9 @@ export function getSectionCommandCenter(
       title: section === 'home' ? 'Student Hub' : 'Loading',
       subtitle: 'Fetching your dashboard data…',
       signals: [
-        { label: 'Courses', value: '—', detail: 'loading…', icon: BookOpen, tone: 'slate' },
-        { label: 'Enrolled', value: '—', detail: 'loading…', icon: GraduationCap, tone: 'slate' },
-        { label: 'Alerts', value: '—', detail: 'loading…', icon: Bell, tone: 'slate' },
-        { label: 'XP', value: '—', detail: 'loading…', icon: Zap, tone: 'slate' },
+        { label: 'Certificates', value: '—', detail: 'loading…', icon: FileText, tone: 'slate' },
+        { label: 'Events', value: '—', detail: 'loading…', icon: Calendar, tone: 'slate' },
+        { label: 'News', value: '—', detail: 'loading…', icon: Megaphone, tone: 'slate' },
       ],
     };
   }
@@ -57,24 +46,22 @@ export function getSectionCommandCenter(
     case 'home':
       return {
         title: 'Student Hub',
-        subtitle: 'Your learning, events, and career at a glance.',
+        subtitle: 'Your achievements, events, and store at a glance.',
         signals: [
-          { label: 'Courses', value: String(activeCount), detail: 'active enrollments', icon: BookOpen, tone: activeCount ? 'blue' : 'amber' },
-          { label: 'Enrolled', value: String(enrolledCount), detail: 'total programs', icon: GraduationCap, tone: enrolledCount ? 'emerald' : 'slate' },
-          { label: 'Alerts', value: String(unreadCount), detail: 'unread notifications', icon: Bell, tone: unreadCount ? 'amber' : 'slate' },
-          { label: 'XP', value: xpPoints.toLocaleString(), detail: 'experience points', icon: Zap, tone: 'purple' },
+          { label: 'Certificates', value: String(certificateCount), detail: 'earned credentials', icon: FileText, tone: certificateCount ? 'emerald' : 'slate' },
+          { label: 'Events', value: String(eventRegCount), detail: 'event registrations', icon: Calendar, tone: eventRegCount ? 'blue' : 'slate' },
+          { label: 'Announcements', value: String(announcementCount), detail: 'published news', icon: Megaphone, tone: announcementCount ? 'amber' : 'slate' },
         ],
       };
 
-    case 'academics':
+    case 'store':
       return {
-        title: 'Academics',
-        subtitle: 'Courses, attendance, progress, and learning resources.',
+        title: 'Store',
+        subtitle: 'Browse products and manage your orders.',
         signals: [
-          { label: 'Active', value: String(activeCount), detail: 'current courses', icon: BookOpen, tone: activeCount ? 'blue' : 'slate' },
-          { label: 'Completed', value: String(completedCount), detail: 'finished programs', icon: CheckCircle2, tone: completedCount ? 'emerald' : 'slate' },
-          { label: 'Pending', value: String(pendingCount), detail: 'awaiting payment', icon: AlertCircle, tone: pendingCount ? 'amber' : 'slate' },
-          { label: 'Badges', value: String(badgeCount), detail: 'achievements earned', icon: Award, tone: badgeCount ? 'purple' : 'slate' },
+          { label: 'Products', value: '—', detail: 'browse catalog', icon: ShoppingBag, tone: 'blue' },
+          { label: 'Cart', value: '—', detail: 'view your cart', icon: ShoppingBag, tone: 'emerald' },
+          { label: 'Orders', value: '—', detail: 'order history', icon: ClipboardList, tone: 'slate' },
         ],
       };
 
@@ -85,8 +72,6 @@ export function getSectionCommandCenter(
         signals: [
           { label: 'Certificates', value: String(certificateCount), detail: 'earned credentials', icon: FileText, tone: certificateCount ? 'emerald' : 'slate' },
           { label: 'Events', value: String(eventRegCount), detail: 'event registrations', icon: Calendar, tone: eventRegCount ? 'blue' : 'slate' },
-          { label: 'XP', value: xpPoints.toLocaleString(), detail: 'experience points', icon: Zap, tone: 'purple' },
-          { label: 'Alerts', value: String(unreadCount), detail: 'career notifications', icon: Bell, tone: unreadCount ? 'amber' : 'slate' },
         ],
       };
 
@@ -96,21 +81,7 @@ export function getSectionCommandCenter(
         subtitle: 'Browse, register, and track your participation.',
         signals: [
           { label: 'Registered', value: String(eventRegCount), detail: 'your registrations', icon: ClipboardList, tone: eventRegCount ? 'blue' : 'slate' },
-          { label: 'Courses', value: String(activeCount), detail: 'active enrollments', icon: BookOpen, tone: activeCount ? 'emerald' : 'slate' },
-          { label: 'Alerts', value: String(unreadCount), detail: 'event notifications', icon: Bell, tone: unreadCount ? 'amber' : 'slate' },
-          { label: 'XP', value: xpPoints.toLocaleString(), detail: 'competition points', icon: Trophy, tone: 'purple' },
-        ],
-      };
-
-    case 'notifications':
-      return {
-        title: 'Notifications',
-        subtitle: 'Academic, event, and system updates.',
-        signals: [
-          { label: 'Unread', value: String(unreadCount), detail: 'need attention', icon: Bell, tone: unreadCount ? 'amber' : 'emerald' },
-          { label: 'Courses', value: String(activeCount), detail: 'active enrollments', icon: BookOpen, tone: 'blue' },
-          { label: 'Events', value: String(eventRegCount), detail: 'registrations', icon: Calendar, tone: 'slate' },
-          { label: 'Certs', value: String(certificateCount), detail: 'certificates', icon: Award, tone: 'slate' },
+          { label: 'Certificates', value: String(certificateCount), detail: 'earned', icon: FileText, tone: certificateCount ? 'emerald' : 'slate' },
         ],
       };
 
@@ -119,10 +90,7 @@ export function getSectionCommandCenter(
         title: 'Announcements',
         subtitle: 'Official news and updates from the institution.',
         signals: [
-          { label: 'News', value: String(stats.announcementCount), detail: 'published items', icon: Megaphone, tone: stats.announcementCount ? 'blue' : 'slate' },
-          { label: 'Alerts', value: String(unreadCount), detail: 'unread notifications', icon: Bell, tone: unreadCount ? 'amber' : 'slate' },
-          { label: 'Courses', value: String(activeCount), detail: 'your programs', icon: GraduationCap, tone: 'blue' },
-          { label: 'Events', value: String(eventRegCount), detail: 'registrations', icon: Calendar, tone: 'slate' },
+          { label: 'News', value: String(announcementCount), detail: 'published items', icon: Megaphone, tone: announcementCount ? 'blue' : 'slate' },
         ],
       };
 
@@ -131,9 +99,6 @@ export function getSectionCommandCenter(
         title: 'Messages',
         subtitle: 'Announcements and support communication.',
         signals: [
-          { label: 'Alerts', value: String(unreadCount), detail: 'unread messages', icon: MessageCircle, tone: unreadCount ? 'amber' : 'slate' },
-          { label: 'Courses', value: String(activeCount), detail: 'enrolled programs', icon: BookOpen, tone: 'blue' },
-          { label: 'Events', value: String(eventRegCount), detail: 'event activity', icon: Calendar, tone: 'slate' },
           { label: 'Support', value: 'Open', detail: 'contact form available', icon: Megaphone, tone: 'emerald' },
         ],
       };
@@ -144,21 +109,16 @@ export function getSectionCommandCenter(
         subtitle: 'View, download, and verify your achievements.',
         signals: [
           { label: 'Earned', value: String(certificateCount), detail: 'certificates issued', icon: FileText, tone: certificateCount ? 'emerald' : 'amber' },
-          { label: 'Completed', value: String(completedCount), detail: 'programs finished', icon: CheckCircle2, tone: completedCount ? 'blue' : 'slate' },
-          { label: 'Active', value: String(activeCount), detail: 'in progress', icon: BookOpen, tone: 'slate' },
-          { label: 'Badges', value: String(badgeCount), detail: 'achievements', icon: Award, tone: badgeCount ? 'purple' : 'slate' },
         ],
       };
 
-  case 'account':
+    case 'account':
       return {
         title: 'My Account',
         subtitle: 'Profile, security, and account preferences.',
         signals: [
-          { label: 'XP', value: xpPoints.toLocaleString(), detail: 'experience points', icon: Zap, tone: 'purple' },
-          { label: 'Badges', value: String(badgeCount), detail: 'earned badges', icon: Award, tone: badgeCount ? 'emerald' : 'slate' },
-          { label: 'Courses', value: String(enrolledCount), detail: 'total enrollments', icon: GraduationCap, tone: 'blue' },
-          { label: 'Alerts', value: String(unreadCount), detail: 'notifications', icon: Bell, tone: unreadCount ? 'amber' : 'slate' },
+          { label: 'Events', value: String(eventRegCount), detail: 'registrations', icon: Calendar, tone: 'blue' },
+          { label: 'Certificates', value: String(certificateCount), detail: 'earned', icon: FileText, tone: certificateCount ? 'emerald' : 'slate' },
         ],
       };
 

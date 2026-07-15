@@ -31,7 +31,7 @@ export default function AboutUsManager({ addToast }: Props) {
   const load = async () => {
     setLoading(true);
     try { setItems(await api.getAll<AboutUs>('about')); }
-    catch { setItems([]); }
+    catch { setItems([]); addToast('Failed to load about us data', 'error'); }
     setLoading(false);
   };
 
