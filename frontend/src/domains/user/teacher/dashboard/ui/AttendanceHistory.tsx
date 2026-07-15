@@ -84,16 +84,6 @@ export default function AttendanceHistory({ classId = '' }: Props) {
       }));
   }, [monthSessions]);
 
-  const studentAttendanceRate = useMemo(() => {
-    const studentMap: Record<string, { present: number; total: number; name: string }> = {};
-    monthSessions.forEach(s => {
-      const present = s.records_count || s.students_present || 0;
-      const absent = s.absent_count || 0;
-      const total = present + absent;
-    });
-    return studentMap;
-  }, [monthSessions]);
-
   const changeMonth = (delta: number) => {
     const [year, month] = currentMonth.split('-').map(Number);
     const d = new Date(year, month - 1 + delta, 1);
