@@ -24,6 +24,10 @@ from apps.cms.api.views import (
     PublicMapNodeListView,
     AdminMapNodeListCreateView,
     AdminMapNodeRetrieveUpdateDestroyView,
+    PublicGalleryListView,
+    PublicGalleryDetailView,
+    AdminGalleryListCreateView,
+    AdminGalleryRetrieveUpdateDestroyView,
     PublicPlatformStatsView,
 )
 
@@ -90,5 +94,18 @@ urlpatterns = [
         "admin/map-nodes/<uuid:pk>/",
         AdminMapNodeRetrieveUpdateDestroyView.as_view(),
         name="cms-admin-map-node-detail",
+    ),
+    # Gallery
+    path("gallery/", PublicGalleryListView.as_view(), name="cms-gallery-list"),
+    path("gallery/<uuid:pk>/", PublicGalleryDetailView.as_view(), name="cms-gallery-detail"),
+    path(
+        "admin/gallery/",
+        AdminGalleryListCreateView.as_view(),
+        name="cms-admin-gallery-list",
+    ),
+    path(
+        "admin/gallery/<uuid:pk>/",
+        AdminGalleryRetrieveUpdateDestroyView.as_view(),
+        name="cms-admin-gallery-detail",
     ),
 ]

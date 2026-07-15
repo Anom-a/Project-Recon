@@ -9,6 +9,7 @@ from apps.cms.models import (
     FAQ,
     ContactRequest,
     MapNode,
+    Gallery,
 )
 from apps.cms.services.hero_banner_service import (
     create_hero_banner,
@@ -32,6 +33,14 @@ from apps.cms.services.map_node_service import (
     get_map_node_or_404,
     list_map_nodes,
     list_active_map_nodes,
+)
+from apps.cms.services.gallery_service import (
+    create_gallery_item,
+    update_gallery_item,
+    delete_gallery_item,
+    get_gallery_or_404,
+    list_gallery_items,
+    list_active_gallery_items,
 )
 from apps.cms.constants import ContactStatus, ContactPriority, MapNodeCategory
 
@@ -265,6 +274,102 @@ class FAQServiceTest(TestCase):
     def test_get_or_404_not_found(self):
         with self.assertRaises(NotFound):
             get_faq_or_404("00000000-0000-0000-0000-000000000000")
+
+
+class GalleryServiceTest(TestCase):
+    """Service-level tests for Gallery CRUD."""
+
+    def test_create_gallery_item(self):
+        item = create_gallery_item({
+            "title": "Photo",
+            "description": "A nice photo",
+            "video_url": "https://example.com/video",
+        })
+        self.assertIsNotNone(item.id)
+        self.assertEqual(item.title, "Photo")
+        self.assertEqual(item.description, "A nice photo")
+        self.assertEqual(item.video_url, "https://example.com/video")
+        self.assertTrue(item.is_active)
+
+    def test_create_gallery_item_minimal(self):
+        item = create_gallery_item({"title": "Minimal"})
+        self.assertEqual(item.title, "Minimal")
+        self.assertEqual(item.description, "")
+        self.assertFalse(item.image)
+        self.assertIsNone(item.video_url)
+
+    def test_list_gallery_items_includes_inactive(self):
+        create_gallery_item({"title": "Active"})
+        create_gallery_item({"title": "Inactive", "is_active": False})
+        qs = list_gallery_items()
+        self.assertEqual(qs.count(), 2)
+
+    def test_list_active_gallery_items_excludes_inactive(self):
+        create_gallery_item({"title": "Active"})
+        create_gallery_item({"title": "Inactive", "is_active": False})
+        qs = list_active_gallery_items()
+        self.assertEqual(qs.count(), 1)
+        self.assertEqual(qs[0].title, "Active")
+
+    def test_get_gallery_or_404_found(self):
+        item = create_gallery_item({"title": "Find Me"})
+        found = get_gallery_or_404(item.id)
+        self.assertEqual(found.id, item.id)
+
+    def test_get_gallery_or_404_not_found(self):
+        with self.assertRaises(NotFound):
+            get_gallery_or_404("00000000-0000-0000-0000-000000000000")
+
+    def test_get_gallery_or_404_active_only_found(self):
+        item = create_gallery_item({"title": "Active"})
+        found = get_gallery_or_404(item.id, active_only=True)
+        self.assertEqual(found.id, item.id)
+
+    def test_get_gallery_or_404_active_only_excludes_inactive(self):
+        item = create_gallery_item({"title": "Inactive", "is_active": False})
+        with self.assertRaises(NotFound):
+            get_gallery_or_404(item.id, active_only=True)
+
+    def test_update_gallery_item(self):
+        item = create_gallery_item({"title": "Old Title"})
+        updated = update_gallery_item(item, {"title": "New Title"})
+        self.assertEqual(updated.title, "New Title")
+
+    def test_update_gallery_item_multiple_fields(self):
+        item = create_gallery_item({"title": "Old", "description": "Old desc"})
+        updated = update_gallery_item(item, {
+            "title": "New",
+            "description": "New desc",
+            "video_url": "https://example.com/new",
+        })
+        self.assertEqual(updated.title, "New")
+        self.assertEqual(updated.description, "New desc")
+        self.assertEqual(updated.video_url, "https://example.com/new")
+
+    def test_delete_gallery_item_hard_delete(self):
+        item = create_gallery_item({"title": "Delete Me"})
+        delete_gallery_item(item)
+        with self.assertRaises(NotFound):
+            get_gallery_or_404(item.id)
+
+    def test_delete_gallery_item_removes_from_db(self):
+        item = create_gallery_item({"title": "Gone"})
+        item_id = item.id
+        delete_gallery_item(item)
+        self.assertFalse(Gallery.objects.filter(id=item_id).exists())
+
+    def test_delete_gallery_item_twice_raises_not_found(self):
+        item = create_gallery_item({"title": "Double Delete"})
+        delete_gallery_item(item)
+        with self.assertRaises(NotFound):
+            get_gallery_or_404(item.id)
+
+    def test_ordering_newest_first(self):
+        old = create_gallery_item({"title": "Older"})
+        new = create_gallery_item({"title": "Newer"})
+        qs = list_gallery_items()
+        self.assertEqual(qs[0].id, new.id)
+        self.assertEqual(qs[1].id, old.id)
 
 
 class MapNodeServiceTest(TestCase):

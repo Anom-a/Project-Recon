@@ -9,6 +9,7 @@ from apps.cms.models import (
     ContactRequest,
     FAQ,
     MapNode,
+    Gallery,
 )
 from apps.cms.constants import (
     NewsType,
@@ -183,6 +184,44 @@ class FAQModelTest(TestCase):
         )
         self.assertEqual(str(faq), "What is this?")
         self.assertTrue(faq.is_active)
+
+
+class GalleryModelTest(TestCase):
+    """Model-level tests for Gallery."""
+
+    def test_create_gallery_item(self):
+        item = Gallery.objects.create(
+            title="Test Photo",
+            description="A nice photo",
+            video_url="https://example.com/video",
+        )
+        self.assertEqual(str(item), "Test Photo")
+        self.assertEqual(item.description, "A nice photo")
+        self.assertEqual(item.video_url, "https://example.com/video")
+        self.assertTrue(item.is_active)
+        self.assertIsNotNone(item.id)
+        self.assertIsNotNone(item.created_at)
+        self.assertIsNotNone(item.updated_at)
+
+    def test_default_description_blank(self):
+        item = Gallery.objects.create(title="No Desc")
+        self.assertEqual(item.description, "")
+
+    def test_default_is_active_true(self):
+        item = Gallery.objects.create(title="Active by Default")
+        self.assertTrue(item.is_active)
+
+    def test_nullable_fields(self):
+        item = Gallery.objects.create(title="Minimal")
+        self.assertFalse(item.image)
+        self.assertIsNone(item.video_url)
+
+    def test_ordering_newest_first(self):
+        old = Gallery.objects.create(title="Older")
+        new = Gallery.objects.create(title="Newer")
+        qs = Gallery.objects.all()
+        self.assertEqual(qs[0].id, new.id)
+        self.assertEqual(qs[1].id, old.id)
 
 
 class MapNodeModelTest(TestCase):

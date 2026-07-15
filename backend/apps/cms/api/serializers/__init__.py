@@ -9,6 +9,7 @@ from .contact_request import (
 )
 from .faq import FAQSerializer, FAQAdminSerializer
 from .map_node import MapNodeSerializer, MapNodeAdminSerializer
+from .gallery import GallerySerializer, GalleryAdminSerializer
 
 __all__ = [
     "HeroBannerSerializer",
@@ -26,4 +27,6 @@ __all__ = [
     "FAQAdminSerializer",
     "MapNodeSerializer",
     "MapNodeAdminSerializer",
+    "GallerySerializer",
+    "GalleryAdminSerializer",
 ]
