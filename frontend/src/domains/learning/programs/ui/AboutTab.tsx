@@ -42,26 +42,32 @@ interface MapNode {
 
 export default function AboutTab() {
   const [hoveredNode, setHoveredNode] = useState<MapNode | null>(null);
-  const [activeTab, setActiveTabTab] = useState<'mission' | 'vision'>('mission');
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0, lat: "8.9806° N", lng: "38.7578° E" });
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [aboutData, setAboutData] = useState<AboutUsResponse[]>([]);
   const [partners, setPartners] = useState<CmsPartnerResponse[]>([]);
-
+  const [loading, setLoading] = useState(true);
   const [mapNodes, setMapNodes] = useState<MapNode[]>([]);
   const [team, setTeam] = useState<{ name: string; role: string; bio: string; image: string }[]>([]);
 
   useEffect(() => {
-    cmsPublicApi.getAboutUs().then(data => setAboutData(data.filter(a => a.is_active))).catch(() => {});
-    cmsPublicApi.getPartners().then(data => setPartners(data.filter(p => p.is_active))).catch(() => {});
-    cmsPublicApi.getMapNodes().then(data => setMapNodes((Array.isArray(data) ? data : []).filter(n => n.is_active).map(n => ({
-      id: n.id, city: n.city, country: n.country, title: n.title,
-      achievement: n.achievement, x: n.x, y: n.y, lat: n.lat, lng: n.lng,
-      image: n.image, category: n.category as MapNode['category'],
-    })))).catch(() => {});
-    cmsPublicApi.getTeamMembers().then(data => setTeam((Array.isArray(data) ? data : []).filter(m => m.is_active).map(m => ({
-      name: m.name, role: m.role, bio: m.bio, image: m.image,
-    })))).catch(() => {});
+    Promise.all([
+      cmsPublicApi.getAboutUs(),
+      cmsPublicApi.getPartners(),
+      cmsPublicApi.getMapNodes(),
+      cmsPublicApi.getTeamMembers(),
+    ]).then(([aboutRes, partnersRes, nodesRes, teamRes]) => {
+      setAboutData((Array.isArray(aboutRes) ? aboutRes : []).filter(a => a.is_active));
+      setPartners((Array.isArray(partnersRes) ? partnersRes : []).filter(p => p.is_active));
+      setMapNodes((Array.isArray(nodesRes) ? nodesRes : []).filter(n => n.is_active).map(n => ({
+        id: n.id, city: n.city, country: n.country, title: n.title,
+        achievement: n.achievement, x: n.x, y: n.y, lat: n.lat, lng: n.lng,
+        image: n.image, category: n.category as MapNode['category'],
+      })));
+      setTeam((Array.isArray(teamRes) ? teamRes : []).filter(m => m.is_active).map(m => ({
+        name: m.name, role: m.role, bio: m.bio, image: m.image,
+      })));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   // Dynamically calculate lat/lng depending on mouse coords relative to container
@@ -254,9 +260,20 @@ export default function AboutTab() {
           <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#1a2670] bg-blue-50 px-3 py-1 rounded-full border border-blue-100 mb-4 inline-block shadow-sm">
             ABOUT ETHIO ROBOTICS:
           </span>
-          {aboutData.length > 0 ? (
-            aboutData.map((section, idx) => (
+          {loading ? (
+            <div className="w-full space-y-4 animate-pulse">
+              <div className="h-8 bg-slate-200 rounded-lg w-3/4" />
+              <div className="h-4 bg-slate-200 rounded w-full" />
+              <div className="h-4 bg-slate-200 rounded w-5/6" />
+              <div className="h-4 bg-slate-200 rounded w-4/6" />
+            </div>
+          ) : aboutData.length > 0 ? (
+            aboutData.map((section) => (
               <div key={section.id} className="mb-6">
+                {section.image && (
+                  <img src={section.image} alt={section.title}
+                    className="w-full h-48 object-cover rounded-xl mb-4 shadow-sm" />
+                )}
                 <h2 className="font-display font-bold text-slate-900 tracking-tight leading-tight mb-4 text-[24px] md:text-[30px]">
                   {section.title}
                 </h2>
@@ -264,6 +281,18 @@ export default function AboutTab() {
                   className="font-sans text-sm md:text-base text-brand-muted-dark leading-relaxed mb-5 about-content"
                   dangerouslySetInnerHTML={{ __html: section.content || section.description || '' }}
                 />
+                {section.mission && (
+                  <div className="bg-blue-50 border-l-4 border-brand-blue rounded-r-xl p-4 mb-4">
+                    <p className="text-xs font-bold text-brand-blue uppercase tracking-wider mb-1">Mission</p>
+                    <p className="text-sm text-slate-700">{section.mission}</p>
+                  </div>
+                )}
+                {section.vision && (
+                  <div className="bg-amber-50 border-l-4 border-amber-500 rounded-r-xl p-4 mb-4">
+                    <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Vision</p>
+                    <p className="text-sm text-slate-700">{section.vision}</p>
+                  </div>
+                )}
               </div>
             ))
           ) : (
@@ -304,7 +333,19 @@ export default function AboutTab() {
           <h2 className="font-display font-bold text-slate-900 tracking-tight text-3xl md:text-4xl">Leadership Team</h2>
           <p className="text-slate-600 mt-4 max-w-2xl mx-auto">Meet the visionary educators and engineers driving Ethio Robotics forward.</p>
         </div>
-        {team.length > 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-pulse">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col items-center">
+                <div className="w-24 h-24 rounded-full bg-slate-200 mb-4" />
+                <div className="h-5 bg-slate-200 rounded w-32 mb-2" />
+                <div className="h-4 bg-slate-200 rounded w-24 mb-3" />
+                <div className="h-4 bg-slate-200 rounded w-full mb-1" />
+                <div className="h-4 bg-slate-200 rounded w-4/5" />
+              </div>
+            ))}
+          </div>
+        ) : team.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {team.map((member, idx) => (
               <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-all">
@@ -330,20 +371,26 @@ export default function AboutTab() {
             <h2 className="font-display font-bold text-slate-900 tracking-tight text-3xl md:text-4xl">Our Partners</h2>
             <p className="text-slate-600 mt-4 max-w-2xl mx-auto">Collaborating with industry leaders to bring world-class STEM education to Ethiopia.</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-12 items-center opacity-70 hover:opacity-100 transition-opacity">
-            {partners.length > 0 ? (
-              partners.map(partner =>
-                  partner.image ? <img key={partner.id} src={partner.image} alt={partner.title} className="h-16 object-contain" /> : null
-                )
-            ) : (
-              <>
-                <img src="https://ethiorobotics.org/images/partners/minstry%20of%20inovation%20and%20technology.png" alt="Ministry of Innovation" className="h-16 object-contain" />
-                <img src="https://ethiorobotics.org/images/partners/vex.webp" alt="VEX Robotics" className="h-16 object-contain" />
-                <img src="https://ethiorobotics.org/images/partners/ethiopian_airlines.png" alt="Ethiopian Airlines" className="h-16 object-contain" />
-                <img src="https://ethiorobotics.org/images/partners/aau.png" alt="Addis Ababa University" className="h-16 object-contain" />
-              </>
-            )}
-          </div>
+          {loading ? (
+            <div className="flex flex-wrap justify-center gap-12 items-center animate-pulse">
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-16 w-32 bg-slate-200 rounded" />)}
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-12 items-center opacity-70 hover:opacity-100 transition-opacity">
+              {partners.length > 0 ? (
+                partners.map(partner =>
+                    partner.image ? <img key={partner.id} src={partner.image} alt={partner.title} className="h-16 object-contain" /> : null
+                  )
+              ) : (
+                <>
+                  <img src="https://ethiorobotics.org/images/partners/minstry%20of%20inovation%20and%20technology.png" alt="Ministry of Innovation" className="h-16 object-contain" />
+                  <img src="https://ethiorobotics.org/images/partners/vex.webp" alt="VEX Robotics" className="h-16 object-contain" />
+                  <img src="https://ethiorobotics.org/images/partners/ethiopian_airlines.png" alt="Ethiopian Airlines" className="h-16 object-contain" />
+                  <img src="https://ethiorobotics.org/images/partners/aau.png" alt="Addis Ababa University" className="h-16 object-contain" />
+                </>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
