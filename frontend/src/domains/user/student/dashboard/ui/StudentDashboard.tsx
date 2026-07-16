@@ -8,13 +8,14 @@ import {
   fetchStudentsApi, fetchEnrollmentsApi, fetchStudentCertificatesApi,
 } from '@/domains/learning/academics/api/academicApi';
 import { getMyRegistrations } from '@/domains/competition/api/competitionApi';
-import { getUnreadCount } from '@/domains/notification/model/notificationApi';
+import { cmsPublicApi } from '@/domains/cms/public/api/cmsPublicApi';
 import { cacheStudentId } from '@/domains/user/student/api/studentContext';
 import { getCachedStudentId } from '@/shared/utils/storage';
 import { AppLayout } from '@/shared/ui/AppLayout';
 import { NavItem } from '@/shared/ui/Sidebar';
 import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
 import InlineAlert from '@/shared/ui/InlineAlert';
+import PermissionDenied from '@/shared/ui/PermissionDenied';
 import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
 import {
   getSectionCommandCenter,

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, DollarSign, Download, Eye, Filter, Calendar, BookOpen, CreditCard, Banknote, CheckCircle2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, DollarSign, Download, Eye, Filter, Calendar, BookOpen, CreditCard, Banknote, CheckCircle2, Clock, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
 import { EnrollmentPayment, Enrollment } from '@/shared/types';
-import { fetchPaymentsApi, fetchEnrollmentsPaginatedApi, createCashPaymentApi } from '@/domains/learning/academics/api/academicApi';
+import { fetchPaymentsListApi, fetchEnrollmentsPaginatedApi, recordPaymentApi, fetchVerificationQueueApi, setUnderReviewApi, rejectPaymentApi } from '@/domains/learning/academics/api/academicApi';
 
 const PAGE_SIZE = 50;
 

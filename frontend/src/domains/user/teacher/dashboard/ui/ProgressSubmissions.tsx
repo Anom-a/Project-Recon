@@ -3,7 +3,7 @@ import { Edit3, CheckCircle2, Search, FileText, Clock, Eye, ChevronDown, Star, L
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchStudentProgressApi, updateStudentProgressApi } from '@/domains/learning/academics/api/academicApi';
 
-import { StudentProfile, Enrollment, StudentProgress, ProgressStatus } from '@/shared/types';
+import { StudentProfile, Enrollment, StudentProgress } from '@/shared/types';
 
 interface Props {
   students: StudentProfile[];
@@ -35,19 +35,19 @@ export default function ProgressSubmissions({ students, enrollments }: Props) {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [enrollments]);
 
-  const updateStatus = async (progressId: string, newStatus: ProgressStatus) => {
+  const updateStatus = async (progressId: string, newStatus: string) => {
     setUpdating(progressId);
     try {
       await updateStudentProgressApi(progressId, { status: newStatus });
       setProgressMap(prev => {
         const next = { ...prev };
         Object.keys(next).forEach(key => {
-          next[key] = next[key].map(p => p.id === progressId ? { ...p, status: newStatus as ProgressStatus } : p);
+          next[key] = next[key].map(p => p.id === progressId ? { ...p, status: newStatus } : p);
         });
         return next;
       });
     } catch (e) {
-      console.error('Failed to update progress', e);
+      /* console.error */('Failed to update progress', e);
     } finally {
       setUpdating(null);
     }

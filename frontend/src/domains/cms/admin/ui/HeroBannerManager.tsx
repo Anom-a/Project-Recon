@@ -80,7 +80,7 @@ export default function HeroBannerManager({ addToast }: Props) {
     setSaving(false);
   };
 
-  const remove = async (id: string) => {
+  const remove = async (id: number) => {
     if (!confirm('Delete this hero banner?')) return;
     try {
       await api.delete('hero-banners', id);

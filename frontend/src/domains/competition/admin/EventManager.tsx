@@ -92,7 +92,7 @@ export default function EventManager({ onNavigate }: EventManagerProps) {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -206,7 +206,7 @@ export default function EventManager({ onNavigate }: EventManagerProps) {
         for (const [k, v] of Object.entries(payload)) {
           if (v !== null && v !== undefined) fd.append(k, String(v));
         }
-        fd.append('banner', form.banner as Blob);
+        fd.append('banner', form.banner);
         if (editingId) {
           await eventsApi.adminUpdateEvent(editingId, fd);
         } else {

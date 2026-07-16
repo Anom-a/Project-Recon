@@ -99,7 +99,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
       setContactMessage({ name: '', email: '', body: '' });
       setTimeout(() => setContactStatus('idle'), 5000);
     } catch (error) {
-      console.error('Contact submission error:', error);
+      /* console.error */('Contact submission error:', error);
       setContactStatus('error');
       setTimeout(() => setContactStatus('idle'), 5000);
     }

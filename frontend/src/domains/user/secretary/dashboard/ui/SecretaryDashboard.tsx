@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { UserPlus, Users, DollarSign, Award, FileText, LayoutDashboard, RefreshCw, Shield, Calendar, Search } from 'lucide-react';
+import { UserPlus, Users, DollarSign, Award, FileText, LayoutDashboard, RefreshCw, Shield, Calendar, Search, ArrowRightLeft } from 'lucide-react';
 import { UserProfile } from '@/shared/types';
 import { AppLayout } from '@/shared/ui/AppLayout';
 import { NavItem } from '@/shared/ui/Sidebar';
 import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
 import InlineAlert from '@/shared/ui/InlineAlert';
+import PermissionDenied from '@/shared/ui/PermissionDenied';
 import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
 import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
+import TransferRequestsPanel from '@/domains/user/shared/ui/TransferRequestsPanel';
 import {
   fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentCertificatesApi,
   fetchCertificateTemplatesApi, fetchEnrollmentPeriodsApi,

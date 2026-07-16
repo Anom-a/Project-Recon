@@ -7,11 +7,12 @@ import {
   BookOpen, RefreshCw, Monitor,
   User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard, ClipboardCheck, Receipt, LayoutDashboard, ArrowRightLeft
 } from 'lucide-react';
-import { UserProfile, AppNotification, Enrollment, EnrollmentPayment, StudentProfile, Program, AcademicClass } from '@/shared/types';
+import { UserProfile, Enrollment, EnrollmentPayment, StudentProfile, Program, AcademicClass } from '@/shared/types';
 import { AppLayout } from '@/shared/ui/AppLayout';
 import { NavItem } from '@/shared/ui/Sidebar';
 import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
 import InlineAlert from '@/shared/ui/InlineAlert';
+import PermissionDenied from '@/shared/ui/PermissionDenied';
 import {
   getManagerCommandCenter,
   type ManagerSectionId,
@@ -30,6 +31,9 @@ import AcademicCatalogManager from '@/domains/learning/academics/ui/AcademicCata
 import ClassManagerPanel from '@/domains/user/shared/ui/ClassManagerPanel';
 import StaffAttendanceManager from '@/domains/user/shared/ui/StaffAttendanceManager';
 import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
+import TransferRequestsPanel from '@/domains/user/shared/ui/TransferRequestsPanel';
+import EnrollmentsPanel from '@/domains/user/secretary/dashboard/ui/EnrollmentsPanel';
+import StoreDashboard from '@/domains/store/admin/ui/StoreDashboard';
 import TournamentManager from '@/domains/competition/admin/TournamentManager';
 import WorkshopManager from '@/domains/competition/admin/WorkshopManager';
 import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
@@ -135,8 +139,8 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'enrollments': return <EnrollmentsPanel currentUser={currentUser} />;
       case 'transfers': return <TransferRequestsPanel />;
       case 'event-registrations': return <RegistrationManager />;
-      case 'store': return <OnlineStoreHub />;
-      case 'events': return <EventsManagement onNavigate={(id: string) => setActiveSection(id as SectionId)} />;
+      case 'store': return <StoreDashboard currentUser={currentUser} />;
+      case 'events': return <EventsManagement onNavigate={setActiveSection} />;
       case 'tournaments': return <TournamentManager />;
       case 'tournament-teams': return <TeamManager />;
       case 'matches': return <MatchManager />;
@@ -201,14 +205,6 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
   payments: EnrollmentPayment[];
   programs: Program[];
 }) {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  useEffect(() => {
-    import('@/domains/notification/model/notificationApi').then(m =>
-      m.getNotifications().then(setNotifications)
-    );
-  }, []);
-  const unreadNotifications = notifications.filter(n => !n.read);
-
   const quickActions: { id: SectionId; label: string; desc: string; icon: React.ElementType; color: string }[] = [
     { id: 'academic-catalog', label: 'Academic Catalog', desc: 'Programs & classes', icon: BookOpen, color: 'from-blue-500 to-blue-600' },
     { id: 'enrollments', label: 'Academic Enrollments', desc: 'View student enrollments', icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
@@ -525,7 +521,7 @@ function ReportsSection() {
           >
             <option value="">Select a student...</option>
             {students.map(s => (
-              <option key={s.id} value={s.id}>{`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email}</option>
+              <option key={s.id} value={s.id}>{s.full_name || s.first_name || s.email}</option>
             ))}
           </select>
         </div>

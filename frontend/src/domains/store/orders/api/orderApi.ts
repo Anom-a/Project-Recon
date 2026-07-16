@@ -1,10 +1,12 @@
 import { http } from '@/shared/api/http';
-import type { Order } from '@/domains/store/model/types';
+import type { Order } from '../../model/types';
+
+const BASE = '/store/orders';
 
 export async function getUserOrders(): Promise<Order[]> {
-  return await http.get<Order[]>('/store/orders/');
+  return await http.get<Order[]>(`${BASE}/`);
 }
 
 export async function getOrder(id: string): Promise<Order> {
-  return await http.get<Order>(`/store/orders/${id}/`);
+  return await http.get<Order>(`${BASE}/${id}/`);
 }

@@ -145,8 +145,8 @@ export default function PublicMatchPage({ matchId, tournamentId, onBack }: Publi
 
         <div className="mt-5">
           <VexMatchArena
-            sideA={derived!.sideA}
-            sideB={derived!.sideB}
+            sideA={derived?.sideA}
+            sideB={derived?.sideB}
             status={match.status}
             round={match.round}
             tournamentName={match.tournamentName}

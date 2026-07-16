@@ -16,7 +16,7 @@ export default function FaqManager({ addToast }: Props) {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => { load(); }, []);
@@ -42,7 +42,7 @@ export default function FaqManager({ addToast }: Props) {
     });
   }, [items, search, categoryFilter]);
 
-  const toggleExpand = (id: string) => {
+  const toggleExpand = (id: number) => {
     setExpanded(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -82,7 +82,7 @@ export default function FaqManager({ addToast }: Props) {
     setSaving(false);
   };
 
-  const remove = async (id: string) => {
+  const remove = async (id: number) => {
     if (!confirm('Delete this FAQ?')) return;
     try { await api.delete('faqs', id); addToast('FAQ deleted', 'success'); load(); }
     catch { addToast('Delete failed', 'error'); }

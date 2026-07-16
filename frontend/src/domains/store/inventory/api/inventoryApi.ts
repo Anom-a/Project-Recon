@@ -1,10 +1,12 @@
 import { http } from '@/shared/api/http';
-import type { BranchInventory } from '@/domains/store/model/types';
+import type { BranchInventory } from '../../model/types';
+
+const BASE = '/store/inventory';
 
 export async function getBranchInventory(branchId: string): Promise<BranchInventory[]> {
-  return await http.get<BranchInventory[]>('/store/inventory/', { params: { branch: branchId } });
+  return await http.get<BranchInventory[]>(`${BASE}/`, { params: { branch: branchId } });
 }
 
 export async function getProductAvailability(productId: string): Promise<BranchInventory[]> {
-  return await http.get<BranchInventory[]>(`/store/inventory/availability/${productId}/`);
+  return await http.get<BranchInventory[]>(`${BASE}/availability/${productId}/`);
 }

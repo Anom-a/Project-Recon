@@ -22,7 +22,6 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "baseUrl": "."
+    "noEmit": true
   }
 }

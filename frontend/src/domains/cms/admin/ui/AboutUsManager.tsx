@@ -78,7 +78,7 @@ export default function AboutUsManager({ addToast }: Props) {
     setSaving(false);
   };
 
-  const remove = async (id: string) => {
+  const remove = async (id: number) => {
     if (!confirm('Delete this about section?')) return;
     try { await api.delete('about', id); addToast('Deleted', 'success'); load(); }
     catch { addToast('Delete failed', 'error'); }
