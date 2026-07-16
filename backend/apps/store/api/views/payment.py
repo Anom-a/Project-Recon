@@ -1,5 +1,3 @@
-import logging
-
 from rest_framework import generics, status
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -22,8 +20,6 @@ from apps.store.services.payment_service import (
     verify_payment,
 )
 from apps.store.services.pending_order_service import get_pending_order_or_404
-
-logger = logging.getLogger(__name__)
 
 
 class PaymentEvidenceSubmitView(generics.GenericAPIView):

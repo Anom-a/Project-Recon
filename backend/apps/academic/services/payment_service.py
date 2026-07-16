@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 
 from django.core.exceptions import ValidationError
@@ -16,8 +15,6 @@ from apps.academic.models import EnrollmentPayment, Enrollment
 from apps.academic.services.enrollment_service import _generate_enrollment_number
 from apps.shared.audit.services import log_action
 from apps.shared.email.services import send_email
-
-logger = logging.getLogger(__name__)
 
 
 def get_payment_or_404(pk):

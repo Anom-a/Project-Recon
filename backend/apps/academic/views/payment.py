@@ -1,9 +1,5 @@
-import logging
-
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
-
-logger = logging.getLogger(__name__)
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status

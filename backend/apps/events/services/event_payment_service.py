@@ -1,5 +1,3 @@
-import logging
-
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
@@ -8,8 +6,6 @@ from apps.events.constants import PaymentMethod, PaymentStatus
 from apps.events.models import EventPayment, EventRegistration
 from apps.events.services.registration_service import approve_registration, reject_registration
 from apps.shared.audit.services import log_action
-
-logger = logging.getLogger(__name__)
 
 
 def get_payment_or_404(pk):

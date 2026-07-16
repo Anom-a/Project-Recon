@@ -1,5 +1,3 @@
-import logging
-
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
@@ -9,8 +7,6 @@ from apps.store.constants import PaymentMethod, PaymentStatus
 from apps.store.models.payment import StorePayment
 from apps.store.models.pending_order import PendingOrder
 from apps.store.services.pending_order_service import cancel_pending_order
-
-logger = logging.getLogger(__name__)
 
 
 def get_payment_or_404(pk):
