@@ -24,10 +24,13 @@ Responsible for the authentication lifecycle.
 ## Public Methods
 
 -   login(email, password, device_info)
+-   issue_tokens(user)
 -   logout(user, refresh_token)
 -   refresh_token(refresh_token)
 -   request_email_verification(user)
--   verify_email_otp(user, otp)
+-   verify_email_otp(user, otp, device_info)
+-   public_request_email_verification(email)
+-   public_verify_email_otp(email, otp, device_info)
 -   request_device_verification(user, device_info)
 -   verify_device_otp(user, otp, device_info)
 -   forgot_password(email)
@@ -38,7 +41,6 @@ Responsible for the authentication lifecycle.
 
 -   Uses OTPService for OTP generation/verification.
 -   Uses DeviceService for trusted devices.
--   Uses LoginSecurityService for lockout protection.
 -   Uses AuditService for auditing.
 
 ------------------------------------------------------------------------
@@ -58,9 +60,13 @@ Responsible for user lifecycle.
 -   deactivate_user()
 -   archive_user()
 -   change_email()
+-   change_password()
 -   get_user()
+-   get_user_or_404()
 -   list_users()
 -   search_users()
+-   scoped_users_queryset()
+-   scoped_assignments_queryset()
 
 ## Rules
 
@@ -113,7 +119,9 @@ Responsible for branch management.
 -   deactivate_branch()
 -   archive_branch()
 -   get_branch()
+-   get_branch_or_404()
 -   list_branches()
+-   scoped_branches_queryset()
 
 ## Rules
 
@@ -145,25 +153,16 @@ Supports: - Email Verification - Device Verification - Password Reset
 
 -   register_device()
 -   verify_device()
+-   is_device_trusted()
 -   list_devices()
 -   remove_device()
 -   remove_all_devices_except_current()
+-   build_device_info()
+-   cleanup_expired()
 
 ------------------------------------------------------------------------
 
-# 7. LoginSecurityService
-
-## Public Methods
-
--   record_success()
--   record_failure()
--   reset_attempts()
--   lock_account_if_needed()
--   is_locked()
-
-------------------------------------------------------------------------
-
-# 8. AuditService (Shared)
+# 7. AuditService (Shared)
 
 Shared infrastructure service.
 
@@ -183,7 +182,7 @@ Used by every module.
 # Service Dependencies
 
 AuthenticationService - UserService - OTPService - DeviceService -
-LoginSecurityService - AuditService
+AuditService
 
 UserService - AssignmentService - AuditService
 

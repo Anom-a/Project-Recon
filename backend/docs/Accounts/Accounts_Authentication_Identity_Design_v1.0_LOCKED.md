@@ -8,6 +8,7 @@
 
 -   Super Admin
 -   Branch Manager
+-   Secretary
 -   Instructor
 -   Student
 
@@ -75,12 +76,7 @@ retries/resends - One active OTP per purpose
 -   Pending
 -   Active
 -   Suspended
--   Locked
 -   Archived
-
-### Failed Login Protection
-
-Configurable: - Max attempts - Lock duration - Reset on successful login
 
 ### Branch Rules
 
@@ -104,8 +100,7 @@ Verification - Password Reset
 
 Controlled via settings.py/.env: - AUTH_REQUIRE_EMAIL_VERIFICATION -
 AUTH_REQUIRE_DEVICE_VERIFICATION - AUTH_OTP_LENGTH -
-AUTH_OTP_EXPIRY_MINUTES - AUTH_MAX_OTP_ATTEMPTS - AUTH_MAX_OTP_RESENDS -
-AUTH_MAX_LOGIN_ATTEMPTS - AUTH_ACCOUNT_LOCK_MINUTES
+AUTH_OTP_EXPIRY_MINUTES - AUTH_MAX_OTP_ATTEMPTS - AUTH_MAX_OTP_RESENDS
 
 ## Locked Decisions
 
