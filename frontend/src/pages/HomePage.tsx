@@ -10,7 +10,7 @@ import DemoSlider from '../domains/learning/programs/ui/DemoSlider';
 import Updates from '../domains/learning/programs/ui/Updates';
 import { UserProfile, ActiveTab, type ProgramDisplay } from '../shared/types';
 import { getPrograms } from '../domains/learning/programs/api/programApi';
-import { cmsPublicApi, type CmsPartnerResponse, type FaqResponse, type PlatformStats } from '../domains/cms/public/api/cmsPublicApi';
+import { cmsPublicApi, type AboutUsResponse, type CmsPartnerResponse, type FaqResponse, type PlatformStats } from '../domains/cms/public/api/cmsPublicApi';
 import { ChevronDown } from 'lucide-react';
 
 import galleryImg1 from '../../assets/photo_2026-06-15_14-39-46.jpg';
@@ -41,6 +41,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
   const [partners, setPartners] = useState<CmsPartnerResponse[]>([]);
   const [faqs, setFaqs] = useState<FaqResponse[]>([]);
   const [openFaq, setOpenFaq] = useState<string | null>(null);
+  const [aboutUs, setAboutUs] = useState<AboutUsResponse[]>([]);
   const [programs, setPrograms] = useState<ProgramDisplay[]>([]);
   const [programsLoading, setProgramsLoading] = useState(true);
   const [stats, setStats] = useState<PlatformStats>({
@@ -53,6 +54,10 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
   React.useEffect(() => {
     const abort = new AbortController();
     const { signal } = abort;
+
+    cmsPublicApi.getAboutUs()
+      .then(data => setAboutUs(data.filter(a => a.is_active)))
+      .catch(() => {});
 
     cmsPublicApi.getPartners(signal)
       .then(data => setPartners(data.filter(p => p.is_active)))
@@ -154,6 +159,57 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
           </div>
         </div>
       </motion.section>
+
+      {aboutUs.length > 0 && (
+        <section className="section-shell py-20" id="about-us">
+          <div className="max-w-5xl mx-auto px-6 md:px-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="space-y-6"
+              >
+                <span className="eyebrow">About Us</span>
+                <h2 className="font-display font-bold text-slate-950 tracking-tight text-3xl md:text-4xl">
+                  {aboutUs[0].title}
+                </h2>
+                <p className="font-sans text-sm text-brand-muted-dark leading-relaxed">
+                  {aboutUs[0].content || aboutUs[0].description}
+                </p>
+                {aboutUs.length > 1 && (
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    {aboutUs.slice(1, 3).map((item) => (
+                      <div key={item.id} className="bg-white rounded-card p-5 border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all">
+                        <h4 className="font-display font-bold text-slate-900 text-sm mb-1">{item.title}</h4>
+                        <p className="text-xs text-brand-muted-dark leading-relaxed line-clamp-3">{item.content || item.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="relative"
+              >
+                <div className="aspect-square rounded-2xl bg-gradient-to-br from-brand-blue/10 via-brand-red/5 to-brand-blue/5 border border-brand-border-light/60 flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-brand-blue to-brand-red flex items-center justify-center">
+                      <Users className="w-10 h-10 text-white" />
+                    </div>
+                    <p className="font-display font-bold text-slate-900 text-lg">{stats.students_trained}+</p>
+                    <p className="text-xs text-brand-muted-dark">Students Trained</p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="border-y border-brand-border/70 bg-white/90 py-10 overflow-hidden relative shadow-premium-sm" id="sponsor-banner">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#25338d]/5 to-transparent animate-glow-shift opacity-50" />
