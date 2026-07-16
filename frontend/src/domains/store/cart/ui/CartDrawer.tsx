@@ -10,7 +10,14 @@ import checkout from '@/domains/store/checkout/api/checkoutApi';
 import { Button } from '@/shared/ui/Button';
 import { PriceDisplay } from '@/domains/store/ui/PriceDisplay';
 import { formatMoney } from '@/domains/store/utils/formatMoney';
-import { navigateStore } from '@/domains/store/utils/catalog';
+import { navigateStore, storePendingOrderPath } from '@/domains/store/utils/catalog';
+
+const PAYMENT_METHODS: { value: StorePaymentMethod; label: string }[] = [
+  { value: 'BANK_TRANSFER', label: 'Bank transfer' },
+  { value: 'MOBILE_MONEY', label: 'Mobile money' },
+  { value: 'CASH', label: 'Cash (pay at branch)' },
+  { value: 'CHEQUE', label: 'Cheque' },
+];
 
 interface CartDrawerProps {
   cartOpen: boolean;
@@ -133,6 +140,10 @@ export default function CartDrawer({
     setGuestName('');
     setGuestEmail('');
     setGuestPhone('');
+    setPaymentMethod('BANK_TRANSFER');
+    setBankName('');
+    setTransactionRef('');
+    setIncludePayment(true);
     setFormError(null);
     setPendingOrder(null);
   };

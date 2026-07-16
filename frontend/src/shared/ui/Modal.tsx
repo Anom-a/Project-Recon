@@ -28,12 +28,16 @@ export function Modal({ isOpen, onClose, children, title, maxWidth = 'max-w-lg' 
             exit={{ opacity: 0, scale: 0.96, y: 15 }}
             className={`relative bg-white w-full ${maxWidth} rounded-modal shadow-premium-xl z-10 max-h-[90vh] overflow-y-auto border border-brand-border-light`}
           >
-            <div className="flex items-center justify-between p-6 border-b border-brand-border-light/50">
-              {title && <h3 className="font-display font-bold text-brand-ink text-lg">{title}</h3>}
-              <button onClick={onClose} className="p-1.5 rounded-full text-brand-muted hover:bg-slate-100 ml-auto">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            {(title || onClose) && (
+              <div className="flex items-center justify-between p-6 border-b border-brand-border-light/50">
+                {title && <h3 className="font-display font-bold text-brand-ink text-lg">{title}</h3>}
+                {onClose && (
+                  <button onClick={onClose} className="p-1.5 rounded-full text-brand-muted hover:bg-slate-100">
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            )}
             <div className="p-6">{children}</div>
           </motion.div>
         </div>
