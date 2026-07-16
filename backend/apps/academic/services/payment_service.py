@@ -15,6 +15,7 @@ from apps.academic.constants import (
 from apps.academic.models import EnrollmentPayment, Enrollment
 from apps.academic.services.enrollment_service import _generate_enrollment_number
 from apps.shared.audit.services import log_action
+from apps.shared.email.services import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,33 @@ def record_payment(
         branch=enrollment.enrolled_class.branch,
     )
 
-    # TODO: send approved email with enrollment_number
+    recipient = enrollment.student.user.email
+    full_name = enrollment.student.user.full_name
+    class_name = enrollment.enrolled_class.name
+    branch_name = (
+        enrollment.enrolled_class.branch.name
+        if hasattr(enrollment.enrolled_class.branch, "name") else str(enrollment.enrolled_class.branch)
+    )
+    branch_address = (
+        enrollment.enrolled_class.branch.address
+        if hasattr(enrollment.enrolled_class.branch, "address") else ""
+    )
+    status_display = EnrollmentStatus.ACTIVE.label
+    subject = f"Enrollment Approved — {enrollment.enrollment_number}"
+    body = (
+        f"Dear {full_name},\n\n"
+        f"Your enrollment has been approved!\n\n"
+        f"- Enrollment Number: {enrollment.enrollment_number}\n"
+        f"- Class: {class_name}\n"
+        f"- Branch: {branch_name}\n"
+        f"- Status: {status_display}\n"
+        f"- Amount Paid: {payment.amount} ETB\n"
+        f"- Payment Method: {payment.payment_method}\n\n"
+        f"You can now attend your classes at {branch_name} ({branch_address}).\n\n"
+        f"Please keep your enrollment number for future reference.\n\n"
+        f"Welcome aboard!"
+    )
+    send_email(recipient, subject, body)
 
     return payment
 
@@ -134,7 +161,30 @@ def reject_payment(actor, *, enrollment, rejection_reason):
         details={"reason": rejection_reason},
     )
 
-    # TODO: send rejection email
+    recipient = enrollment.student.user.email
+    full_name = enrollment.student.user.full_name
+    class_name = enrollment.enrolled_class.name
+    branch_name = (
+        enrollment.enrolled_class.branch.name
+        if hasattr(enrollment.enrolled_class.branch, "name") else str(enrollment.enrolled_class.branch)
+    )
+    branch_address = (
+        enrollment.enrolled_class.branch.address
+        if hasattr(enrollment.enrolled_class.branch, "address") else ""
+    )
+    status_display = EnrollmentStatus.REJECTED.label
+    subject = f"Enrollment Rejected — {enrollment.pending_code or enrollment.id}"
+    body = (
+        f"Dear {full_name},\n\n"
+        f"Your enrollment has been rejected.\n\n"
+        f"- Class: {class_name}\n"
+        f"- Branch: {branch_name}\n"
+        f"- Status: {status_display}\n"
+        f"- Reason: {rejection_reason}\n\n"
+        f"Please contact the administration for more information at {branch_name} ({branch_address}) or use our support channels."
+        f"We apologize for any inconvenience."
+    )
+    send_email(recipient, subject, body)
 
     return enrollment
 

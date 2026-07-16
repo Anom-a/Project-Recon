@@ -19,6 +19,7 @@ from apps.academic.models import (
 from apps.academic.models.class_model import Class as ClassModel
 from apps.accounts.services import user_service
 from apps.shared.audit.services import log_action
+from apps.shared.email.services import send_email
 
 
 def _generate_enrollment_number(branch_code: str, year: int) -> str:
@@ -246,7 +247,26 @@ def online_enrollment(
         branch=enrolled_class.branch,
     )
 
-    # TODO: send submitted email with pending_code
+    recipient = student.user.email
+    full_name = student.user.full_name
+    class_name = enrolled_class.name
+    branch_name = enrolled_class.branch.name if hasattr(enrolled_class.branch, "name") else str(enrolled_class.branch)
+    status_display = EnrollmentStatus.PENDING_VERIFICATION.label
+    subject = f"Enrollment Submitted — {pending_code}"
+    body = (
+        f"Dear {full_name},\n\n"
+        f"Your enrollment has been submitted successfully.\n\n"
+        f"- Reference: {pending_code}\n"
+        f"- Class: {class_name}\n"
+        f"- Branch: {branch_name}\n"
+        f"- Status: {status_display}\n"
+        f"- Amount: {amount} ETB\n\n"
+        f"What happens next?\n"
+        f"Your enrollment is pending verification. "
+        f"You will be notified once your payment has been approved.\n\n"
+        f"Thank you for choosing Ethio Robo Robotics \n\n"
+    )
+    send_email(recipient, subject, body)
 
     return enrollment
 
