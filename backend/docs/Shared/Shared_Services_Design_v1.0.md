@@ -270,7 +270,7 @@ It only reads Django settings.
 - Academic → AuditService
 - Events → AuditService
 - Store → AuditService
-- CMS → EmailService / AuditService
+- CMS → AuditService
 
 ---
 

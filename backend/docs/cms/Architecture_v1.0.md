@@ -89,6 +89,9 @@ The CMS owns:
 - About Us
 - Contact Requests
 - Frequently Asked Questions (FAQ)
+- Map Nodes (global achievement map)
+- Gallery (photo/video gallery)
+- Platform Stats (cross-app aggregate counts)
 
 ---
 
@@ -123,9 +126,19 @@ cms/
 │   ├── partner.py
 │   ├── about.py
 │   ├── contact_request.py
-│   └── faq.py
+│   ├── faq.py
+│   ├── map_node.py
+│   └── gallery.py
 │
 ├── services/
+│   ├── hero_banner_service.py
+│   ├── news_service.py
+│   ├── partner_service.py
+│   ├── about_service.py
+│   ├── contact_request_service.py
+│   ├── faq_service.py
+│   ├── map_node_service.py
+│   └── gallery_service.py
 │
 ├── api/
 │   ├── serializers/
@@ -134,6 +147,7 @@ cms/
 │   └── permissions.py
 │
 ├── admin.py
+├── constants.py
 ├── apps.py
 └── tests/
 ```
@@ -142,7 +156,7 @@ cms/
 
 # 6. Database Overview
 
-The CMS contains exactly six models.
+The CMS contains exactly eight models.
 
 ```text
 CMS
@@ -152,7 +166,9 @@ CMS
 ├── Partner
 ├── AboutUs
 ├── ContactRequest
-└── FAQ
+├── FAQ
+├── MapNode
+└── Gallery
 ```
 
 ---
@@ -171,19 +187,14 @@ The frontend decides how banners are displayed.
 
 ```text
 id
-
 title
 subtitle
 description
-
 image (nullable)
 video_url (nullable)
-
 button_text (nullable)
 button_url (nullable)
-
 is_active
-
 created_at
 updated_at
 ```
@@ -214,25 +225,17 @@ A single model manages both.
 
 ```text
 id
-
 title
 slug
-
 summary
 content
-
 image (nullable)
 video_url (nullable)
-
 button_text (nullable)
 button_url (nullable)
-
 type
-
 is_active
-
 published_at
-
 created_at
 updated_at
 ```
@@ -245,7 +248,6 @@ Implemented using Django TextChoices.
 
 ```text
 NEWS
-
 ANNOUNCEMENT
 ```
 
@@ -258,7 +260,7 @@ ANNOUNCEMENT
 - If media is provided, only one of `image` or `video_url` may be used.
 - If `button_text` exists, `button_url` is required.
 - If `button_url` exists, `button_text` is required.
-- `published_at` defaults to the creation date but may be changed by staff.
+- `published_at` is nullable and defaults to null.
 
 ---
 
@@ -274,19 +276,12 @@ Manage organizations associated with the institute.
 
 ```text
 id
-
 title
-
 description
-
 image
-
 website_url
-
 type
-
 is_active
-
 created_at
 updated_at
 ```
@@ -299,7 +294,6 @@ Implemented using Django TextChoices.
 
 ```text
 SPONSOR
-
 PARTNER
 ```
 
@@ -336,15 +330,10 @@ The frontend decides where each section is displayed.
 
 ```text
 id
-
 title
-
 slug
-
 description
-
 is_active
-
 created_at
 updated_at
 ```
@@ -375,25 +364,15 @@ A Contact Request is a single submission — there is no conversation thread. Al
 
 ```text
 id
-
 ticket_number
-
 name
-
 email
-
 phone (nullable)
-
 subject
-
 description
-
 attachment (nullable)
-
 status
-
 priority
-
 created_at
 updated_at
 ```
@@ -406,11 +385,8 @@ Implemented using Django TextChoices.
 
 ```text
 OPEN
-
 IN_PROGRESS
-
 RESOLVED
-
 CLOSED
 ```
 
@@ -422,11 +398,8 @@ Implemented using Django TextChoices.
 
 ```text
 LOW
-
 MEDIUM
-
 HIGH
-
 URGENT
 ```
 
@@ -438,6 +411,7 @@ URGENT
 - `ticket_number` must be unique.
 - `name`, `email`, `subject`, and `description` are required.
 - `phone` and `attachment` are optional.
+- Attachment is validated by the shared file validator (rejects executables, scripts, files >10MB).
 - Records are hard deletable by Super Admin.
 
 ---
@@ -454,13 +428,9 @@ Manage Frequently Asked Questions.
 
 ```text
 id
-
 question
-
 answer
-
 is_active
-
 created_at
 updated_at
 ```
@@ -475,7 +445,114 @@ updated_at
 
 ---
 
-# 13. General Model Standards
+# 13. MapNode
+
+## Purpose
+
+Track global achievements on an interactive world map.
+
+Each node represents a location where the institute has achieved something.
+
+---
+
+## Fields
+
+```text
+id
+city
+country
+title
+achievement
+x
+y
+lat (nullable)
+lng (nullable)
+image (nullable)
+category
+is_active
+created_at
+updated_at
+```
+
+- `x` and `y` are FloatFields representing map position as percentages (0-100).
+- `lat` and `lng` are optional coordinate strings.
+
+---
+
+## Category
+
+Implemented using Django TextChoices.
+
+```text
+CHAMPIONSHIP
+ACADEMIC
+RESEARCH
+STRATEGY
+ALLIANCE
+```
+
+---
+
+## Validation Rules
+
+- Category must be one of the defined choices.
+- Multiple nodes per category are allowed.
+- Deletion is **soft** — sets `is_active = False` instead of removing the record.
+
+---
+
+# 14. Gallery
+
+## Purpose
+
+Manage a gallery of photos and videos for the website.
+
+---
+
+## Fields
+
+```text
+id
+title
+description
+image (nullable)
+video_url (nullable)
+is_active
+created_at
+updated_at
+```
+
+---
+
+## Validation Rules
+
+- Only active items are returned by public APIs.
+- Deletion is **hard** — record is removed from the database.
+- Public detail endpoint returns 404 for inactive or non-existent items.
+
+---
+
+# 15. Platform Stats
+
+## Purpose
+
+Expose aggregate counts from multiple apps for the public website.
+
+---
+
+## Endpoint
+
+```text
+GET /api/v1/cms/stats/
+```
+
+Public, no authentication required.
+
+Returns counts such as total students, courses, events, etc. by querying business app models directly.
+
+---
+
+# 16. General Model Standards
 
 Every CMS model follows the Project Recon standards.
 
@@ -501,7 +578,6 @@ Every model explicitly declares:
 
 ```text
 created_at
-
 updated_at
 ```
 
@@ -554,12 +630,13 @@ Use Django TextChoices for:
 - Partner Type
 - Contact Status
 - Contact Priority
+- MapNode Category
 
 No lookup tables are created for these values.
 
 ---
 
-# 14. Relationships
+# 17. Relationships
 
 All CMS models are independent.
 
@@ -567,11 +644,38 @@ There are no foreign key relationships between CMS models.
 
 ---
 
-# 15. API Philosophy
+# 18. Services
+
+Every content model has a corresponding service module providing CRUD operations. Services are module-level functions (no classes).
+
+## Common pattern
+
+Each service exposes:
+
+- `get_<model>_or_404(pk)` — retrieve or 404
+- `list_<model>s()` — all records
+- `list_active_<model>s()` — active only (public API)
+- `create_<model>(data, actor=None)` — create with optional audit
+- `update_<model>(instance, data, actor=None)` — partial update with optional audit
+- `delete_<model>(instance, actor=None)` — delete with optional audit
+
+## Audit behavior
+
+- HeroBanner and ContactRequest services do **not** audit.
+- All other services call `log_action()` from `apps.shared.audit.services`.
+
+## Soft delete
+
+- MapNode uses **soft delete** (sets `is_active=False`).
+- All other models use **hard delete**.
+
+---
+
+# 19. API Philosophy
 
 Public APIs expose only active content (except Contact Requests, which are always visible once created).
 
-Administrative APIs require Super Admin role.
+Administrative APIs require Super Admin role via `IsCMSStaff` permission.
 
 The frontend is responsible for:
 
@@ -584,27 +688,80 @@ The backend only provides content.
 
 ---
 
-## Contact Request API Endpoints
-
-### Public (no authentication required)
+## Public Endpoints (no authentication required)
 
 ```text
-POST /api/v1/cms/contact-requests/
+GET    /api/v1/cms/hero-banners/
+GET    /api/v1/cms/news/
+GET    /api/v1/cms/news/<slug:slug>/
+GET    /api/v1/cms/partners/
+GET    /api/v1/cms/about/
+GET    /api/v1/cms/about/<slug:slug>/
+GET    /api/v1/cms/faqs/
+POST   /api/v1/cms/contact-requests/
+GET    /api/v1/cms/stats/
+GET    /api/v1/cms/map-nodes/
+GET    /api/v1/cms/gallery/
+GET    /api/v1/cms/gallery/<uuid:pk>/
 ```
 
-### Admin (Super Admin only)
+## Admin Endpoints (Super Admin only)
 
 ```text
+GET    /api/v1/cms/admin/hero-banners/
+POST   /api/v1/cms/admin/hero-banners/
+GET    /api/v1/cms/admin/hero-banners/<uuid:pk>/
+PATCH  /api/v1/cms/admin/hero-banners/<uuid:pk>/
+DELETE /api/v1/cms/admin/hero-banners/<uuid:pk>/
+
+GET    /api/v1/cms/admin/news/
+POST   /api/v1/cms/admin/news/
+GET    /api/v1/cms/admin/news/<uuid:pk>/
+PATCH  /api/v1/cms/admin/news/<uuid:pk>/
+DELETE /api/v1/cms/admin/news/<uuid:pk>/
+
+GET    /api/v1/cms/admin/partners/
+POST   /api/v1/cms/admin/partners/
+GET    /api/v1/cms/admin/partners/<uuid:pk>/
+PATCH  /api/v1/cms/admin/partners/<uuid:pk>/
+DELETE /api/v1/cms/admin/partners/<uuid:pk>/
+
+GET    /api/v1/cms/admin/about/
+POST   /api/v1/cms/admin/about/
+GET    /api/v1/cms/admin/about/<uuid:pk>/
+PATCH  /api/v1/cms/admin/about/<uuid:pk>/
+DELETE /api/v1/cms/admin/about/<uuid:pk>/
+
+GET    /api/v1/cms/admin/faqs/
+POST   /api/v1/cms/admin/faqs/
+GET    /api/v1/cms/admin/faqs/<uuid:pk>/
+PATCH  /api/v1/cms/admin/faqs/<uuid:pk>/
+DELETE /api/v1/cms/admin/faqs/<uuid:pk>/
+
 GET    /api/v1/cms/admin/contact-requests/
 POST   /api/v1/cms/admin/contact-requests/
 GET    /api/v1/cms/admin/contact-requests/<uuid:pk>/
 PATCH  /api/v1/cms/admin/contact-requests/<uuid:pk>/
 DELETE /api/v1/cms/admin/contact-requests/<uuid:pk>/
+
+GET    /api/v1/cms/admin/map-nodes/
+POST   /api/v1/cms/admin/map-nodes/
+GET    /api/v1/cms/admin/map-nodes/<uuid:pk>/
+PATCH  /api/v1/cms/admin/map-nodes/<uuid:pk>/
+DELETE /api/v1/cms/admin/map-nodes/<uuid:pk>/
+
+GET    /api/v1/cms/admin/gallery/
+POST   /api/v1/cms/admin/gallery/
+GET    /api/v1/cms/admin/gallery/<uuid:pk>/
+PATCH  /api/v1/cms/admin/gallery/<uuid:pk>/
+DELETE /api/v1/cms/admin/gallery/<uuid:pk>/
 ```
+
+All admin update views use `partial=True` (PATCH semantics).
 
 ---
 
-# 16. Business Rules
+# 20. Business Rules
 
 - The CMS stores content only.
 - The CMS never controls website layout.
@@ -615,14 +772,16 @@ DELETE /api/v1/cms/admin/contact-requests/<uuid:pk>/
 - Sponsors and partners share one model.
 - Contact Requests require no authentication.
 - Contact Requests have no conversation thread — follow-up is external.
-- Public APIs return only active records.
+- Public APIs return only active records (except Platform Stats).
 - Admin API access requires Super Admin role.
-- Audit logging is handled by the Shared app.
-- Email notifications are handled by the Shared app.
+- Audit logging is handled by the Shared app for most services (HeroBanner and ContactRequest excluded).
+- Email notifications are not sent by the CMS (no EmailService integration).
+- MapNode deletion is soft (`is_active=False`); all other models use hard delete.
+- File attachments on Contact Requests are validated by the shared file validator.
 
 ---
 
-# 17. Architecture Decision Log
+# 21. Architecture Decision Log
 
 | Decision | Choice |
 |----------|--------|
@@ -635,6 +794,9 @@ DELETE /api/v1/cms/admin/contact-requests/<uuid:pk>/
 | Sponsors & Partners | One Model |
 | About Us | Structured Model |
 | FAQ | Yes |
+| MapNode (Global Map) | Yes |
+| Gallery | Yes |
+| Platform Stats | Yes (cross-app aggregate) |
 | Contact Requests | Yes (replaces Support Tickets) |
 | Ticket Conversations | No (communication is external) |
 | Public Contact Request Creation | Yes |
@@ -645,30 +807,33 @@ DELETE /api/v1/cms/admin/contact-requests/<uuid:pk>/
 | Active Flag | Yes |
 | UUID | Yes |
 | BaseModel | No |
-| Audit Logging | Shared App |
-| Email | Shared App |
+| Service Layer | Per-model CRUD services |
+| Audit Logging | Most services (HeroBanner, ContactRequest excluded) |
+| Email | Not used by CMS |
+| Soft Delete | MapNode only |
+| Hard Delete | All other models |
+| File Validation | Shared file validator |
+| Contact Request Fields Required | name, email, subject, description |
 | Frontend Controls Layout | Yes |
 | Admin Role | Super Admin only |
 
 ---
 
-# 18. Final Model List
+# 22. Final Model List
 
 ```text
 cms/
 
 HeroBanner
-
 NewsArticle
-
 Partner
-
 AboutUs
-
 ContactRequest
-
 FAQ
+MapNode
+Gallery
 ```
 
 ---
 
+**Status:** LOCKED

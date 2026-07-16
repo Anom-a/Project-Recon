@@ -193,10 +193,6 @@ Store
 
 - Order Confirmation
 
-CMS
-
-- Contact Messages
-
 ---
 
 # 5. Service Communication Rules
