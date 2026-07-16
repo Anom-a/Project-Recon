@@ -51,6 +51,8 @@ services/
 
     tournament_service.py
 
+    tournament_category_service.py
+
     tournament_team_service.py
 
     match_service.py
@@ -92,25 +94,17 @@ services/
 
 # 3. Event Service
 
-## Purpose
-
-Manages the lifecycle of Events.
-
----
-
 ## Responsibilities
 
-- Create General Event
-- Create Tournament Event
-- Create Workshop Event
-- Update Event
-- Publish Event
-- Unpublish Event
-- Cancel Event
-- Activate Event
-- Deactivate Event
-- Validate Event Dates
-- Validate Registration Configuration
+- get_event_or_404(pk)
+- list_events(branch_ids)
+- create_event(data, actor)
+- update_event(event, data, actor)
+- delete_event(event, actor)
+- publish_event(event, actor) — DRAFT → PUBLISHED
+- unpublish_event(event, actor) — PUBLISHED → DRAFT
+- activate_event(event, actor)
+- deactivate_event(event, actor)
 
 ---
 
@@ -126,21 +120,15 @@ Manages the lifecycle of Events.
 
 # 4. Tournament Service
 
-## Purpose
-
-Manages Tournament configuration.
-
----
-
 ## Responsibilities
 
-- Create Tournament
-- Update Tournament
-- Delete Tournament
-- Validate Tournament
-- Manage Tournament Settings
-- Close Tournament
-- Reopen Tournament
+- get_tournament_or_404(pk)
+- list_tournaments(branch_ids)
+- create_tournament(data, actor)
+- update_tournament(tournament, data, actor)
+- delete_tournament(tournament, actor)
+- close_tournament(tournament, actor)
+- reopen_tournament(tournament, actor)
 
 ---
 
@@ -154,7 +142,23 @@ Manages Tournament configuration.
 
 ---
 
-# 5. Tournament Team Service
+# 5. TournamentCategory Service
+
+## Purpose
+
+Manages tournament competition categories.
+
+## Responsibilities
+
+- get_category_or_404(pk)
+- list_categories()
+- create_category(data, actor)
+- update_category(category, data, actor)
+- delete_category(category, actor) — fails if category is in use by tournaments
+
+---
+
+# 6. Tournament Team Service
 
 ## Purpose
 
@@ -164,11 +168,12 @@ Manages Tournament participants.
 
 ## Responsibilities
 
-- Create Tournament Team
-- Update Tournament Team
-- Delete Tournament Team
-- Convert Approved Registration into Tournament Team
-- Validate Team Information
+- get_team_or_404(pk)
+- list_teams(tournament_id, branch_ids)
+- create_team(data, actor)
+- update_team(team, data, actor)
+- delete_team(team, actor) — validates not in completed match
+- convert_registration_to_team(registration, team_name, actor)
 
 ---
 
@@ -194,7 +199,7 @@ Approved registrations may be converted into Tournament Teams.
 
 ---
 
-# 6. Match Service
+# 7. Match Service
 
 ## Purpose
 
@@ -204,16 +209,15 @@ Manages Tournament Matches.
 
 ## Responsibilities
 
-- Create Match
-- Update Match
-- Delete Match
-- Create Match Sides
-- Assign Teams to Match Sides
-- Record Alliance Scores
-- Validate Match
-- Calculate Match Winner
-- Complete Match
-- Trigger Tournament Statistics Update
+- get_match_or_404(pk)
+- list_matches(tournament_id, branch_ids)
+- create_match(data, actor) — creates Match with two empty sides
+- update_match(match, data, actor)
+- delete_match(match, actor)
+- assign_team_to_side(match, side_type, team, actor)
+- remove_team_from_side(match, side_type, team, actor)
+- record_scores(match, side_a_score, side_b_score, actor)
+- complete_match(match, actor) — finalizes, calculates winner, updates stats
 
 ---
 
@@ -246,7 +250,7 @@ Ranking Service
 
 ---
 
-# 7. Ranking Service
+# 8. Ranking Service
 
 ## Purpose
 
@@ -260,16 +264,9 @@ It is always calculated from Match results.
 
 ## Responsibilities
 
-- Update Team Statistics
-- Calculate Wins
-- Calculate Losses
-- Calculate Draws
-- Calculate Team Points
-- Calculate Standings
-- Calculate Rankings
-- Calculate Tournament Leader
-- Calculate Tournament Winner
-- Generate Leaderboards
+- update_tournament_statistics(tournament) — recalculates all team stats from completed matches
+- get_standings(tournament_id, top_n) — returns teams ordered by -points, -wins, team_name
+- get_tournament_winner(tournament_id) — returns top-ranked team or None
 
 ---
 
@@ -289,7 +286,7 @@ It is always calculated from Match results.
 
 ---
 
-# 8. Workshop Service
+# 9. Workshop Service
 
 ## Purpose
 
@@ -299,11 +296,11 @@ Manages Workshops.
 
 ## Responsibilities
 
-- Create Workshop
-- Update Workshop
-- Delete Workshop
-- Assign Instructor
-- Validate Workshop Information
+- get_workshop_or_404(pk)
+- list_workshops(user, branch_ids)
+- create_workshop(data, actor)
+- update_workshop(workshop, data, actor)
+- delete_workshop(workshop, actor)
 
 ---
 
@@ -314,7 +311,7 @@ Manages Workshops.
 
 ---
 
-# 9. Registration Service
+# 10. Registration Service
 
 ## Purpose
 
@@ -324,16 +321,14 @@ Manages Event registrations.
 
 ## Responsibilities
 
-- Register Participant
-- Approve Registration
-- Reject Registration
-- Cancel Registration
-- Validate Registration Mode
-- Validate Registration Deadline
-- Validate Capacity
-- Validate Duplicate Registrations
-- Validate Student Eligibility
-- Convert Approved Tournament Registrations into Tournament Teams (through Tournament Team Service)
+- get_registration_or_404(pk)
+- list_registrations(event_id, status, student_id, branch_ids)
+- register_for_event(event_id, data, actor) — student or public registration
+- approve_registration(registration, actor)
+- reject_registration(registration, actor)
+- cancel_registration(registration, actor)
+- convert_registration_to_team(registration, team_name, actor) — creates TournamentTeam
+- get_my_registrations(student_id)
 
 ---
 
@@ -367,47 +362,32 @@ Registration Confirmation
 
 ---
 
-# 10. Event Payment Service
+# 11. Event Payment Service
 
 ## Purpose
 
-Coordinates Event registrations with the Shared Payment application.
+Manages the complete payment workflow for Event registrations.
 
 ---
 
 ## Responsibilities
 
-- Initialize Registration Payment
-- Verify Payment
-- Update Registration Payment Status
-- Handle Payment Success
-- Handle Payment Failure
-- Handle Payment Cancellation
-- Trigger Registration Confirmation after successful payment
-
----
-
-## Delegates To
-
-Shared Payment Service
-
-Configured Provider
-
-- Chapa
-- Stripe
-- Future Providers
+- get_payment_or_404(pk)
+- list_payments(registration_id, status, event_id)
+- submit_payment_evidence(registration, amount, payment_method, transaction_reference, bank_name, attachment, actor) — creates PENDING_VERIFICATION payment
+- record_cash_payment(registration, amount, actor, payment_date) — creates VERIFIED payment, auto-approves registration
+- verify_payment(registration, actor, verification_notes) — sets VERIFIED, auto-approves registration
+- reject_payment(registration, actor, verification_notes) — sets REJECTED, auto-rejects registration
 
 ---
 
 ## Does NOT
 
 - Communicate directly with payment gateways.
-- Store payment transactions.
-- Implement provider-specific logic.
 
 ---
 
-# 11. Validators
+# 12. Validators
 
 Validators contain reusable business validation.
 
@@ -469,7 +449,7 @@ Responsibilities
 
 ---
 
-# 12. Query Services
+# 13. Query Services
 
 Query services provide optimized read operations.
 
@@ -507,7 +487,7 @@ Returns calculated Tournament standings.
 
 ---
 
-# 13. Service Communication
+# 14. Service Communication
 
 ```text
 Event Service
@@ -535,16 +515,18 @@ Registration Service
         ▼
 Event Payment Service
         │
-        ▼
-Shared Payment Service
+        ├── record_cash_payment() → VERIFIED, auto-approve
         │
-        ▼
-Payment Provider
+        └── submit_payment_evidence() → PENDING_VERIFICATION
+                │
+                ├── verify_payment() → VERIFIED, auto-approve
+                │
+                └── reject_payment() → REJECTED, auto-reject
 ```
 
 ---
 
-# 14. Calculation Rules
+# 15. Calculation Rules
 
 The system automatically calculates:
 
@@ -563,7 +545,7 @@ These values are derived from recorded Match results.
 
 ---
 
-# 15. Non-Responsibilities
+# 16. Non-Responsibilities
 
 The Events application never:
 
@@ -579,13 +561,14 @@ These decisions remain the responsibility of authorized staff.
 
 ---
 
-# 16. Service Boundaries
+# 17. Service Boundaries
 
 Services may call other Services only when required by a legitimate business workflow.
 
 Examples:
 
-- Registration Service → Event Payment Service
+- Registration Service → Event Payment Service (submit_payment_evidence, record_cash_payment)
+- Event Payment Service → Registration Service (auto-approve/reject on verify/reject)
 - Match Service → Ranking Service
 - Registration Service → Tournament Team Service
 
@@ -593,7 +576,7 @@ Services must never bypass business rules by directly modifying another domain's
 
 ---
 
-# 17. Locked Business Rules
+# 18. Locked Business Rules
 
 - Business logic resides exclusively in Services.
 - Views remain thin.
@@ -604,7 +587,7 @@ Services must never bypass business rules by directly modifying another domain's
 - Match winners are calculated from recorded scores.
 - Tournament winners are calculated from completed Match results.
 - Tournament Teams may be created manually or from approved registrations.
-- Payment processing is delegated to the Shared Payment application.
+- Payment processing is handled by EventPayment Service (PENDING_VERIFICATION → VERIFIED/REJECTED).
 - The Events application records and validates Tournament data but does not organize Tournament structures.
 
 ---

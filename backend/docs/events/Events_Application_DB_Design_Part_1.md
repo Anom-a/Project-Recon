@@ -344,7 +344,7 @@ Only students enrolled in selected Academic Sub Programs may register.
 - Capacity is optional.
 - Registration fee is required only when payment is enabled.
 - Events never communicate directly with payment providers.
-- Online payments are handled through the Shared Payment Service.
+- Online payments are handled through the EventPayment model with a verification workflow.
 - Live, Future, and Past states are computed dynamically and are never stored.
 
 ---
@@ -379,7 +379,7 @@ The following decisions are finalized:
 - Capacity is optional.
 - Payment configuration is independent of registration configuration.
 - Event states (Future, Live, Past) are computed rather than stored.
-- External payment providers are accessed only through the Shared Payment Service.
+- External payment providers are accessed only through the EventPayment service.
 - Business logic remains outside the models.
 
 ---

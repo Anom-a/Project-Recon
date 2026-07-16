@@ -2,13 +2,11 @@
 
 # Events Application
 
-# 🔒 Database Design — Part 3 (Workshop, Event Registration & Payment)
+# Database Design — Part 3 (Workshop, Event Registration & Payment)
 
-**Status:** 🔒 LOCKED
+**Status:** LOCKED
 
 **Application:** `events`
-
-> This document defines the Workshop, Event Registration, and Payment database models. It builds upon the Event model defined in Database Design – Part 1 and the Tournament models defined in Database Design – Part 2.
 
 ---
 
@@ -23,14 +21,13 @@ Event
 Workshop   EventRegistration
                  │
                  ▼
-        Shared Payment
+           EventPayment
+
+User (instructor) → Workshop
+Student (academic) → EventRegistration
 ```
 
-Workshop extends Event.
-
-Event Registration belongs to an Event.
-
-Payments are handled by the Shared Payment application.
+Workshop extends Event. EventRegistration belongs to an Event. EventPayment is owned by EventRegistration.
 
 ---
 
@@ -38,37 +35,32 @@ Payments are handled by the Shared Payment application.
 
 ## Purpose
 
-Represents an educational or training event.
-
-Examples:
-
-- Robotics Workshop
-- AI Bootcamp
-- Python Fundamentals
-- Web Development Masterclass
-
-Every Workshop extends exactly one Event with event_type WORKSHOP.
+Represents an educational or training event. Every Workshop extends exactly one Event with event_type WORKSHOP.
 
 ---
 
-# 3. Database Fields
+## Database Fields
 
 | Field | Type | Required | Description |
 |--------|------|----------|-------------|
-| id | UUID | ✅ | Primary Key |
-| event | OneToOne → Event | ✅ | Parent Event |
-| instructor | FK → User | ✅ | Assigned instructor |
-| duration_minutes | INTEGER | ✅ | Workshop duration in minutes |
-| level | ENUM | ✅ | Beginner / Intermediate / Advanced |
-| price | DECIMAL(10,2) | ❌ | Informational workshop price |
-| created_at | DATETIME | ✅ | Creation timestamp |
-| updated_at | DATETIME | ✅ | Last update timestamp |
+| id | UUID | Yes | Primary Key |
+| event | OneToOne → Event | Yes | Parent Event |
+| instructor | FK → User | Yes | Assigned instructor |
+| duration_minutes | Integer | Yes | Duration in minutes |
+| level | Choice | Yes | Beginner / Intermediate / Advanced |
+| price | Decimal(10,2) | No | Informational workshop price |
+| created_at | DateTime | Yes | Audit |
+| updated_at | DateTime | Yes | Audit |
 
----
+## Workshop Level
 
-# 4. Workshop Constraints
+```
+BEGINNER
+INTERMEDIATE
+ADVANCED
+```
 
-Every Workshop:
+## Constraints
 
 - Must belong to exactly one Event.
 - Cannot exist without an Event.
@@ -77,320 +69,185 @@ Every Workshop:
 
 ---
 
-# 5. Event Registration
+# 3. Event Registration
 
 ## Purpose
 
-Represents one registration for an Event.
+Represents one registration for an Event. Shared by Tournaments, Workshops, and future Event Types.
 
-This model is shared by:
-
-- Tournaments
-- Workshops
-- Future Event Types
-
-Separate registration models are never created.
-
----
-
-# 6. Registration Types
-
-Two types of registrations are supported.
-
-## Student Registration
-
-Used for authenticated students.
-
-The student is linked through the Academic application.
-
-No duplicate student information is stored.
-
----
-
-## Public Registration
-
-Used for users without an account.
-
-Contact information is stored directly inside the registration.
-
----
-
-# 7. Database Fields
-
-| Field | Type | Required | Description |
-|--------|------|----------|-------------|
-| id | UUID | ✅ | Primary Key |
-| event | FK → Event | ✅ | Parent Event |
-| student | FK → StudentProfile | ❌ | Required for student registrations |
-| public_full_name | VARCHAR(255) | ❌ | Public participant name |
-| public_email | Email | ❌ | Public participant email |
-| public_phone | VARCHAR(50) | ❌ | Public participant phone |
-| public_organization | VARCHAR(255) | ❌ | School, Company or Club |
-| registration_status | ENUM | ✅ | Registration status |
-| payment_status | ENUM | ✅ | Payment status |
-| registered_at | DATETIME | ✅ | Registration timestamp |
-| approved_at | DATETIME | ❌ | Approval timestamp |
-| cancelled_at | DATETIME | ❌ | Cancellation timestamp |
-| created_at | DATETIME | ✅ | Creation timestamp |
-| updated_at | DATETIME | ✅ | Last update timestamp |
-
----
-
-# 8. Registration Status
-
-Supported values:
-
-- PENDING
-- APPROVED
-- REJECTED
-- CANCELLED
-
----
-
-# 9. Payment Status
-
-The Events application reuses the Shared Payment statuses.
-
-Supported values:
-
-- PENDING
-- PAID
-- FAILED
-- CANCELLED
-- REFUNDED
-
----
-
-# 10. Registration Constraints
-
-Every Registration:
-
-- Must belong to one Event.
-- Cannot exist without an Event.
-- Must satisfy the Event registration rules.
-- Must respect Event capacity.
-- Must satisfy the registration deadline.
-
-Exactly one registration type must be used.
-
----
-
-## Student Registration
-
-When Registration Mode is:
-
-- STUDENT
-- SUBPROGRAM_STUDENT
-
-Rules:
-
-- student is required.
-- public_full_name must be NULL.
-- public_email must be NULL.
-- public_phone must be NULL.
-- public_organization must be NULL.
-
-Student information is obtained from Student Profile and User Account.
-
-No duplicate information is stored.
-
----
-
-## Public Registration
-
-When Registration Mode is:
-
-PUBLIC
-
-Rules:
-
-- student must be NULL.
-- public_full_name is required.
-- public_email is required.
-- public_phone is required.
-- public_organization is optional.
-
-Public users are not required to create an account.
-
----
-
-# 11. Registration Rules
-
-Only one active registration is allowed per participant for the same Event.
+## Registration Types
 
 ### Student Registration
 
-Unique Constraint
-
-```text
-(event, student)
-```
-
----
+Used for authenticated students. Linked through the Academic Student model.
 
 ### Public Registration
 
-Unique Constraint
+Used for users without an account. Contact information is stored directly.
+
+---
+
+## Database Fields
+
+| Field | Type | Required | Description |
+|--------|------|----------|-------------|
+| id | UUID | Yes | Primary Key |
+| event | FK → Event | Yes | Parent Event (CASCADE) |
+| student | FK → Student | No | Required for student registrations |
+| public_full_name | String(255) | No | Public participant name |
+| public_email | Email | No | Public participant email |
+| public_phone | String(50) | No | Public participant phone |
+| public_organization | String(255) | No | School, Company or Club |
+| registration_status | Choice | Yes | PENDING / APPROVED / REJECTED / CANCELLED |
+| payment_status | Choice | Yes | PENDING_VERIFICATION / VERIFIED / REJECTED / CANCELLED |
+| registered_at | DateTime | Yes | Registration timestamp |
+| approved_at | DateTime | No | Approval timestamp |
+| cancelled_at | DateTime | No | Cancellation timestamp |
+| created_at | DateTime | Yes | Audit |
+| updated_at | DateTime | Yes | Audit |
+
+## Registration Status
+
+```
+PENDING
+APPROVED
+REJECTED
+CANCELLED
+```
+
+## Payment Status
+
+```
+PENDING_VERIFICATION
+VERIFIED
+REJECTED
+CANCELLED
+```
+
+## Constraints
+
+- Must belong to one Event.
+- Must satisfy the Event registration rules (mode, deadline, capacity).
+- Only one active registration per participant for the same Event.
+- Student registration: unique (event, student).
+- Public registration: unique (event, public_email).
+- Exactly one registration type must be used (student XOR public).
+
+## Registration Rules
+
+When Registration Mode is STUDENT or SUBPROGRAM_STUDENT:
+- student is required.
+- public_full_name, public_email, public_phone, public_organization must be NULL.
+
+When Registration Mode is PUBLIC:
+- student must be NULL.
+- public_full_name and public_email are required.
+- public_phone is required.
+- public_organization is optional.
+
+---
+
+# 4. EventPayment
+
+## Purpose
+
+Owns all payment data for event registrations. Supports cash, bank transfer, and mobile money with a verification workflow.
+
+---
+
+## Database Fields
+
+| Field | Type | Required | Description |
+|--------|------|----------|-------------|
+| id | UUID | Yes | Primary Key |
+| registration | OneToOne → EventRegistration | Yes | Parent registration |
+| amount | Decimal(10,2) | Yes | Paid amount |
+| payment_method | Choice | Yes | Cash / Bank Transfer / Mobile Money / Cheque |
+| transaction_reference | String(255) | No | External reference |
+| bank_name | String(255) | No | Bank name for transfers |
+| attachment | File | No | Payment proof upload |
+| payment_date | DateTime | No | Payment completion |
+| status | Choice | Yes | Payment status |
+| verified_by | FK → User | No | Staff who verified |
+| verified_at | DateTime | No | When verified |
+| verification_notes | Text | No | Admin notes |
+| created_at | DateTime | Yes | Audit |
+| updated_at | DateTime | Yes | Audit |
+
+## Payment Method
+
+```
+CASH
+BANK_TRANSFER
+MOBILE_MONEY
+CHEQUE
+```
+
+## Payment Status
+
+```
+PENDING_VERIFICATION
+VERIFIED
+REJECTED
+CANCELLED
+```
+
+## Constraints
+
+- Every Registration owns one Payment.
+- Payment amount must be greater than zero.
+- Non-cash payments require transaction_reference or attachment.
+- Cash payments are automatically verified upon recording.
+
+## Payment Workflow
 
 ```text
-(event, public_email)
+Cash Payment:
+  Staff records cash → EventPayment created (VERIFIED)
+  → Registration auto-approved
+
+Non-Cash Payment:
+  User submits evidence → EventPayment created (PENDING_VERIFICATION)
+  → Staff verifies (VERIFIED) or rejects (REJECTED)
+  → On VERIFIED: Registration auto-approved
+  → On REJECTED: Registration auto-rejected
 ```
 
 ---
 
-# 12. Payment Relationship
+# 5. Capacity Rules
 
-The Events application never owns payment records.
-
-Instead, payment processing is delegated to the Shared Payment application.
-
-```text
-Event Registration
-        │
-        ▼
-Shared Payment
-        │
-        ▼
-Configured Provider
-        │
-        ▼
-Chapa / Stripe / Future Providers
-```
-
-The Event Registration stores only the payment status.
-
-Complete payment history remains inside the Shared Payment module.
+If capacity is NULL, unlimited registrations are allowed. Otherwise, approved registrations must never exceed the configured capacity. Capacity enforcement is performed by the service layer.
 
 ---
 
-# 13. Registration Workflow
+# 6. Delete Rules
 
-```text
-Registration Request
-        │
-        ▼
-Business Validation
-        │
-        ▼
-Capacity Validation
-        │
-        ▼
-Registration Rule Validation
-        │
-        ▼
-Payment (if required)
-        │
-        ▼
-Registration Confirmed
-```
+Deleting an Event (CASCADE) deletes Event Registrations. Deleting an Event Registration (CASCADE) deletes its EventPayment. Payment history is preserved as long as the registration exists.
+
+Deleting an Event does not delete Workshop or Tournament (PROTECT).
 
 ---
 
-# 14. Capacity Rules
-
-If
-
-```text
-capacity = NULL
-```
-
-Unlimited registrations are allowed.
-
-Otherwise
-
-Approved registrations must never exceed the configured capacity.
-
-Capacity enforcement is performed by the service layer.
-
----
-
-# 15. Relationships
-
-```text
-Event
-
-1
-
-↓
-
-1
-
-Workshop
-```
-
----
-
-```text
-Event
-
-1
-
-↓
-
-∞
-
-EventRegistration
-```
-
----
-
-```text
-StudentProfile
-
-1
-
-↓
-
-∞
-
-EventRegistration
-```
-
----
-
-# 16. Delete Rules
-
-Deleting an Event deletes:
-
-- Workshop
-- Event Registrations
-
-Deleting an Event Registration:
-
-- Does not delete Shared Payment records.
-- Does not modify payment history.
-
----
-
-# 17. Index Recommendations
+# 7. Index Recommendations
 
 ## Workshop
 
-Indexes
-
 - instructor
 
----
+## EventRegistration
 
-## Event Registration
+- event, student, registration_status, payment_status, registered_at
+- (event, registration_status), (event, payment_status)
+- (event, public_email), (event, student)
 
-Indexes
+## EventPayment
 
-- event
-- student
-- registration_status
-- payment_status
-- registered_at
-
-Composite Indexes
-
-- (event, registration_status)
-- (event, payment_status)
-- (event, public_email)
+- registration, status, payment_method, payment_date, transaction_reference
 
 ---
 
-# 18. Business Rules
+# 8. Business Rules
 
 - Workshop extends Event.
 - Event Registration belongs to Event.
@@ -398,31 +255,27 @@ Composite Indexes
 - Student information is never duplicated inside Event Registration.
 - Public participant information exists only for public registrations.
 - Every registration is either a Student Registration or a Public Registration, never both.
-- Payments are handled entirely by the Shared Payment application.
-- Events never communicate directly with Chapa, Stripe, or any payment provider.
+- EventPayment is owned by the Events application (not shared).
+- Cash payments are recorded by staff and auto-verified.
+- Non-cash payments require a verification workflow.
 - Capacity validation is handled by the service layer.
-- Registration eligibility is determined entirely by the parent Event configuration.
+- Registration eligibility is determined by the parent Event configuration.
 
 ---
 
-# 19. Locked Decisions
-
-The following decisions are finalized.
+# 9. Locked Decisions
 
 - Workshop extends Event.
 - Event Registration is shared across all Event types.
 - Public and authenticated users share the same registration model.
-- Student registrations reference StudentProfile.
+- Student registrations reference Academic Student.
 - Public registrations store their own contact information.
-- Registration and Payment maintain independent statuses.
-- Payment transactions belong exclusively to the Shared Payment application.
-- Events only reference payment status.
-- Provider-specific payment information is never stored inside the Events application.
+- EventPayment is part of the Events application (not a shared service).
+- Payment statuses: PENDING_VERIFICATION, VERIFIED, REJECTED, CANCELLED.
+- Cash payments are verified immediately upon recording.
 - Capacity validation is performed by the service layer.
 - Registration eligibility is determined by the parent Event configuration.
 
 ---
 
-# Status
-
-**🔒 LOCKED**
+**Status:** LOCKED
