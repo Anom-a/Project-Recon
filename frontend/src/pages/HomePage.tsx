@@ -161,9 +161,11 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
       </motion.section>
 
       {aboutUs.filter((a: AboutUsResponse) => a.is_active).length > 0 && (() => {
-        const aboutEntry = aboutUs.find((a: AboutUsResponse) => a.slug === 'about') || aboutUs[0];
-        const missionEntry = aboutUs.find((a: AboutUsResponse) => a.slug === 'mission');
-        const visionEntry = aboutUs.find((a: AboutUsResponse) => a.slug === 'vision');
+        const matchSlugOrTitle = (slug: string) => (a: AboutUsResponse) =>
+          a.slug === slug || a.slug.includes(slug) || a.title.toLowerCase().includes(slug);
+        const aboutEntry = aboutUs.find((a: AboutUsResponse) => matchSlugOrTitle('about')(a)) || aboutUs[0];
+        const missionEntry = aboutUs.find((a: AboutUsResponse) => matchSlugOrTitle('mission')(a));
+        const visionEntry = aboutUs.find((a: AboutUsResponse) => matchSlugOrTitle('vision')(a));
         const extraEntries = aboutUs.filter((a: AboutUsResponse) =>
           a.id !== aboutEntry?.id &&
           a.id !== missionEntry?.id &&
