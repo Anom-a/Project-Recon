@@ -131,6 +131,9 @@ def reject_payment(actor, *, enrollment, rejection_reason):
         "enrolled_class__branch"
     ).get(pk=enrollment.pk)
 
+    if not enrollment.pending_code:
+        raise ValidationError("Only online enrollments can be rejected.")
+
     if enrollment.verification_status == VerificationStatus.REJECTED:
         raise ValidationError("Enrollment has already been rejected.")
 
@@ -170,7 +173,7 @@ def reject_payment(actor, *, enrollment, rejection_reason):
         if hasattr(enrollment.enrolled_class.branch, "address") else ""
     )
     status_display = EnrollmentStatus.REJECTED.label
-    subject = f"Enrollment Rejected — {enrollment.pending_code or enrollment.id}"
+    subject = f"Enrollment Rejected — {enrollment.pending_code}"
     body = (
         f"Dear {full_name},\n\n"
         f"Your enrollment has been rejected.\n\n"

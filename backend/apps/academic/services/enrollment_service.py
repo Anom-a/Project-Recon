@@ -23,7 +23,7 @@ from apps.shared.email.services import send_email
 
 
 def _generate_enrollment_number(branch_code: str, year: int) -> str:
-    prefix = f"ENR-{year}-"
+    prefix = f"ENR-{branch_code}-{year}-"
     last = Enrollment.objects.filter(
         enrollment_number__startswith=prefix
     ).order_by("enrollment_number").last()
@@ -34,8 +34,8 @@ def _generate_enrollment_number(branch_code: str, year: int) -> str:
     return f"{prefix}{seq:06d}"
 
 
-def _generate_pending_code(year: int) -> str:
-    prefix = f"ENR-P-{year}-"
+def _generate_pending_code(branch_code: str, year: int) -> str:
+    prefix = f"ENR-P-{branch_code}-{year}-"
     last = Enrollment.objects.filter(
         pending_code__startswith=prefix
     ).order_by("pending_code").last()
@@ -214,7 +214,7 @@ def online_enrollment(
                 raise ValidationError("Already enrolled in this class.")
 
         year = date.today().year
-        pending_code = _generate_pending_code(year)
+        pending_code = _generate_pending_code(enrolled_class.branch.code, year)
 
         enrollment = Enrollment(
             student=student,

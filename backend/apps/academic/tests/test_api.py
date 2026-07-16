@@ -32,6 +32,7 @@ from apps.academic.services.staff_attendance_service import (
 )
 from apps.academic.services.enrollment_service import (
     enroll_student,
+    _generate_pending_code,
 )
 from apps.academic.services.payment_service import (
     record_payment,
@@ -911,7 +912,9 @@ class EnrollmentAPITest(AcademicAPITestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["status"], EnrollmentStatus.PENDING_VERIFICATION)
-        self.assertIsNotNone(response.json().get("pending_code"))
+        pending_code = response.json().get("pending_code")
+        self.assertIsNotNone(pending_code)
+        self.assertIn(self.individual_class.branch.code, pending_code)
 
     def test_online_enrollment_unauthenticated_missing_fields_raises(self):
         response = self.client.post(
@@ -1177,6 +1180,7 @@ class PaymentAPITest(AcademicAPITestCase):
 
     def test_reject_enrollment(self):
         self.authenticate_as_secretary()
+        self.enrollment.pending_code = _generate_pending_code(self.branch.code, date.today().year)
         self.enrollment.verification_status = VerificationStatus.SUBMITTED
         self.enrollment.save()
         EnrollmentPayment.objects.create(
@@ -1190,6 +1194,9 @@ class PaymentAPITest(AcademicAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 200)
+        self.enrollment.refresh_from_db()
+        self.assertIsNotNone(self.enrollment.pending_code)
+        self.assertIn(self.enrollment.enrolled_class.branch.code, self.enrollment.pending_code)
 
 
 class AttendanceAPITest(AcademicAPITestCase):
@@ -2366,7 +2373,9 @@ class SwitchSubProgramAPITest(AcademicAPITestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["new_enrollment"]["status"], EnrollmentStatus.ACTIVE)
-        self.assertIsNotNone(data["new_enrollment"]["enrollment_number"])
+        enrollment_number = data["new_enrollment"]["enrollment_number"]
+        self.assertIsNotNone(enrollment_number)
+        self.assertIn(self.target_class.branch.code, enrollment_number)
         self.assertEqual(data["amount_due"], 200.0)
 
     def test_switch_subprogram_unauthenticated_returns_401(self):
