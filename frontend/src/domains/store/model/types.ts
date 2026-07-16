@@ -11,6 +11,7 @@ export interface ProductCategory {
 export interface ProductImage {
   id: string;
   image: string;
+  image_url?: string;
   alt_text: string;
   is_primary: boolean;
   display_order: number;
@@ -28,22 +29,14 @@ export interface Product {
   sku: string;
   barcode: string;
   price: number;
+  currency: string;
   weight: number;
   is_active: boolean;
-  archived_at?: string | null;
+  stock_status: string;
   images: ProductImage[];
   primary_image: ProductImage | null;
   created_at: string;
   updated_at: string;
-}
-
-export interface ProductBrief {
-  id: string;
-  name: string;
-  slug: string;
-  sku: string;
-  price: number;
-  category_name: string;
 }
 
 export interface BranchInventory {
@@ -51,10 +44,9 @@ export interface BranchInventory {
   branch: string;
   branch_name: string;
   product: string;
-  product_name?: string;
-  product_slug?: string;
-  product_sku?: string;
-  product_detail?: ProductBrief;
+  product_name: string;
+  product_slug: string;
+  product_sku: string;
   quantity: number;
   minimum_quantity: number;
   created_at: string;
@@ -90,30 +82,11 @@ export interface CartAddPayload {
   quantity: number;
 }
 
-export type StorePaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE';
-
-export interface CheckoutPaymentPayload {
-  amount: string | number;
-  payment_method: StorePaymentMethod;
-  transaction_reference?: string;
-  bank_name?: string;
-}
-
 export interface CheckoutPayload {
   branch: string;
   guest_name?: string;
   guest_email?: string;
   guest_phone?: string;
-  /** Optional payment evidence submitted with checkout (creates PENDING_VERIFICATION payment). */
-  payment?: CheckoutPaymentPayload;
-}
-
-export interface PaymentEvidencePayload {
-  amount: string | number;
-  payment_method: StorePaymentMethod;
-  transaction_reference?: string;
-  bank_name?: string;
-  attachment?: File | null;
 }
 
 export interface PendingOrderItem {
@@ -146,17 +119,11 @@ export interface StorePayment {
   pending_order: string;
   amount: number;
   payment_method: string;
-  transaction_reference?: string;
-  bank_name?: string;
-  attachment?: string;
+  payment_provider: string;
+  transaction_reference: string;
   status: string;
-  status_display?: string;
-  payment_date?: string;
-  verified_by?: string;
-  verified_at?: string;
-  verification_notes?: string;
+  payment_date: string;
   created_at: string;
-  updated_at: string;
 }
 
 export interface OrderItem {

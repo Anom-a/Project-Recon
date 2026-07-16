@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, X, Loader2, AlertCircle, Eye, CheckCircle2, Download, DollarSign, Shield, ChevronLeft, ChevronRight, ArrowRightLeft, RefreshCw } from 'lucide-react';
+import { Plus, Search, X, Loader2, AlertCircle, Eye, CheckCircle2, Download, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Enrollment, StudentProfile, AcademicClass, UserProfile } from '@/shared/types';
-import {
-  fetchEnrollmentsPaginatedApi, fetchStudentsApi, fetchClassesApi, enrollStudentApi,
-  cancelEnrollmentApi, completeEnrollmentApi, searchStudentsApi, recordPaymentApi,
-  rejectPaymentApi, setUnderReviewApi, moveEnrollmentApi, switchSubProgramApi,
-} from '@/domains/learning/academics/api/academicApi';
+import { fetchEnrollmentsPaginatedApi, fetchStudentsApi, fetchClassesApi, enrollStudentApi, cancelEnrollmentApi, completeEnrollmentApi, searchStudentsApi, createCashPaymentApi } from '@/domains/learning/academics/api/academicApi';
 
 const PAGE_SIZE = 20;
 

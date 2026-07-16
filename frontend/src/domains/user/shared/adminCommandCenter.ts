@@ -9,7 +9,7 @@ export type AdminSectionId =
   | 'overview' | 'users' | 'roles' | 'academics' | 'classes' | 'staff-attendance'
   | 'account' | 'audit' | 'branches' | 'registrations' | 'cms' | 'events'
   | 'tournaments' | 'tournament-teams' | 'matches' | 'workshops'
-  | 'event-registrations' | 'certificates' | 'store' | 'transfers' | 'bank-accounts';
+  | 'event-registrations' | 'certificates' | 'store';
 
 export interface AdminHubStats {
   totalUsers: number;

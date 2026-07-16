@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   BarChart3, Users, Shield, FileText, BookOpen, GraduationCap, Award,
-  Calendar, Trophy, Swords, UserPlus, ClipboardList, LayoutDashboard, GitBranch, RefreshCw,
-  ShoppingBag, ArrowRightLeft, Building2,
+  Calendar, Trophy, Swords, UserPlus, ClipboardList, LayoutDashboard, GitBranch, RefreshCw, ShoppingCart,
 } from 'lucide-react';
 import { AppLayout } from '@/shared/ui/AppLayout';
 import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
 import InlineAlert from '@/shared/ui/InlineAlert';
-import PermissionDenied from '@/shared/ui/PermissionDenied';
 import CmsDashboard from '@/domains/cms/admin/ui/CmsDashboard';
+import StoreDashboard from '@/domains/store/admin/ui/StoreDashboard';
 import { NavItem } from '@/shared/ui/Sidebar';
 import { BranchSectionShell } from '@/domains/branches/ui/BranchSectionShell';
 import AcademicCatalogManager from '@/domains/learning/academics/ui/AcademicCatalogManager';
@@ -21,7 +20,6 @@ import MatchManager from '@/domains/competition/admin/MatchManager';
 import WorkshopManager from '@/domains/competition/admin/WorkshopManager';
 import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
 import CertificateManager from '@/domains/user/shared/ui/CertificateManager';
-import StoreDashboard from '@/domains/store/admin/ui/StoreDashboard';
 import type { UserProfile } from '@/shared/types';
 import {
   fetchEnrollmentsApi, fetchPaymentsApi, fetchProgramsApi, fetchClassesApi,
@@ -43,7 +41,6 @@ import {
   type AdminHubStats,
 } from '../adminCommandCenter';
 import { summarizeSettled } from '@/shared/utils/storage';
-import { hasPermission, type Permission } from '@/shared/auth/permissions';
 
 interface Props { currentUser: UserProfile; onLogout: () => void; }
 
@@ -85,6 +82,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'matches', label: 'Matches', icon: Swords, group: 'competition' },
   { id: 'workshops', label: 'Workshops', icon: GraduationCap, group: 'competition' },
   { id: 'event-registrations', label: 'Event Registrations', icon: UserPlus, group: 'competition' },
+  { id: 'store', label: 'Store', icon: ShoppingCart, group: 'content' },
   { id: 'cms', label: 'Content Manager', icon: LayoutDashboard, group: 'content' },
   { id: 'branches', label: 'Branches', icon: GitBranch, group: 'content' },
   { id: 'store', label: 'Store & Inventory', icon: ShoppingBag, group: 'finances' },
@@ -104,6 +102,7 @@ const pageTitle: Record<string, string> = {
   workshops: 'Workshop Management', 'event-registrations': 'Event Registrations',
   certificates: 'Certificate Management',
   audit: 'Audit Logs',
+  store: 'Store Management',
   cms: 'Content Management', account: 'My Account',
   store: 'Store & Inventory',
 };
@@ -152,7 +151,7 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       const payments = paymentsRes.status === 'fulfilled' && Array.isArray(paymentsRes.value) ? paymentsRes.value : [];
 
       const students = users.filter(u => resolveRole(u.assignments || []) === 'Student').length;
-      const activeUsers = users.filter(u => u.is_active !== false).length;
+      const activeUsers = users.filter(u => (u as any).is_active !== false).length;
 
       setHubStats({
         totalUsers: users.length,
@@ -213,7 +212,7 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       case 'workshops': return <WorkshopManager />;
       case 'event-registrations': return <RegistrationManager />;
       case 'certificates': return <CertificateManager currentUserRole={currentUser.role} />;
-      case 'store': return <StoreDashboard currentUser={currentUser} />;
+      case 'store': return <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-200 shadow-sm"><StoreDashboard /></div>;
       case 'cms': return <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-200 shadow-sm"><CmsDashboard /></div>;
       default: return <PermissionDenied title="Section not found" message="This admin section does not exist or is no longer available." />;
     }

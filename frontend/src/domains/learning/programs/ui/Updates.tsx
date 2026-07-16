@@ -20,7 +20,7 @@ const stagger = {
 };
 const cardUp = {
   hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as const } }
 };
 
 export default function Updates({ onCampRegisterAction }: UpdatesProps) {
@@ -31,7 +31,7 @@ export default function Updates({ onCampRegisterAction }: UpdatesProps) {
     const abort = new AbortController();
     cmsPublicApi.getNews(undefined, abort.signal)
       .then(res => setNews((res.results ?? []).filter(n => n.is_active)))
-      .catch(err => { if (err.name !== 'AbortError') /* console.error */(err); });
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
     return () => abort.abort();
   }, []);
 

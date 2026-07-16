@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, X, ShoppingBag, GraduationCap, Trophy, Users, Wrench, ArrowRight } from 'lucide-react';
 import type { ActiveTab } from '../types';
+import type { Product } from '@/domains/store/model/types';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -27,8 +28,8 @@ export default function SearchOverlay({ isOpen, onClose, onNavigate }: SearchOve
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
-      import('@/domains/store/products/api/productApi').then(m => m.getProducts()).then(products => {
-        const results: SearchResult[] = (products || []).map(p => ({
+      import('@/domains/store/products/api/productApi').then(m => m.listProducts()).then(products => {
+        const results: SearchResult[] = (products || []).map((p: Product) => ({
           id: p.id, title: p.name, description: p.description,
           category: 'Store', icon: ShoppingBag, tab: 'store' as ActiveTab,
           badge: p.category_name
@@ -42,6 +43,12 @@ export default function SearchOverlay({ isOpen, onClose, onNavigate }: SearchOve
           ...ws.map(w => ({ id: w.id, title: w.title, description: w.description, category: 'Workshops' as const, icon: Wrench, tab: 'competitions' as ActiveTab, badge: w.storedStatus })),
         ];
         setSearchable(prev => [...prev.filter(r => r.category !== 'Tournaments' && r.category !== 'Workshops'), ...results]);
+      }).catch(() => {});
+      import('@/domains/forum/posts/model/postApi').then(m => m.getForumPosts()).then(posts => {
+        const results: SearchResult[] = (posts || []).map(f => ({
+          id: f.id, title: f.title, description: f.content, category: 'Community', icon: Users, tab: 'community' as ActiveTab, badge: f.category
+        }));
+        setSearchable(prev => [...prev.filter(r => r.category !== 'Community'), ...results]);
       }).catch(() => {});
     } else {
       setQuery('');

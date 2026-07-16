@@ -1,12 +1,10 @@
 import { http } from '@/shared/api/http';
-import type { ProductCategory } from '../../model/types';
-
-const BASE = '/store/categories';
+import type { ProductCategory } from '@/domains/store/model/types';
 
 export async function listActiveCategories(): Promise<ProductCategory[]> {
-  return await http.get<ProductCategory[]>(`${BASE}/`, { params: { is_active: 'true' } });
+  return await http.get<ProductCategory[]>('/store/categories/');
 }
 
 export async function getCategory(id: string): Promise<ProductCategory> {
-  return await http.get<ProductCategory>(`${BASE}/${id}/`);
+  return await http.get<ProductCategory>(`/store/categories/${id}/`);
 }

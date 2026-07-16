@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Mail, Phone, BookOpen, ShieldCheck, Lock, MapPin, CheckCircle2, ChevronRight, ChevronLeft, Laptop, Cpu, Clock, Eye, EyeOff, Loader2, Building2, Hash, FileUp } from 'lucide-react';
 import { registerApi } from '../api/registerApi';
-import { fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, fetchBankAccountsApi } from '../../../learning/academics/api/academicApi';
-import type { Program, SubProgram, AcademicClass } from '@/shared/types';
+import { fetchProgramsApi, fetchSubProgramsApi } from '../../../learning/academics/api/academicApi';
+import type { Program, SubProgram } from '@/shared/types';
 
 type PaymentMethodType = 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'CASH';
 

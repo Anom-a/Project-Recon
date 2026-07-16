@@ -1,4 +1,9 @@
 export * from '../../domains/store/model/types';
+export * from '../../domains/forum/model/types';
+export * from '../../domains/learning/model/types';
+export * from '../../domains/competition/model/types';
+
+import type { SessionStatus, AttendanceStatus } from '../../domains/learning/model/types';
 
 export interface UpdatePost {
   id: string;
@@ -47,8 +52,45 @@ export interface SubscriptionTier {
   maxStudents?: number;
 }
 
-export * from '../../domains/learning/model/types';
-export * from '../../domains/competition/model/types';
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'alert';
+  timestamp: string;
+  read: boolean;
+  actionUrl?: string;
+  icon?: string;
+}
+
+export interface Referral {
+  id: string;
+  referrerCode: string;
+  refereeName: string;
+  refereeEmail: string;
+  status: 'pending' | 'enrolled' | 'rewarded';
+  date: string;
+  reward: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  school: string;
+  xp: number;
+  badges: number;
+  streak: number;
+  avatar: string;
+  trend: 'up' | 'down' | 'same';
+  program: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
 
 export type PartnerTier = 'platinum' | 'gold' | 'silver' | 'bronze' | 'community';
 export type PartnerType = 'financial' | 'in-kind' | 'media' | 'educational' | 'venue';

@@ -11,9 +11,9 @@ let tournamentByEventId: Map<string, eventsApi.BackendTournament> | null = null;
 async function getTournamentIndex(): Promise<Map<string, eventsApi.BackendTournament>> {
   if (tournamentByEventId) return tournamentByEventId;
   const raw = await eventsApi.getPublicTournaments();
-  const list = unwrapList(raw as eventsApi.BackendTournament[] | { results: eventsApi.BackendTournament[] });
+  const list = unwrapList(raw as any) as eventsApi.BackendTournament[];
   tournamentByEventId = new Map(list.map(t => [t.event, t]));
-  return tournamentByEventId;
+  return tournamentByEventId!;
 }
 
 /** Clear cached tournament index (call after admin creates tournaments). */
@@ -119,7 +119,7 @@ export async function getEvents(params?: Record<string, string>): Promise<(Tourn
       return mapBackendEventToTournament(e, index.get(e.id));
     });
   } catch (err) {
-    /* console.error */('getEvents failed:', err);
+    console.error('getEvents failed:', err);
     return [];
   }
 }
@@ -132,7 +132,7 @@ export async function getTournaments(params?: Record<string, string>): Promise<T
     ]);
     return events.map(e => mapBackendEventToTournament(e, index.get(e.id)));
   } catch (err) {
-    /* console.error */('getTournaments failed:', err);
+    console.error('getTournaments failed:', err);
     return [];
   }
 }
@@ -154,7 +154,7 @@ export async function getWorkshops(params?: Record<string, string>): Promise<Wor
     const events = await eventsApi.getPublicEvents({ ...params, event_type: 'WORKSHOP' });
     return events.map(mapBackendEventToWorkshop);
   } catch (err) {
-    /* console.error */('getWorkshops failed:', err);
+    console.error('getWorkshops failed:', err);
     return [];
   }
 }
@@ -164,7 +164,7 @@ export async function getWorkshopById(id: string): Promise<Workshop | null> {
     const event = await eventsApi.getPublicEventDetail(id);
     return mapBackendEventToWorkshop(event);
   } catch (err) {
-    /* console.error */('getWorkshopById failed:', err);
+    console.error('getWorkshopById failed:', err);
     return null;
   }
 }
@@ -177,7 +177,7 @@ export async function getMatches(eventId: string): Promise<MatchResult[]> {
     const matches = await eventsApi.getPublicTournamentMatches(tournamentId);
     return (Array.isArray(matches) ? matches : []).map(mapBackendMatchToResult);
   } catch (err) {
-    /* console.error */('getMatches failed:', err);
+    console.error('getMatches failed:', err);
     return [];
   }
 }
@@ -244,7 +244,7 @@ export async function getMyRegistrations() {
   try {
     return await eventsApi.getMyRegistrations();
   } catch (err) {
-    /* console.error */('getMyRegistrations failed:', err);
+    console.error('getMyRegistrations failed:', err);
     return [];
   }
 }
@@ -432,7 +432,6 @@ export async function getTeamUpcomingMatches(teamId: string): Promise<MatchResul
 /* ═══ PUBLIC MATCHES ═══ */
 
 export type { MatchDetail } from './matchMappers';
-import type { MatchDetail } from './matchMappers';
 import { getMatchDetail, fetchAllMatches } from './matchApi';
 
 export async function getPublicMatchById(

@@ -723,8 +723,8 @@ export default function MatchManager() {
                   const sideAData = selectedMatch.sides?.find(s => s.side === 'SIDE_A');
                   const sideBData = selectedMatch.sides?.find(s => s.side === 'SIDE_B');
                   const sides = [
-                    { side: 'SIDE_A' as const, score: sideAData?.score ?? null, teams: getSideTeamNames(sideAData?.participants) },
-                    { side: 'SIDE_B' as const, score: sideBData?.score ?? null, teams: getSideTeamNames(sideBData?.participants) },
+                    { side: 'SIDE_A' as const, score: sideAData?.score ?? 0, teams: getSideTeamNames(sideAData?.participants) },
+                    { side: 'SIDE_B' as const, score: sideBData?.score ?? 0, teams: getSideTeamNames(sideBData?.participants) },
                   ];
                   const { sideA, sideB } = sidesFromMatch(sides);
                   return (

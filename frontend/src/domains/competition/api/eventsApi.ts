@@ -192,12 +192,7 @@ export interface BackendEventPayment {
 
 const BASE = '/events';
 
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-}
+
 
 async function fetchAllPublicEvents(params?: Record<string, string>): Promise<BackendEvent[]> {
   return fetchAllPages(page =>

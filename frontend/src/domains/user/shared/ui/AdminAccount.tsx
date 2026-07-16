@@ -226,7 +226,7 @@ export default function AdminAccount({ currentUser, onUserUpdate }: Props) {
           {accountTab === 'profile' && <ProfileInfo currentUser={currentUser} />}
           {accountTab === 'password' && <ChangePasswordForm />}
           {accountTab === 'email' && <EmailVerificationForm currentUser={currentUser} onVerify={() => {
-            const updated = { ...currentUser, is_email_verified: true };
+            const updated = { ...currentUser, is_email_verified: true } as UserProfile & { is_email_verified: boolean };
             updateUserProfile(updated);
             onUserUpdate?.(updated);
           }} />}
@@ -369,7 +369,7 @@ function EmailVerificationForm({ currentUser, onVerify }: { currentUser: UserPro
   const [otp, setOtp] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(currentUser.is_email_verified || false);
+  const [success, setSuccess] = useState((currentUser as any).is_email_verified || false);
 
   const handleRequest = async () => {
     setSubmitting(true);

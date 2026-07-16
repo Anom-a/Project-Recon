@@ -10,7 +10,7 @@ export default function EventIssuePanel({ mode, templates, onRefresh, onError }:
   onRefresh: () => void;
   onError: (msg: string | null) => void;
 }) {
-  const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
+  const [registrations, setRegistrations] = useState<BackendEventRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [issuing, setIssuing] = useState(false);
@@ -18,7 +18,7 @@ export default function EventIssuePanel({ mode, templates, onRefresh, onError }:
 
   useEffect(() => {
     adminGetRegistrations({ event_type: mode.toUpperCase() })
-      .then(data => setRegistrations(Array.isArray(data) ? data : (data as Record<string, unknown>).results as EventRegistration[] || []))
+      .then(data => setRegistrations(Array.isArray(data) ? data : (data as Record<string, unknown>).results as BackendEventRegistration[] || []))
       .catch(() => setRegistrations([]))
       .finally(() => setLoading(false));
   }, [mode]);
