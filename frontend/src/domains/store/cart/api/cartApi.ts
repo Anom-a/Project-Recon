@@ -8,9 +8,8 @@ export async function getCart(): Promise<ShoppingCart> {
   return await http.get<ShoppingCart>(`${BASE}/`, { headers: getStoreRequestHeaders() });
 }
 
-export async function addCartItem(payload: CartAddPayload): Promise<ShoppingCartItem> {
-  const headers = getStoreRequestHeaders();
-  return await http.post<ShoppingCartItem>(`${BASE}/items/`, payload, { headers });
+export async function addCartItem(payload: CartAddPayload): Promise<void> {
+  await http.post<void>(`${BASE}/items/`, payload, { headers: getStoreRequestHeaders() });
 }
 
 export async function updateCartItemQuantity(itemId: string, quantity: number): Promise<void> {
@@ -18,8 +17,7 @@ export async function updateCartItemQuantity(itemId: string, quantity: number): 
 }
 
 export async function removeCartItem(itemId: string): Promise<void> {
-  const headers = getStoreRequestHeaders();
-  await http.delete<void>(`${BASE}/items/${itemId}/remove/`, { headers });
+  await http.delete<void>(`${BASE}/items/${itemId}/remove/`, { headers: getStoreRequestHeaders() });
 }
 
 export async function clearCart(): Promise<void> {

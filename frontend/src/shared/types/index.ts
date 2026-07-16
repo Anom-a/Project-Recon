@@ -1,8 +1,4 @@
 export * from '../../domains/store/model/types';
-export * from '../../domains/learning/model/types';
-export * from '../../domains/competition/model/types';
-
-import type { SessionStatus, AttendanceStatus } from '../../domains/learning/model/types';
 
 export interface UpdatePost {
   id: string;
@@ -12,15 +8,6 @@ export interface UpdatePost {
   excerpt: string;
   content: string;
   iconType: 'calendar' | 'camping' | 'security';
-}
-
-export interface UserAssignment {
-  id?: string;
-  branch_id: string | null;
-  branch_name?: string | null;
-  role: string;
-  is_primary?: boolean;
-  is_active?: boolean;
 }
 
 export interface UserProfile {
@@ -33,8 +20,7 @@ export interface UserProfile {
   profile_picture?: string;
   date_of_birth?: string;
   gender?: string;
-  role: 'Student' | 'Instructor' | 'Admin' | 'Manager' | 'Parent' | 'EventManager' | 'Secretary';
-  assignments?: UserAssignment[];
+  role: 'Student' | 'Instructor' | 'Admin' | 'Manager' | 'Secretary';
   bio?: string;
   /** @deprecated No backend XP system — kept for type compatibility only */
   xpPoints?: number;
