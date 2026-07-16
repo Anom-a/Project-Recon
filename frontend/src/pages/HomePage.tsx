@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, BookOpen, Globe, Trophy, ArrowUpRight,
   Globe2, Send, Loader, CheckCircle2,
-  ChevronRight, Sparkles, Target, Eye
+  ChevronRight, Sparkles
 } from 'lucide-react';
 import Hero from '../domains/learning/programs/ui/Hero';
 import DemoSlider from '../domains/learning/programs/ui/DemoSlider';
 import Updates from '../domains/learning/programs/ui/Updates';
 import { UserProfile, ActiveTab, type ProgramDisplay } from '../shared/types';
 import { getPrograms } from '../domains/learning/programs/api/programApi';
-import { cmsPublicApi, type AboutUsResponse, type CmsPartnerResponse, type FaqResponse, type PlatformStats } from '../domains/cms/public/api/cmsPublicApi';
+import { cmsPublicApi, type CmsPartnerResponse, type FaqResponse, type PlatformStats } from '../domains/cms/public/api/cmsPublicApi';
 import { ChevronDown } from 'lucide-react';
 
 import galleryImg1 from '../../assets/photo_2026-06-15_14-39-46.jpg';
@@ -41,7 +41,6 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
   const [partners, setPartners] = useState<CmsPartnerResponse[]>([]);
   const [faqs, setFaqs] = useState<FaqResponse[]>([]);
   const [openFaq, setOpenFaq] = useState<string | null>(null);
-  const [aboutUs, setAboutUs] = useState<AboutUsResponse[]>([]);
   const [programs, setPrograms] = useState<ProgramDisplay[]>([]);
   const [programsLoading, setProgramsLoading] = useState(true);
   const [stats, setStats] = useState<PlatformStats>({
@@ -54,10 +53,6 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
   React.useEffect(() => {
     const abort = new AbortController();
     const { signal } = abort;
-
-    cmsPublicApi.getAboutUs()
-      .then(data => setAboutUs(data.filter(a => a.is_active)))
-      .catch(() => {});
 
     cmsPublicApi.getPartners(signal)
       .then(data => setPartners(data.filter(p => p.is_active)))
@@ -160,98 +155,6 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         </div>
       </motion.section>
 
-      {aboutUs.filter((a: AboutUsResponse) => a.is_active).length > 0 && (() => {
-        const matchSlugOrTitle = (slug: string) => (a: AboutUsResponse) =>
-          a.slug === slug || a.slug.includes(slug) || a.title.toLowerCase().includes(slug);
-        const aboutEntry = aboutUs.find((a: AboutUsResponse) => matchSlugOrTitle('about')(a)) || aboutUs[0];
-        const missionEntry = aboutUs.find((a: AboutUsResponse) => matchSlugOrTitle('mission')(a));
-        const visionEntry = aboutUs.find((a: AboutUsResponse) => matchSlugOrTitle('vision')(a));
-        const extraEntries = aboutUs.filter((a: AboutUsResponse) =>
-          a.id !== aboutEntry?.id &&
-          a.id !== missionEntry?.id &&
-          a.id !== visionEntry?.id
-        );
-
-        return (
-          <section className="section-shell py-20" id="about-us">
-            <div className="max-w-6xl mx-auto px-6 md:px-12">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="text-center mb-14"
-              >
-                <span className="eyebrow">About Us</span>
-                <h2 className="font-display font-bold text-slate-950 tracking-tight mt-2 text-3xl md:text-4xl">
-                  {aboutEntry?.title || 'Who We Are'}
-                </h2>
-                <p className="font-sans text-sm text-brand-muted-dark mt-3 max-w-2xl mx-auto leading-relaxed">
-                  {aboutEntry?.content || aboutEntry?.description}
-                </p>
-              </motion.div>
-
-              {(missionEntry || visionEntry) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                  {missionEntry && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -30 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5 }}
-                      className="relative group"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/5 to-brand-blue/10 rounded-2xl transform group-hover:scale-105 transition-transform duration-500" />
-                      <div className="relative bg-white rounded-2xl p-8 border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all h-full">
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-blue to-blue-600 flex items-center justify-center mb-5 shadow-lg shadow-brand-blue/20">
-                          <Target className="w-7 h-7 text-white" />
-                        </div>
-                        <h3 className="font-display font-bold text-xl text-slate-900 mb-3">{missionEntry.title}</h3>
-                        <p className="text-sm text-brand-muted-dark leading-relaxed">{missionEntry.content || missionEntry.description}</p>
-                      </div>
-                    </motion.div>
-                  )}
-                  {visionEntry && (
-                    <motion.div
-                      initial={{ opacity: 0, x: 30 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5 }}
-                      className="relative group"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-brand-red/5 to-brand-red/10 rounded-2xl transform group-hover:scale-105 transition-transform duration-500" />
-                      <div className="relative bg-white rounded-2xl p-8 border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all h-full">
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-red to-red-600 flex items-center justify-center mb-5 shadow-lg shadow-brand-red/20">
-                          <Eye className="w-7 h-7 text-white" />
-                        </div>
-                        <h3 className="font-display font-bold text-xl text-slate-900 mb-3">{visionEntry.title}</h3>
-                        <p className="text-sm text-brand-muted-dark leading-relaxed">{visionEntry.content || visionEntry.description}</p>
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              )}
-
-              {extraEntries.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {extraEntries.map((item, i) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.4, delay: Math.min(i * 0.1, 0.4) }}
-                      className="bg-white rounded-xl p-6 border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all"
-                    >
-                      <h4 className="font-display font-bold text-slate-900 text-sm mb-2">{item.title}</h4>
-                      <p className="text-xs text-brand-muted-dark leading-relaxed line-clamp-4">{item.content || item.description}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        );
-      })()}
 
       <section className="border-y border-brand-border/70 bg-white/90 py-10 overflow-hidden relative shadow-premium-sm" id="sponsor-banner">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#25338d]/5 to-transparent animate-glow-shift opacity-50" />
