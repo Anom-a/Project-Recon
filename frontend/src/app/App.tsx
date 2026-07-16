@@ -143,7 +143,7 @@ export default function App() {
           )}
 
           {activeTab === 'store' && (
-            <StorePage />
+            <StorePage openCart={openCart} />
           )}
 
           {activeTab === 'store-orders' && (

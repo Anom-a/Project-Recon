@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   BarChart3, Users, Shield, FileText, BookOpen, GraduationCap, Award,
-  Calendar, Trophy, Swords, UserPlus, ClipboardList, LayoutDashboard, GitBranch, RefreshCw, ShoppingCart,
+  Calendar, Trophy, Swords, UserPlus, ClipboardList, LayoutDashboard, GitBranch, RefreshCw, ShoppingCart, ArrowLeftRight,
 } from 'lucide-react';
 import { AppLayout } from '@/shared/ui/AppLayout';
 import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
@@ -74,7 +74,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'academics', label: 'Academic Catalog', icon: GraduationCap, group: 'academic' },
   { id: 'classes', label: 'Classes', icon: BookOpen, group: 'academic' },
   { id: 'registrations', label: 'Enrollments', icon: ClipboardList, group: 'academic' },
-  { id: 'transfers', label: 'Branch Transfers', icon: ArrowRightLeft, group: 'academic' },
+  { id: 'transfers', label: 'Branch Transfers', icon: ArrowLeftRight, group: 'academic' },
   { id: 'certificates', label: 'Certificates', icon: Award, group: 'academic' },
   { id: 'events', label: 'Events', icon: Calendar, group: 'competition' },
   { id: 'tournaments', label: 'Tournaments', icon: Trophy, group: 'competition' },

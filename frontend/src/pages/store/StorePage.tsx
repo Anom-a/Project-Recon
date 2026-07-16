@@ -1,7 +1,11 @@
 import { motion } from 'motion/react';
-import { StoreTab } from '@/domains/store/products/ui/StoreTab';
+import StoreTab from '@/domains/store/products/ui/StoreTab';
 
-export default function StorePage() {
+interface StorePageProps {
+  openCart: () => void;
+}
+
+export default function StorePage({ openCart }: StorePageProps) {
   return (
     <motion.div
       key="store-screen"
@@ -10,7 +14,7 @@ export default function StorePage() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <StoreTab />
+      <StoreTab openCart={openCart} />
     </motion.div>
   );
 }
