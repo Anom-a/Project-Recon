@@ -1,8 +1,8 @@
 import { http } from '../../../../shared/api/http';
 import type { UserProfile } from '../../../../shared/types';
 import type { LoginCredentials, AuthResponse } from '../../model/types';
-import { setTokens, getRefreshToken, clearTokens } from '@/src/shared/utils/auth';
-import { getOrCreateDeviceId, getCachedStudentId, setCachedStudentId } from '@/src/shared/utils/storage';
+import { setTokens, getRefreshToken, clearTokens } from '@/shared/utils/auth';
+import { clearSessionStorage, getOrCreateDeviceId, getCachedStudentId, setCachedStudentId } from '@/shared/utils/storage';
 
 /**
  * Custom error thrown when login fails because the user's email is not verified.
@@ -172,12 +172,20 @@ export async function loginApi(credentials: LoginCredentials): Promise<AuthRespo
         date_of_birth: userData.date_of_birth || '',
         gender: userData.gender || '',
         role,
+        assignments: userData.assignments.map(a => ({
+          id: a.id,
+          branch_id: a.branch_id,
+          branch_name: a.branch_name,
+          role: a.role,
+          is_primary: a.is_primary,
+          is_active: a.is_active,
+        })),
         xpPoints: 0,
         badges: [],
       };
     } catch (err) {
       // If user detail fetch fails (e.g. permission), use token claims
-      /* console.warn */('Could not fetch user profile, using token claims:', err);
+      console.warn('Could not fetch user profile, using token claims:', err);
     }
   }
 
@@ -221,10 +229,11 @@ export async function logoutApi(): Promise<void> {
       await http.post('/accounts/logout/', { refresh });
     } catch {
       // Logout should not block the UI even if the server call fails
-      /* console.warn */('Backend logout failed, clearing local tokens anyway.');
+      console.warn('Backend logout failed, clearing local tokens anyway.');
     }
   }
   clearTokens();
+  clearSessionStorage();
 }
 
 /**
@@ -312,11 +321,19 @@ export async function verifyEmailOtpApi(email: string, otp: string): Promise<Aut
         email: userData.email,
         name: userData.full_name || `${userData.first_name} ${userData.last_name}`.trim() || userData.email.split('@')[0],
         role,
+        assignments: userData.assignments.map(a => ({
+          id: a.id,
+          branch_id: a.branch_id,
+          branch_name: a.branch_name,
+          role: a.role,
+          is_primary: a.is_primary,
+          is_active: a.is_active,
+        })),
         xpPoints: 0,
         badges: [],
       };
     } catch (err) {
-      /* console.warn */('Could not fetch user profile after verification:', err);
+      console.warn('Could not fetch user profile after verification:', err);
     }
   }
 

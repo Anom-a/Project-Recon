@@ -1,6 +1,6 @@
 import { ActiveTab } from '../../shared/types';
 import BrandLogo from './BrandLogo';
-import { useBranding } from '@/src/shared/hooks/useBranding';
+import { useBranding } from '@/shared/hooks/useBranding';
 
 interface FooterProps { onNavigate: (tab: ActiveTab) => void; }
 
@@ -48,6 +48,7 @@ export default function Footer({ onNavigate }: FooterProps) {
       </div>
       <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-white/10 text-center text-sm">
         <p>&copy; {new Date().getFullYear()} Ethio Robotics. All rights reserved.</p>
+        <p className="mt-1.5 text-white/50 text-[10px] tracking-wide">Built by <a href="https://quad.pro.et" target="_blank" rel="noopener noreferrer" className="text-amber-300/80 hover:text-amber-200 font-semibold transition-colors">Quad Software Solutions</a></p>
       </div>
     </footer>
   );

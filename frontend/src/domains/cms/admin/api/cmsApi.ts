@@ -1,4 +1,4 @@
-import { http } from '@/src/shared/api/http';
+import { http } from '@/shared/api/http';
 import type {
   HeroBanner as ModelHeroBanner,
   NewsArticle,
@@ -6,6 +6,7 @@ import type {
   AboutUs as ModelAboutUs,
   ContactRequest as ModelContactRequest,
   FAQ,
+  GalleryItem as ModelGalleryItem,
   MapNodeModel,
 } from '../model';
 
@@ -15,19 +16,21 @@ export type Partner = ModelPartner;
 export type AboutUs = ModelAboutUs;
 export type ContactRequest = ModelContactRequest;
 export type Faq = FAQ;
+export type GalleryItem = ModelGalleryItem;
 export type MapNode = MapNodeModel;
 
 const PREFIX = '/cms/admin';
 
 const STATUS_TO_BACKEND: Record<string, string> = {
   pending: 'OPEN',
+  'in-progress': 'IN_PROGRESS',
   resolved: 'RESOLVED',
   archived: 'CLOSED',
 };
 
 const STATUS_TO_UI: Record<string, string> = {
   OPEN: 'pending',
-  IN_PROGRESS: 'pending',
+  IN_PROGRESS: 'in-progress',
   RESOLVED: 'resolved',
   CLOSED: 'archived',
 };
@@ -72,6 +75,11 @@ function withUiAliases<T>(endpoint: string, item: T): T {
     if (typeof record.status === 'string') {
       record.status = STATUS_TO_UI[record.status] ?? record.status.toLowerCase();
     }
+  }
+  if (endpoint === 'gallery') {
+    record.imageUrl = record.image;
+    record.videoUrl = record.video_url;
+    record.isActive = record.is_active;
   }
   if (endpoint === 'map-nodes') {
     record.imageUrl = record.image;
@@ -151,6 +159,14 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
       status: 'status',
       priority: 'priority',
     },
+    gallery: {
+      title: 'title',
+      description: 'description',
+      image: ['imageUrl', 'image'],
+      video_url: ['videoUrl', 'video_url'],
+      category: 'category',
+      is_active: ['isActive', 'is_active'],
+    },
     'map-nodes': {
       city: 'city',
       country: 'country',
@@ -177,11 +193,19 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
     for (const k of keys) {
       if (has(k)) { val = source[k]; break; }
     }
-    // If it's an image field and it's a URL, don't send it to backend to avoid File validation error
-    if (backendKey === 'image' && typeof val === 'string' && val.startsWith('http')) {
+    // Skip image field if null/empty or existing URL (keeps backend value unchanged)
+    if (backendKey === 'image' && (!val || (typeof val === 'string' && val.startsWith('http')))) {
       continue;
     }
     result[backendKey] = val ?? null;
+  }
+
+  // normalize type for news
+  if (endpoint === 'news' && result.type) {
+    result.type = String(result.type).toUpperCase();
+    if (!['NEWS', 'ANNOUNCEMENT'].includes(result.type as string)) {
+      result.type = 'NEWS';
+    }
   }
 
   // slug is a computed field for news and about

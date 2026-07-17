@@ -3,23 +3,28 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Image, FileText, Handshake, ShoppingBag, MessageSquare, DollarSign,
   Calendar, Bell, UserPlus, BarChart3, Users, Zap, Award,
-  Clock, CheckCircle, CheckCircle2, Activity, Trophy, Building, Sparkles, Download,
-  BookOpen, RefreshCw, Monitor,
-  User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard, ClipboardCheck, Receipt, LayoutDashboard
+  Clock, CheckCircle, CheckCircle2, Activity, Trophy, Building, Download,
+  BookOpen, RefreshCw, Monitor, Target, AlertCircle, X,
+  User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard, ClipboardCheck, Receipt, LayoutDashboard, ArrowRightLeft
 } from 'lucide-react';
-import { UserProfile, AppNotification, Enrollment, EnrollmentPayment, StudentProfile, Program, AcademicClass } from '@/src/shared/types';
-import { AppLayout } from '@/src/shared/ui/AppLayout';
-import { NavItem } from '@/src/shared/ui/Sidebar';
-import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
-import InlineAlert from '@/src/shared/ui/InlineAlert';
+import { UserProfile, Enrollment, EnrollmentPayment, StudentProfile, Program, AcademicClass } from '@/shared/types';
+import { AppLayout } from '@/shared/ui/AppLayout';
+import { NavItem } from '@/shared/ui/Sidebar';
+import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/shared/ui/InlineAlert';
+import PermissionDenied from '@/shared/ui/PermissionDenied';
 import {
   getManagerCommandCenter,
   type ManagerSectionId,
   type ManagerHubStats,
 } from '../managerCommandCenter';
-import { summarizeSettled } from '@/src/shared/utils/storage';
+import { summarizeSettled } from '@/shared/utils/storage';
+import {
+  filterManagerNavItems,
+  resolveManagerSection,
+  canAccessManagerSection,
+} from '@/shared/auth/dashboardAccess';
 import SponsorManagement from './SponsorManagement';
-import OnlineStoreHub from './OnlineStoreHub';
 import CommunicationsCenter from './CommunicationsCenter';
 import PaymentTracker from './PaymentTracker';
 import EventsManagement from './EventsManagement';
@@ -27,17 +32,22 @@ import AnnouncementsManager from './AnnouncementsManager';
 import WalkInRegistration from './WalkInRegistration';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import SchoolManagement from './SchoolManagement';
-import AcademicCatalogManager from '@/src/domains/learning/academics/ui/AcademicCatalogManager';
-import ClassManagerPanel from '@/src/domains/user/shared/ui/ClassManagerPanel';
-import StaffAttendanceManager from '@/src/domains/user/shared/ui/StaffAttendanceManager';
-import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
-import TournamentManager from '@/src/domains/competition/admin/TournamentManager';
-import WorkshopManager from '@/src/domains/competition/admin/WorkshopManager';
-import RegistrationManager from '@/src/domains/competition/admin/RegistrationManager';
-import MatchManager from '@/src/domains/competition/admin/MatchManager';
-import TeamManager from '@/src/domains/competition/admin/TeamManager';
-import CertificateManager from '@/src/domains/user/shared/ui/CertificateManager';
-import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/src/domains/learning/academics/api/academicApi';
+import AcademicCatalogManager from '@/domains/learning/academics/ui/AcademicCatalogManager';
+import ClassManagerPanel from '@/domains/user/shared/ui/ClassManagerPanel';
+import StaffAttendanceManager from '@/domains/user/shared/ui/StaffAttendanceManager';
+import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
+import TransferRequestsPanel from '@/domains/user/shared/ui/TransferRequestsPanel';
+import EnrollmentsPanel from '@/domains/user/secretary/dashboard/ui/EnrollmentsPanel';
+import TournamentManager from '@/domains/competition/admin/TournamentManager';
+import WorkshopManager from '@/domains/competition/admin/WorkshopManager';
+import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
+import MatchManager from '@/domains/competition/admin/MatchManager';
+import TeamManager from '@/domains/competition/admin/TeamManager';
+import CertificateManager from '@/domains/user/shared/ui/CertificateManager';
+import StoreDashboard from '@/domains/store/admin/ui/StoreDashboard';
+import LearningMaterialsPanel from '@/domains/user/secretary/dashboard/ui/LearningMaterialsPanel';
+import LearningMilestonesManager from '@/domains/user/secretary/dashboard/ui/LearningMilestonesManager';
+import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/domains/learning/academics/api/academicApi';
 
 interface Props {
   currentUser: UserProfile;
@@ -51,11 +61,14 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'academic-catalog', label: 'Academic Catalog', icon: BookOpen, group: 'academic' },
   { id: 'classes', label: 'Classes', icon: BookOpen, group: 'academic' },
   { id: 'enrollments', label: 'Academic Enrollments', icon: UserPlus, group: 'academic' },
+  { id: 'transfers', label: 'Branch Transfers', icon: ArrowRightLeft, group: 'academic' },
   { id: 'staff-attendance', label: 'Staff Attendance', icon: Calendar, group: 'academic' },
+  { id: 'materials', label: 'Learning Materials', icon: BookOpen, group: 'academic' },
+  { id: 'milestones', label: 'Milestones', icon: Target, group: 'academic' },
   { id: 'certificates', label: 'Certificates', icon: Award, group: 'academic' },
   { id: 'schools', label: 'Branches', icon: Building, group: 'branches' },
   { id: 'payments', label: 'Payments & Sales', icon: DollarSign, group: 'finances' },
-  { id: 'store', label: 'Store & Inventory', icon: ShoppingBag, group: 'finances' },
+  { id: 'store', label: 'Store Inventory', icon: ShoppingBag, group: 'finances' },
   { id: 'events', label: 'Events', icon: Calendar, group: 'competition' },
   { id: 'tournaments', label: 'Tournaments', icon: Trophy, group: 'competition' },
   { id: 'tournament-teams', label: 'Teams', icon: Users, group: 'competition' },
@@ -72,7 +85,9 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export default function ManagerDashboard({ currentUser, onLogout }: Props) {
-  const [activeSection, setActiveSection] = useState<SectionId>('overview');
+  const [activeSection, setActiveSection] = useState<SectionId>(() =>
+    resolveManagerSection(currentUser, 'overview'),
+  );
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [payments, setPayments] = useState<EnrollmentPayment[]>([]);
@@ -106,7 +121,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
   useEffect(() => { refreshData(); }, [refreshData]);
 
   const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
-  const pendingPayments = enrollments.filter(e => e.status === 'PENDING_PAYMENT');
+  const pendingPayments = enrollments.filter(e => e.status === 'PENDING_VERIFICATION');
   const paidPayments = payments.filter(p => p.status === 'PAID');
 
   const hubStats: ManagerHubStats = useMemo(() => ({
@@ -123,45 +138,75 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
     [activeSection, hubStats],
   );
 
+  const navItems = useMemo(
+    () => filterManagerNavItems(currentUser, NAV_ITEMS),
+    [currentUser],
+  );
+
+  const handleSectionChange = useCallback((id: SectionId) => {
+    setActiveSection(resolveManagerSection(currentUser, id));
+  }, [currentUser]);
+
   const renderPage = () => {
+    if (!canAccessManagerSection(currentUser, activeSection)) {
+      return (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-sm text-amber-800">
+          You do not have access to this section.
+        </div>
+      );
+    }
+
     switch (activeSection) {
-      case 'overview': return <OverviewPage currentUser={currentUser} onNavigate={setActiveSection} students={students} enrollments={enrollments} payments={payments} programs={programs} />;
+      case 'overview': return (
+        <OverviewPage
+          currentUser={currentUser}
+          onNavigate={handleSectionChange}
+          students={students}
+          enrollments={enrollments}
+          payments={payments}
+          programs={programs}
+        />
+      );
       case 'analytics': return <AnalyticsDashboard />;
       case 'academic-catalog': return <AcademicCatalogManager />;
       case 'classes': return <ClassManagerPanel />;
-      case 'staff-attendance': return <StaffAttendanceManager />;
-      case 'sponsors': return <SponsorManagement />;
-      case 'schools': return <SchoolManagement />;
-      case 'enrollments': return <RegistrationSection />;
+      case 'staff-attendance': return <StaffAttendanceManager currentUser={currentUser} />;
+      case 'sponsors': return <SponsorManagement currentUser={currentUser} />;
+      case 'schools': return <SchoolManagement currentUser={currentUser} />;
+      case 'enrollments': return <EnrollmentsPanel />;
+      case 'transfers': return <TransferRequestsPanel />;
       case 'event-registrations': return <RegistrationManager />;
-      case 'store': return <OnlineStoreHub />;
-      case 'events': return <EventsManagement onNavigate={setActiveSection} />;
+      case 'store': return <StoreDashboard currentUser={currentUser} />;
+      case 'materials': return <LearningMaterialsPanel currentUser={currentUser} />;
+      case 'milestones': return <LearningMilestonesManager currentUser={currentUser} />;
+      case 'events': return <EventsManagement currentUser={currentUser} onNavigate={(id: string) => handleSectionChange(id as SectionId)} />;
       case 'tournaments': return <TournamentManager />;
       case 'tournament-teams': return <TeamManager />;
       case 'matches': return <MatchManager />;
       case 'workshops': return <WorkshopManager />;
       case 'announcements': return <AnnouncementsManager />;
-      case 'communications': return <CommunicationsCenter />;
+      case 'communications': return <CommunicationsCenter currentUser={currentUser} />;
       case 'payments': return <PaymentTracker />;
-      case 'walkin': return <WalkInRegistration />;
+      case 'walkin': return <WalkInRegistration currentUser={currentUser} />;
       case 'reports': return <ReportsSection />;
-      case 'certificates': return <CertificateManager currentUserRole={currentUser.role} />;
+      case 'certificates': return <CertificateManager currentUser={currentUser} />;
       case 'account': return <AdminAccount currentUser={currentUser} />;
+      default: return <PermissionDenied title="Section not found" message="This manager section does not exist or is no longer available." />;
     }
   };
 
-  const activeLabel = NAV_ITEMS.find(n => n.id === activeSection)?.label ?? '';
+  const activeLabel = navItems.find(n => n.id === activeSection)?.label ?? '';
 
   return (
     <AppLayout
       sidebar={{
-        items: NAV_ITEMS,
+        items: navItems,
         activeSection,
-        onSectionChange: (id) => setActiveSection(id as SectionId),
+        onSectionChange: (id) => handleSectionChange(id as SectionId),
         title: 'Manager Dashboard',
         icon: BarChart3,
         userName: currentUser.name,
-        userRole: 'Manager',
+        userRole: currentUser.role,
       }}
       topNavbar={{
         title: activeLabel,
@@ -201,29 +246,37 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
 }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   useEffect(() => {
-    import('@/src/domains/notification/model/notificationApi').then(m =>
+    import('@/domains/notification/model/notificationApi').then(m =>
       m.getNotifications().then(setNotifications)
     );
   }, []);
   const unreadNotifications = notifications.filter(n => !n.read);
 
-  const quickActions: { id: SectionId; label: string; desc: string; icon: React.ElementType; color: string }[] = [
+  const allQuickActions: { id: SectionId; label: string; desc: string; icon: React.ElementType; color: string }[] = [
     { id: 'academic-catalog', label: 'Academic Catalog', desc: 'Programs & classes', icon: BookOpen, color: 'from-blue-500 to-blue-600' },
     { id: 'enrollments', label: 'Academic Enrollments', desc: 'View student enrollments', icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
     { id: 'event-registrations', label: 'Event Registrations', desc: 'Manage event registrations', icon: ClipboardCheck, color: 'from-purple-500 to-purple-600' },
     { id: 'payments', label: 'Payment Reports', desc: 'Track transactions', icon: CreditCard, color: 'from-cyan-500 to-cyan-600' },
     { id: 'reports', label: 'Download Reports', desc: 'PDF reports & data', icon: FileText, color: 'from-rose-500 to-rose-600' },
     { id: 'events', label: 'Events Calendar', desc: 'Manage all events', icon: Calendar, color: 'from-purple-500 to-purple-600' },
-    { id: 'command-center' as SectionId, label: 'Event Command Center', desc: 'Live match & tournament control', icon: Zap, color: 'from-rose-600 to-red-700' },
     { id: 'tournaments', label: 'Tournaments', desc: 'Manage competitions', icon: Trophy, color: 'from-rose-500 to-rose-600' },
     { id: 'workshops', label: 'Workshops', desc: 'Schedule workshops', icon: Monitor, color: 'from-emerald-500 to-emerald-600' },
     { id: 'store', label: 'Store Inventory', desc: 'Manage products & stock', icon: ShoppingBag, color: 'from-amber-500 to-amber-600' },
     { id: 'analytics', label: 'View Analytics', desc: 'Business performance metrics', icon: BarChart3, color: 'from-blue-500 to-blue-600' },
     { id: 'schools', label: 'Branches', desc: 'Manage branches', icon: Building, color: 'from-sky-500 to-blue-600' },
     { id: 'sponsors', label: 'Sponsors', desc: 'Manage partners', icon: Handshake, color: 'from-indigo-500 to-purple-600' },
-    { id: 'announcements', label: 'Announcements', desc: 'Create & publish', icon: Bell, color: 'from-rose-500 to-pink-600' },
-    { id: 'communications', label: 'Communications', desc: 'View messages', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
+    { id: 'announcements', label: 'Announcements', desc: 'View published updates', icon: Bell, color: 'from-rose-500 to-pink-600' },
   ];
+
+  const quickActions = allQuickActions.filter(a => canAccessManagerSection(currentUser, a.id));
+
+  const managementTools = [
+    { label: 'Academic Catalog', desc: 'Programs & classes', id: 'academic-catalog' as SectionId, icon: BookOpen, color: 'from-blue-500 to-blue-600' },
+    { label: 'Academic Enrollments', desc: 'Student enrollments', id: 'enrollments' as SectionId, icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
+    { label: 'Branches', desc: 'Branch management', id: 'schools' as SectionId, icon: Building, color: 'from-sky-500 to-cyan-600' },
+    { label: 'Sponsors', desc: 'Partner management', id: 'sponsors' as SectionId, icon: Handshake, color: 'from-indigo-500 to-purple-600' },
+    { label: 'Announcements', desc: 'View published updates', id: 'announcements' as SectionId, icon: Bell, color: 'from-rose-500 to-pink-600' },
+  ].filter(t => canAccessManagerSection(currentUser, t.id));
 
   return (
     <div className="flex flex-col gap-3">
@@ -242,9 +295,9 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
           { label: 'Students', value: String(students.length), icon: GraduationCap, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { label: 'Programs', value: String(programs.length), icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
           { label: 'Revenue', value: payments.reduce((s, p) => s + (p.status === 'PAID' ? Number(p.amount) : 0), 0).toLocaleString() + ' Birr', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
           { label: 'Active Enrollments', value: String(enrollments.filter(e => e.status === 'ACTIVE').length), icon: UserCheck, color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Pending Payments', value: String(enrollments.filter(e => e.status === 'PENDING_PAYMENT').length), icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
         ].map((m, i) => {
           const MIcon = m.icon;
           return (
@@ -256,30 +309,6 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
               </div>
               <p className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{m.label}</p>
               <p className="font-display font-extrabold text-2xl text-slate-900">{m.value}</p>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {[
-          { label: 'Pending Payments', value: String(enrollments.filter(e => e.status === 'PENDING_PAYMENT').length), icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
-          { label: 'Paid Today', value: String(payments.filter(p => p.payment_date?.startsWith(new Date().toISOString().slice(0, 10)) && p.status === 'PAID').length), icon: Receipt, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-          { label: 'Programs', value: String(programs.length), icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
-          { label: 'Notifications', value: String(unreadNotifications.length), icon: Bell, color: 'text-blue-500', bg: 'bg-blue-50' },
-        ].map((s, i) => {
-          const SIcon = s.icon;
-          return (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.04 }}
-              className="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center gap-2.5 hover:shadow-sm transition-all"
-            >
-              <div className={`w-7 h-7 rounded-lg ${s.bg} flex items-center justify-center`}>
-                <SIcon className={`w-3.5 h-3.5 ${s.color}`} />
-              </div>
-              <div>
-                <p className="text-[11px] text-slate-400 font-medium">{s.label}</p>
-                <p className={`text-sm font-bold ${s.color.replace('500', '700')}`}>{s.value}</p>
-              </div>
             </motion.div>
           );
         })}
@@ -297,14 +326,7 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
                 const ActionIcon = action.icon;
                 return (
                   <motion.button key={action.id}
-                    onClick={() => {
-                      if (action.id === ('command-center' as SectionId)) {
-                        window.history.pushState(null, '', '/command-center');
-                        window.dispatchEvent(new PopStateEvent('popstate'));
-                        return;
-                      }
-                      onNavigate(action.id);
-                    }}
+                    onClick={() => onNavigate(action.id)}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.1 + i * 0.04 }}
@@ -326,70 +348,41 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
           <div className="bg-white border border-slate-200 rounded-2xl p-3">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-black text-sm text-slate-900 flex items-center gap-1.5">
-                <Bell className="w-3.5 h-3.5 text-amber-400" />
-                Notifications
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                Pending enrollments
               </h4>
-              {unreadNotifications.length > 0 && (
-                <span className="text-[10px] font-black bg-blue-600 text-white px-1.5 py-0.5 rounded-full">{unreadNotifications.length} new</span>
-              )}
+              <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                {enrollments.filter(e => e.status === 'PENDING_VERIFICATION').length}
+              </span>
             </div>
             <div className="flex flex-col gap-1.5">
-              {notifications.slice(0, 4).map((n, i) => (
+              {notifications.length === 0 ? (
+                <p className="text-xs text-slate-400 py-4 text-center">No notifications yet</p>
+              ) : notifications.slice(0, 6).map((n, i) => (
                 <motion.div key={n.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
                   className={`flex items-start gap-2 p-2 rounded-lg text-sm transition-all ${n.read ? 'text-slate-500' : 'bg-blue-600/5 border border-blue-600/10 text-slate-900'}`}
                 >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${n.read ? 'bg-slate-100' : 'bg-blue-600/10'}`}>
-                    <span className="text-sm">{n.icon || '🔔'}</span>
-                  </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className={`font-bold text-sm ${n.read ? 'text-slate-500' : 'text-slate-900'}`}>{n.title}</p>
-                      {!n.read && <div className="w-1 h-1 rounded-full bg-blue-600 shrink-0" />}
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{n.message}</p>
+                    <p className="font-bold text-sm truncate">{e.student_name || 'Student'}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{e.class_name || e.program_name || 'Enrollment'}</p>
                   </div>
                 </motion.div>
               ))}
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-3">
-            <h4 className="font-black text-sm text-slate-900 mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Quick Stats
-            </h4>
-            <div className="grid grid-cols-4 gap-1.5">
-              {[
-                { label: 'Active', value: String(enrollments.filter(e => e.status === 'ACTIVE').length), color: 'text-emerald-700', bg: 'bg-emerald-50' },
-                { label: 'Pending', value: String(enrollments.filter(e => e.status === 'PENDING_PAYMENT').length), color: 'text-amber-700', bg: 'bg-amber-50' },
-                { label: 'Total', value: String(enrollments.length), color: 'text-blue-700', bg: 'bg-blue-50' },
-                { label: 'Students', value: String(students.length), color: 'text-purple-700', bg: 'bg-purple-50' },
-              ].map((s, i) => (
-                <div key={i} className={`${s.bg} rounded-lg p-2 text-center`}>
-                  <p className={`font-black text-xl ${s.color}`}>{s.value}</p>
-                  <p className={`text-[10px] font-medium ${s.color}/70`}>{s.label}</p>
-                </div>
-              ))}
+              {enrollments.filter(e => e.status === 'PENDING_VERIFICATION').length === 0 && (
+                <p className="text-xs text-slate-400 py-4 text-center">No pending enrollments</p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4">
           <h4 className="font-black text-sm text-slate-900 flex items-center gap-1.5 mb-3">
             <Activity className="w-3.5 h-3.5 text-blue-600" />
             Management Tools
           </h4>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'Academic Catalog', desc: 'Programs & classes', id: 'academic-catalog' as SectionId, icon: BookOpen, color: 'from-blue-500 to-blue-600' },
-              { label: 'Academic Enrollments', desc: 'Student enrollments', id: 'enrollments' as SectionId, icon: UserPlus, color: 'from-emerald-500 to-emerald-600' },
-              { label: 'Branches', desc: 'Branch management', id: 'schools' as SectionId, icon: Building, color: 'from-sky-500 to-cyan-600' },
-              { label: 'Sponsors', desc: 'Partner management', id: 'sponsors' as SectionId, icon: Handshake, color: 'from-indigo-500 to-purple-600' },
-              { label: 'Announcements', desc: 'Create & publish', id: 'announcements' as SectionId, icon: Bell, color: 'from-rose-500 to-pink-600' },
-              { label: 'Communications', desc: 'Message center', id: 'communications' as SectionId, icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
-            ].map((tool, i) => {
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {managementTools.map((tool) => {
               const TIcon = tool.icon;
               return (
                 <button key={tool.id} onClick={() => onNavigate(tool.id)}
@@ -407,47 +400,13 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
             })}
           </div>
         </div>
-
-        <div className="lg:col-span-5 flex flex-col gap-2">
-          <div className="bg-white border border-slate-200 rounded-2xl p-3">
-            <h4 className="font-black text-sm text-slate-900 mb-2 flex items-center gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
-              Platform Summary
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'Students', value: students.length, icon: GraduationCap, color: 'text-blue-500', bg: 'bg-blue-50' },
-                { label: 'Programs', value: programs.length, icon: BookOpen, color: 'text-purple-500', bg: 'bg-purple-50' },
-                { label: 'Enrollments', value: enrollments.length, icon: ClipboardList, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                { label: 'Payments', value: payments.length, icon: CreditCard, color: 'text-amber-500', bg: 'bg-amber-50' },
-              ].map((stat, i) => {
-                const StatIcon = stat.icon;
-                return (
-                  <div key={i} className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                    <div className={`w-6 h-6 rounded-lg ${stat.bg} flex items-center justify-center mb-1`}>
-                      <StatIcon className={`w-3.5 h-3.5 ${stat.color}`} />
-                    </div>
-                    <p className="text-lg font-bold text-slate-900">{stat.value}</p>
-                    <p className="text-[10px] text-slate-500 font-medium">{stat.label}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-brand-blue to-brand-blue-dark rounded-2xl p-3 text-white">
-            <p className="text-[10px] font-medium text-white/70 mb-0.5">All tools are connected</p>
-            <p className="text-sm font-bold">System-ready sections are live</p>
-            <p className="text-[11px] text-white/70 mt-1">Other sections will be enabled when system APIs are ready.</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
 
 function ReportsSection() {
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [classes, setClasses] = useState<AcademicClass[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -476,8 +435,14 @@ function ReportsSection() {
 
   const doDownload = async (key: string, fn: () => Promise<void>) => {
     setDownloading(key);
-    try { await fn(); } catch {}
-    setTimeout(() => setDownloading(null), 1000);
+    setDownloadError(null);
+    try {
+      await fn();
+    } catch (e) {
+      setDownloadError(e instanceof Error ? e.message : 'Download failed. Please try again.');
+    } finally {
+      setDownloading(null);
+    }
   };
 
   const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
@@ -495,6 +460,15 @@ function ReportsSection() {
 
   return (
     <div className="space-y-4">
+      {downloadError && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="flex-1">{downloadError}</span>
+          <button type="button" onClick={() => setDownloadError(null)} className="text-red-500 hover:text-red-700">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Students', value: students.length, icon: GraduationCap, color: 'text-blue-500', bg: 'bg-blue-50' },
@@ -595,161 +569,6 @@ function ReportsSection() {
             </motion.div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function RegistrationSection() {
-  const [registrations, setRegistrations] = useState<Enrollment[]>([]);
-  const [payments, setPayments] = useState<EnrollmentPayment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [paymentFilter, setPaymentFilter] = useState('all');
-
-  useEffect(() => {
-    setLoading(true);
-    setError('');
-    Promise.allSettled([fetchEnrollmentsApi(), fetchPaymentsApi()])
-      .then(([enrollmentRes, paymentRes]) => {
-        const enrollmentData = enrollmentRes.status === 'fulfilled' && Array.isArray(enrollmentRes.value)
-          ? enrollmentRes.value : [];
-        const paymentData = paymentRes.status === 'fulfilled' && Array.isArray(paymentRes.value)
-          ? paymentRes.value : [];
-        setRegistrations(enrollmentData);
-        setPayments(paymentData);
-        if (enrollmentRes.status === 'rejected' && paymentRes.status === 'rejected') {
-          setError('Could not load registrations');
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  const paymentByEnrollment = payments.reduce<Record<string, EnrollmentPayment>>((map, payment) => {
-    map[payment.enrollment] = payment;
-    return map;
-  }, {});
-
-  const filtered = registrations.filter(r => {
-    const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-    const payment = paymentByEnrollment[r.id];
-    const paymentStatus = payment?.status || r.payment_status || 'PENDING';
-    const matchesPayment = paymentFilter === 'all' || paymentStatus === paymentFilter;
-    return matchesStatus && matchesPayment;
-  });
-
-  const totalRevenue = payments.filter(p => p.status === 'PAID').reduce((s, p) => s + Number(p.amount), 0);
-  const confirmedCount = registrations.filter(r => r.status === 'ACTIVE' || r.status === 'COMPLETED').length;
-  const pendingCount = registrations.filter(r => r.status === 'PENDING_PAYMENT').length;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Registrations', value: registrations.length, icon: UserPlus, color: 'text-sky-600', bg: 'bg-sky-50' },
-          { label: 'Confirmed', value: confirmedCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Pending', value: pendingCount, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Revenue', value: `${(totalRevenue / 1000).toFixed(1)}K Birr`, icon: Receipt, color: 'text-purple-600', bg: 'bg-purple-50' },
-        ].map((stat, i) => {
-          const SIcon = stat.icon;
-          return (
-            <motion.div key={stat.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="bg-white rounded-xl border border-slate-200 p-4"
-            >
-              <div className={`w-8 h-8 rounded-lg ${stat.bg} flex items-center justify-center mb-2`}><SIcon className={`w-4 h-4 ${stat.color}`} /></div>
-              <p className="text-xl font-bold text-slate-900">{stat.value}</p>
-              <p className="text-sm text-slate-500">{stat.label}</p>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <h3 className="font-black text-sm text-slate-900">All Registrations</h3>
-            <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{filtered.length}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:border-blue-600"
-            >
-              <option value="all">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="PENDING_PAYMENT">Pending Payment</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-            <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:border-blue-600"
-            >
-              <option value="all">All Payments</option>
-              <option value="PAID">Paid</option>
-              <option value="PENDING">Pending</option>
-              <option value="FAILED">Failed</option>
-              <option value="REFUNDED">Refunded</option>
-            </select>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                {['Student', 'Program', 'Branch', 'Amount', 'Date', 'Payment', 'Status'].map(h => (
-                  <th key={h} className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 py-2.5 text-left">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={7} className="py-10 text-center text-slate-400"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
-              )}
-              {error && (
-                <tr><td colSpan={7} className="py-8 text-center text-sm text-red-500">{error}</td></tr>
-              )}
-              {filtered.map((r, i) => (
-                <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                  className="border-b border-slate-100 hover:bg-sky-50/30 transition-colors"
-                >
-                  <td className="px-3 py-2.5">
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">{r.student_name || r.student_email || 'Student'}</p>
-                      <p className="text-[11px] text-slate-400">{r.student_email || r.student}</p>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 text-sm text-slate-600">{r.class_name || r.sub_program_name || 'Class'}</td>
-                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.branch_name || '—'}</td>
-                  <td className="px-3 py-2.5 text-sm font-bold text-slate-700">{paymentByEnrollment[r.id] ? `${Number(paymentByEnrollment[r.id].amount).toLocaleString()} Birr` : '—'}</td>
-                  <td className="px-3 py-2.5 text-sm text-slate-500">{r.enrolled_at?.slice(0, 10) || '—'}</td>
-                  <td className="px-3 py-2.5">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${paymentByEnrollment[r.id]?.status === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                      {paymentByEnrollment[r.id]?.status || r.payment_status || 'PENDING'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`flex items-center gap-1 text-[11px] font-bold ${
-                      r.status === 'ACTIVE' || r.status === 'COMPLETED' ? 'text-emerald-600' :
-                      r.status === 'PENDING_PAYMENT' ? 'text-amber-600' : 'text-red-500'
-                    }`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${
-                        r.status === 'ACTIVE' || r.status === 'COMPLETED' ? 'bg-emerald-500' :
-                        r.status === 'PENDING_PAYMENT' ? 'bg-amber-500' : 'bg-red-500'
-                      }`} />
-                      {r.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <UserPlus className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">No registrations match your filters</p>
-          </div>
-        )}
       </div>
     </div>
   );

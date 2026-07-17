@@ -90,11 +90,30 @@ export interface CartAddPayload {
   quantity: number;
 }
 
+export type StorePaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE';
+
+export interface CheckoutPaymentPayload {
+  amount: string | number;
+  payment_method: StorePaymentMethod;
+  transaction_reference?: string;
+  bank_name?: string;
+}
+
 export interface CheckoutPayload {
   branch: string;
   guest_name?: string;
   guest_email?: string;
   guest_phone?: string;
+  /** Optional payment evidence submitted with checkout (creates PENDING_VERIFICATION payment). */
+  payment?: CheckoutPaymentPayload;
+}
+
+export interface PaymentEvidencePayload {
+  amount: string | number;
+  payment_method: StorePaymentMethod;
+  transaction_reference?: string;
+  bank_name?: string;
+  attachment?: File | null;
 }
 
 export interface PendingOrderItem {
@@ -127,11 +146,17 @@ export interface StorePayment {
   pending_order: string;
   amount: number;
   payment_method: string;
-  payment_provider: string;
-  transaction_reference: string;
+  transaction_reference?: string;
+  bank_name?: string;
+  attachment?: string;
   status: string;
-  payment_date: string;
+  status_display?: string;
+  payment_date?: string;
+  verified_by?: string;
+  verified_at?: string;
+  verification_notes?: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface OrderItem {
@@ -178,4 +203,18 @@ export interface ProductFilters {
   min_price?: number;
   max_price?: number;
   sort_by?: string;
+}
+
+export interface BankAccount {
+  id: string;
+  bank_name: string;
+  account_holder: string;
+  account_number: string;
+  branch?: string;
+  swift_code?: string;
+  iban?: string;
+  is_active: boolean;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
 }

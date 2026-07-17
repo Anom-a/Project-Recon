@@ -3,14 +3,14 @@ import { motion } from 'motion/react';
 import {
   Briefcase, GraduationCap, Send, Loader2, Award, BookOpen, MessageSquare,
 } from 'lucide-react';
-import { getWorkshops } from '@/src/domains/competition/api/competitionApi';
-import { cmsPublicApi } from '@/src/domains/cms/public/api/cmsPublicApi';
+import { getWorkshops } from '@/domains/competition/api/competitionApi';
+import { cmsPublicApi } from '@/domains/cms/public/api/cmsPublicApi';
 import PageHeader from '../../../shared/ui/PageHeader';
 import TabBar from '../../../shared/ui/TabBar';
 import EmptyState from '../../../shared/ui/EmptyState';
 import { GridSkeleton } from '../../../shared/ui/LoadingSkeleton';
 import CertificateGenerator from '../CertificateGenerator';
-import type { UserProfile, Workshop } from '@/src/shared/types';
+import type { UserProfile, Workshop } from '@/shared/types';
 
 interface Props {
   studentId: string;
@@ -127,7 +127,7 @@ export default function CareerCenterModule({ studentId, currentUser }: Props) {
               <MessageSquare className="w-5 h-5 text-blue-600" />
               <h3 className="font-bold text-slate-900">Request Career Guidance</h3>
             </div>
-            <p className="text-sm text-slate-500 mb-6">Submit a consultancy request for career advice, mentorship, or professional development support.</p>
+            <p className="text-sm text-slate-500 mb-6">Submit a career guidance request for career advice, mentorship, or professional development support.</p>
 
             {submitSuccess && (
               <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 flex items-center gap-2">

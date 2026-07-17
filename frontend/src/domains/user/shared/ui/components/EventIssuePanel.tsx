@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2 } from 'lucide-react';
-import type { Certificate } from '@/src/shared/types';
-import { searchStudentsApi, issueStudentCertificateApi } from '@/src/domains/learning/academics/api/academicApi';
-import { adminGetRegistrations, type BackendEventRegistration } from '@/src/domains/competition/api/eventsApi';
+import type { Certificate } from '@/shared/types';
+import { searchStudentsApi, issueStudentCertificateApi } from '@/domains/learning/academics/api/academicApi';
+import { adminGetRegistrations, type BackendEventRegistration } from '@/domains/competition/api/eventsApi';
 
 export default function EventIssuePanel({ mode, templates, onRefresh, onError }: {
   mode: 'event' | 'tournament' | 'workshop';
@@ -17,7 +17,7 @@ export default function EventIssuePanel({ mode, templates, onRefresh, onError }:
   const [results, setResults] = useState<{ email: string; success: boolean; error?: string }[]>([]);
 
   useEffect(() => {
-    adminGetRegistrations({ event_type: mode.toUpperCase() })
+    adminGetRegistrations({})
       .then(data => setRegistrations(Array.isArray(data) ? data : (data as Record<string, unknown>).results as EventRegistration[] || []))
       .catch(() => setRegistrations([]))
       .finally(() => setLoading(false));

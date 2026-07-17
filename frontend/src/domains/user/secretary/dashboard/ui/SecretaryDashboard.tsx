@@ -1,28 +1,36 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { UserPlus, Users, DollarSign, Award, FileText, LayoutDashboard, RefreshCw, Shield, Calendar, Search } from 'lucide-react';
-import { UserProfile } from '@/src/shared/types';
-import { AppLayout } from '@/src/shared/ui/AppLayout';
-import { NavItem } from '@/src/shared/ui/Sidebar';
-import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
-import InlineAlert from '@/src/shared/ui/InlineAlert';
-import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
-import RegistrationManager from '@/src/domains/competition/admin/RegistrationManager';
+import { UserPlus, Users, DollarSign, Award, FileText, LayoutDashboard, RefreshCw, Shield, Calendar, Search, Megaphone, ArrowRightLeft } from 'lucide-react';
+import { UserProfile } from '@/shared/types';
+import { AppLayout } from '@/shared/ui/AppLayout';
+import { NavItem } from '@/shared/ui/Sidebar';
+import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/shared/ui/InlineAlert';
+import PermissionDenied from '@/shared/ui/PermissionDenied';
+import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
+import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
+import TransferRequestsPanel from '@/domains/user/shared/ui/TransferRequestsPanel';
 import {
   fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentCertificatesApi,
   fetchCertificateTemplatesApi, fetchEnrollmentPeriodsApi,
-} from '@/src/domains/learning/academics/api/academicApi';
+} from '@/domains/learning/academics/api/academicApi';
 import {
   getSecretaryCommandCenter,
   type SecretarySectionId,
   type SecretaryHubStats,
 } from '../secretaryCommandCenter';
 
+import {
+  canAccessSecretarySection,
+  filterSecretaryNavItems,
+  resolveSecretarySection,
+} from '@/shared/auth/dashboardAccess';
+import AnnouncementsPage from '@/domains/user/student/dashboard/ui/modules/AnnouncementsPage';
 import Overview from './Overview';
 import AdmissionsPanel from './AdmissionsPanel';
 import EnrollmentsPanel from './EnrollmentsPanel';
 import PaymentsPanel from './PaymentsPanel';
 import ReportsPanel from './ReportsPanel';
-import CertificateManager from '@/src/domains/user/shared/ui/CertificateManager';
+import CertificateManager from '@/domains/user/shared/ui/CertificateManager';
 import CertificateTemplateManager from './CertificateTemplateManager';
 import EnrollmentPeriodsPanel from './EnrollmentPeriodsPanel';
 import StudentDetailPanel from './StudentDetailPanel';
@@ -35,17 +43,21 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'admissions', label: 'Admissions', icon: UserPlus, group: 'admissions' },
   { id: 'students', label: 'Student Details', icon: Search, group: 'admissions' },
   { id: 'enrollments', label: 'Enrollments', icon: Users, group: 'admissions' },
+  { id: 'transfers', label: 'Branch Transfers', icon: ArrowRightLeft, group: 'admissions' },
   { id: 'periods', label: 'Enrollment Periods', icon: Calendar, group: 'admissions' },
   { id: 'certificates', label: 'Certificates', icon: Award, group: 'academic' },
   { id: 'templates', label: 'Cert. Templates', icon: Award, group: 'academic' },
   { id: 'payments', label: 'Payments', icon: DollarSign, group: 'finances' },
   { id: 'event-registrations', label: 'Event Registrations', icon: UserPlus, group: 'competition' },
   { id: 'reports', label: 'Reports', icon: FileText, group: 'reports' },
+  { id: 'announcements', label: 'Announcements', icon: Megaphone, group: 'reports' },
   { id: 'account', label: 'Account', icon: Shield, group: 'system' },
 ];
 
 export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
-  const [activeSection, setActiveSection] = useState<SecretarySectionId>('overview');
+  const [activeSection, setActiveSection] = useState<SecretarySectionId>(
+    () => resolveSecretarySection(currentUser, 'overview')
+  );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [hubStats, setHubStats] = useState<SecretaryHubStats>({
@@ -87,7 +99,7 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
 
       const today = new Date().toISOString().slice(0, 10);
       setHubStats({
-        pendingPayments: enrollments.filter(e => e.status === 'PENDING_PAYMENT').length,
+        pendingPayments: enrollments.filter(e => e.status === 'PENDING_VERIFICATION').length,
         activeEnrollments: enrollments.filter(e => e.status === 'ACTIVE').length,
         todayPayments: payments.filter(p => p.payment_date?.startsWith(today)).length,
         certificatesIssued: certificates.length,
@@ -100,24 +112,53 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
 
   useEffect(() => { refreshSignals(); }, [refreshSignals]);
 
+  const filteredNav = useMemo(
+    () => filterSecretaryNavItems(currentUser, NAV_ITEMS),
+    [currentUser],
+  );
+
+  const handleSectionChange = useCallback((id: string) => {
+    const sectionId = id as SecretarySectionId;
+    if (canAccessSecretarySection(currentUser, sectionId)) {
+      setActiveSection(sectionId);
+    }
+  }, [currentUser]);
+
   const commandCenter = useMemo(
     () => getSecretaryCommandCenter(activeSection, hubStats),
     [activeSection, hubStats],
   );
 
   const renderPage = () => {
+    if (!canAccessSecretarySection(currentUser, activeSection)) {
+      return (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-sm text-amber-800">
+          <div className="flex items-start gap-3">
+            <Shield className="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Access Restricted</p>
+              <p className="mt-1 text-amber-700">You do not have permission to access this section.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     switch (activeSection) {
-      case 'overview': return <Overview />;
+      case 'overview': return <Overview onNavigate={setActiveSection} />;
       case 'admissions': return <AdmissionsPanel currentUser={currentUser} />;
       case 'enrollments': return <EnrollmentsPanel currentUser={currentUser} />;
+      case 'transfers': return <TransferRequestsPanel />;
       case 'payments': return <PaymentsPanel />;
-      case 'certificates': return <CertificateManager currentUserRole={currentUser.role} />;
+      case 'certificates': return <CertificateManager currentUser={currentUser} />;
       case 'templates': return <CertificateTemplateManager />;
       case 'periods': return <EnrollmentPeriodsPanel currentUser={currentUser} />;
       case 'students': return <StudentDetailPanel />;
       case 'event-registrations': return <RegistrationManager />;
       case 'reports': return <ReportsPanel currentUser={currentUser} />;
+      case 'announcements': return <AnnouncementsPage />;
       case 'account': return <AdminAccount currentUser={currentUser} />;
+      default: return <PermissionDenied title="Section not found" message="This secretary section does not exist or is no longer available." />;
     }
   };
 
@@ -126,9 +167,9 @@ export default function SecretaryDashboard({ currentUser, onLogout }: Props) {
   return (
     <AppLayout
       sidebar={{
-        items: NAV_ITEMS,
+        items: filteredNav,
         activeSection,
-        onSectionChange: (id) => setActiveSection(id as SecretarySectionId),
+        onSectionChange: handleSectionChange,
         title: 'Secretary Dashboard',
         icon: Shield,
         userName: currentUser.name,
