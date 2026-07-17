@@ -8,6 +8,7 @@ and password management workflows.
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.hashers import check_password
+from django.core.cache import cache
 from rest_framework.exceptions import AuthenticationFailed, PermissionDenied, ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
@@ -96,6 +97,14 @@ def login(email: str, password: str, device_info: dict | None = None) -> dict:
 
     user = User.objects.filter(email__iexact=email).prefetch_related("assignments").first()
     if not user:
+        log_action(None, "LOGIN_FAILED", "User", None, ip_address=ctx["ip_address"], user_agent=ctx["user_agent"])
+        raise AuthenticationFailed("Invalid credentials.")
+
+    cache_key = f"login_attempts:{email.lower()}"
+    attempts = cache.get(cache_key, 0)
+    max_attempts = settings.AUTH_MAX_LOGIN_ATTEMPTS
+    if max_attempts and attempts >= max_attempts:
+        log_action(None, "LOGIN_FAILED_LOCKED", "User", user.id, ip_address=ctx["ip_address"], user_agent=ctx["user_agent"])
         raise AuthenticationFailed("Invalid credentials.")
 
     if user.status == AccountStatus.SUSPENDED:
@@ -105,7 +114,12 @@ def login(email: str, password: str, device_info: dict | None = None) -> dict:
         raise PermissionDenied("Account is archived.")
 
     if not user.check_password(password):
+        lock_mins = settings.AUTH_ACCOUNT_LOCK_MINUTES
+        cache.set(cache_key, attempts + 1, lock_mins * 60)
+        log_action(None, "LOGIN_FAILED", "User", user.id, ip_address=ctx["ip_address"], user_agent=ctx["user_agent"])
         raise AuthenticationFailed("Invalid credentials.")
+
+    cache.delete(cache_key)
 
     if (
         user.status == AccountStatus.PENDING
@@ -124,7 +138,7 @@ def login(email: str, password: str, device_info: dict | None = None) -> dict:
         if not device_service.is_device_trusted(user, ctx["fingerprint"]):
             raise PermissionDenied("Device verification required.")
 
-    log_action(user, "LOGIN", "User", user.id)
+    log_action(user, "LOGIN", "User", user.id, ip_address=ctx["ip_address"], user_agent=ctx["user_agent"])
     return issue_tokens(user)
 
 
@@ -154,6 +168,27 @@ def logout(user, refresh_token_str: str) -> None:
     """
     blacklist_refresh_token(refresh_token_str)
     log_action(user, "LOG", "User", user.id)
+
+
+def logout_all(user) -> int:
+    """
+    Blacklist all outstanding refresh tokens for a user.
+
+    Args:
+        user: Authenticated User instance.
+
+    Returns:
+        Number of tokens blacklisted.
+    """
+    from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+
+    tokens = OutstandingToken.objects.filter(user=user)
+    count = 0
+    for token in tokens:
+        BlacklistedToken.objects.get_or_create(token=token)
+        count += 1
+    log_action(user, "LOGOUT_ALL", "User", user.id)
+    return count
 
 
 def refresh_token(refresh_token_str: str) -> dict:
@@ -314,11 +349,12 @@ def forgot_password(email: str) -> None:
         log_action(user, "PASSWORD_RESET_REQUEST", "User", user.id)
 
 
-def reset_password(otp: str, new_password: str) -> None:
+def reset_password(email: str, otp: str, new_password: str) -> None:
     """
     Reset a password using a valid password-reset OTP.
 
     Args:
+        email: Account email address.
         otp: One-time password code.
         new_password: New plain-text password (validated against Django validators).
 
@@ -328,18 +364,18 @@ def reset_password(otp: str, new_password: str) -> None:
     Raises:
         ValidationError: No matching active OTP found.
     """
-    active_challenges = OTPChallenge.objects.filter(
+    user = User.objects.filter(email__iexact=email).first()
+    if not user:
+        raise ValidationError("Invalid OTP code.")
+
+    challenge = OTPChallenge.objects.filter(
+        user=user,
         purpose=OTPPurpose.PASSWORD_RESET,
         is_used=False,
-    ).select_related("user")
+    ).order_by("-created_at").first()
 
-    matched_challenge = None
-    for challenge in active_challenges:
-        if check_password(otp, challenge.otp_code):
-            matched_challenge = challenge
-            break
-
-    if not matched_challenge:
+    if not challenge or not check_password(otp, challenge.otp_code):
+        log_action(None, "PASSWORD_RESET_FAILED", "OTPChallenge", challenge.id if challenge else None)
         raise ValidationError("Invalid OTP code.")
 
     try:
@@ -347,12 +383,11 @@ def reset_password(otp: str, new_password: str) -> None:
     except DjangoValidationError as e:
         raise ValidationError(e.messages)
 
-    user = matched_challenge.user
     user.set_password(new_password)
     user.save(update_fields=["password"])
 
-    matched_challenge.is_used = True
-    matched_challenge.save(update_fields=["is_used"])
+    challenge.is_used = True
+    challenge.save(update_fields=["is_used"])
 
     log_action(user, "user.password_reset", "User", user.id)
 

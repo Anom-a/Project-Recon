@@ -40,6 +40,7 @@ The Events application manages:
 - Workshops
 - Event Registrations
 - Event Payments
+- Tournament Categories
 
 ---
 
@@ -92,22 +93,20 @@ Event
 │
 ├── Tournament
 │       │
+│       ├── TournamentCategory
 │       ├── Tournament Team
 │       └── Match
+│           ├── MatchSide
+│           └── MatchParticipant
 │
 ├── Workshop
+│
 ├── General
 │
 └── Event Registration
         │
         ▼
-Shared Payment Service
-        │
-        ▼
-Configured Payment Provider
-        │
-        ▼
-Chapa / Stripe / Future Providers
+    EventPayment
 ```
 
 ---
@@ -180,15 +179,11 @@ A Tournament owns:
 
 ---
 
-## Supported Categories
+## TournamentCategory
 
-Initially:
+Categories are stored as database records in the `TournamentCategory` model (name, code, description). Staff can add new categories without code changes.
 
-- VEX IQ
-- VEX V5
-- Enjoy AI
-
-Additional categories may be added later.
+Categories are not hardcoded enums.
 
 ---
 
@@ -387,27 +382,12 @@ Registration is confirmed immediately.
 
 ## Payment Integration
 
-The Events application never communicates directly with payment providers.
+Payments are owned by the Events application through the `EventPayment` model.
 
-Instead:
+- `CASH` payments are recorded by staff and auto-verified.
+- `BANK_TRANSFER`, `MOBILE_MONEY`, and `CHEQUE` payments require staff verification.
 
-```text
-Events
-
-↓
-
-Shared Payment Service
-
-↓
-
-Configured Provider
-
-↓
-
-Chapa / Stripe / Future Providers
-```
-
-The active provider is selected dynamically through environment configuration.
+Cash payments approve the registration immediately. Non-cash payments remain `PENDING_VERIFICATION` until a staff member verifies or rejects them.
 
 ---
 
@@ -643,7 +623,7 @@ The following decisions are finalized.
 - Capacity is nullable, allowing unlimited registrations.
 - Registration and payment are independent workflows.
 - Payment requirements are configurable per event.
-- All online payments use the shared payment service and the configured provider (e.g., Chapa, Stripe).
+- Non-cash payments use the EventPayment verification workflow (PENDING_VERIFICATION → VERIFIED/REJECTED).
 - Tournaments own Teams and Matches.
 - Tournament rankings are calculated dynamically and are never stored.
 - Live, Future, and Past event states are derived automatically from event dates.

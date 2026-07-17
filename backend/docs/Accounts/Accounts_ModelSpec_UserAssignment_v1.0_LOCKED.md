@@ -82,6 +82,7 @@ Choices:
 
 -   SUPER_ADMIN
 -   BRANCH_MANAGER
+-   SECRETARY
 -   INSTRUCTOR
 -   STUDENT
 

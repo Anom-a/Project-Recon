@@ -19,10 +19,11 @@ from apps.academic.models import (
 from apps.academic.models.class_model import Class as ClassModel
 from apps.accounts.services import user_service
 from apps.shared.audit.services import log_action
+from apps.shared.email.services import send_email
 
 
 def _generate_enrollment_number(branch_code: str, year: int) -> str:
-    prefix = f"ENR-{year}-"
+    prefix = f"ENR-{branch_code}-{year}-"
     last = Enrollment.objects.filter(
         enrollment_number__startswith=prefix
     ).order_by("enrollment_number").last()
@@ -33,8 +34,8 @@ def _generate_enrollment_number(branch_code: str, year: int) -> str:
     return f"{prefix}{seq:06d}"
 
 
-def _generate_pending_code(year: int) -> str:
-    prefix = f"ENR-P-{year}-"
+def _generate_pending_code(branch_code: str, year: int) -> str:
+    prefix = f"ENR-P-{branch_code}-{year}-"
     last = Enrollment.objects.filter(
         pending_code__startswith=prefix
     ).order_by("pending_code").last()
@@ -63,10 +64,13 @@ def get_enrollment_or_404(pk):
     )
 
 
-def list_enrollments():
-    return Enrollment.objects.select_related(
+def list_enrollments(branch_ids=None):
+    qs = Enrollment.objects.select_related(
         "student__user", "enrolled_class__sub_program", "enrolled_class__branch"
-    ).all()
+    )
+    if branch_ids:
+        qs = qs.filter(enrolled_class__branch_id__in=branch_ids)
+    return qs.all()
 
 
 def _validate_enrollment_period(enrolled_class):
@@ -213,7 +217,7 @@ def online_enrollment(
                 raise ValidationError("Already enrolled in this class.")
 
         year = date.today().year
-        pending_code = _generate_pending_code(year)
+        pending_code = _generate_pending_code(enrolled_class.branch.code, year)
 
         enrollment = Enrollment(
             student=student,
@@ -246,7 +250,26 @@ def online_enrollment(
         branch=enrolled_class.branch,
     )
 
-    # TODO: send submitted email with pending_code
+    recipient = student.user.email
+    full_name = student.user.full_name
+    class_name = enrolled_class.name
+    branch_name = enrolled_class.branch.name if hasattr(enrolled_class.branch, "name") else str(enrolled_class.branch)
+    status_display = EnrollmentStatus.PENDING_VERIFICATION.label
+    subject = f"Enrollment Submitted — {pending_code}"
+    body = (
+        f"Dear {full_name},\n\n"
+        f"Your enrollment has been submitted successfully.\n\n"
+        f"- Reference: {pending_code}\n"
+        f"- Class: {class_name}\n"
+        f"- Branch: {branch_name}\n"
+        f"- Status: {status_display}\n"
+        f"- Amount: {amount} ETB\n\n"
+        f"What happens next?\n"
+        f"Your enrollment is pending verification. "
+        f"You will be notified once your payment has been approved.\n\n"
+        f"Thank you for choosing Ethio Robo Robotics \n\n"
+    )
+    send_email(recipient, subject, body)
 
     return enrollment
 

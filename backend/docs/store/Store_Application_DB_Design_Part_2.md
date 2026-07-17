@@ -24,7 +24,7 @@ Part 2 focuses on:
 - Guest Customer Information
 - Order Status History
 
-Payment records continue to be owned by the Shared Payment application.
+Payments belong to the Store application.
 
 ---
 
@@ -35,7 +35,7 @@ Payment records continue to be owned by the Shared Payment application.
 - Orders are permanent.
 - Order Items preserve historical purchase information.
 - Guest information belongs to the Order.
-- Payment belongs to the Shared Payment application.
+- Payment belongs to the Store application via StorePayment.
 - Inventory changes only after payment verification.
 
 ---
@@ -54,6 +54,9 @@ PendingOrder
       │
       ▼
 PendingOrderItem
+      │
+      ▼
+StorePayment
 
 ----------------------------
 
@@ -81,8 +84,8 @@ Guest customers receive a temporary cart session.
 | Field | Type | Required | Description |
 |---------|------|----------|-------------|
 | id | UUID | ✅ | Primary Key |
-| user | FK → User | ❌ | Authenticated owner |
-| session_key | String | ❌ | Guest session identifier |
+| user | FK → User (SET_NULL) | ❌ | Authenticated owner |
+| session_key | String(255) | ❌ | Guest session identifier |
 | expires_at | DateTime | ✅ | Automatic expiration |
 | created_at | DateTime | ✅ | Creation timestamp |
 | updated_at | DateTime | ✅ | Last modification |
@@ -95,6 +98,7 @@ Guest customers receive a temporary cart session.
 - Guests never create user accounts.
 - One active cart per authenticated user.
 - Carts expire after 30 days.
+- Expired carts are automatically removed.
 
 ---
 
@@ -165,27 +169,16 @@ Created immediately before payment initialization.
 | Field | Type | Required | Description |
 |---------|------|----------|-------------|
 | id | UUID | ✅ | Primary Key |
-| user | FK → User | ❌ | Authenticated customer |
-| branch | FK → Branch | ✅ | Pickup branch |
-| payment_reference | String | ❌ | Shared Payment reference |
+| user | FK → User (SET_NULL) | ❌ | Authenticated customer |
+| branch | FK → Branch (CASCADE) | ✅ | Pickup branch |
+| payment_reference | String(255) | ❌ | Payment tracking reference |
 | subtotal | Decimal | ✅ | Order subtotal |
 | total | Decimal | ✅ | Final payable amount |
+| guest_name | String(255) | ❌ | Guest full name |
+| guest_email | EmailField(255) | ❌ | Guest email address |
+| guest_phone | String(20) | ❌ | Guest phone number |
 | expires_at | DateTime | ✅ | Payment timeout |
 | created_at | DateTime | ✅ | Creation timestamp |
-
----
-
-## Guest Information
-
-Stored directly on Pending Order.
-
-| Field | Type |
-|------|------|
-| guest_name | String |
-| guest_email | String |
-| guest_phone | String |
-
-Only populated for guest checkout.
 
 ---
 
@@ -194,10 +187,80 @@ Only populated for guest checkout.
 - Pending Orders expire after 30 minutes.
 - No inventory deduction occurs.
 - Cannot be modified after payment initialization.
+- Guest information is stored directly on the Pending Order (guest_name, guest_email, guest_phone).
+- Guest fields are only populated for guest checkout.
 
 ---
 
-# PendingOrderItem
+# StorePayment
+
+Represents a payment record for a Pending Order.
+
+Each Pending Order has exactly one StorePayment.
+
+---
+
+## Fields
+
+| Field | Type | Required | Description |
+|---------|------|----------|-------------|
+| id | UUID | ✅ | Primary Key |
+| pending_order | FK → PendingOrder (CASCADE) | ✅ | The pending order being paid for |
+| amount | Decimal | ✅ | Payment amount |
+| payment_method | Enum (PaymentMethod) | ✅ | CASH / BANK_TRANSFER / MOBILE_MONEY / CHEQUE |
+| transaction_reference | String(255) | ❌ | External transaction reference |
+| bank_name | String(255) | ❌ | Bank name (for bank transfers) |
+| attachment | File | ❌ | Payment evidence file |
+| status | Enum (PaymentStatus) | ✅ | PENDING_VERIFICATION / VERIFIED / REJECTED / CANCELLED |
+| payment_date | DateTime | ❌ | Date of payment |
+| verified_by | FK → User (PROTECT) | ❌ | Staff who verified the payment |
+| verified_at | DateTime | ❌ | Verification timestamp |
+| verification_notes | Text | ❌ | Notes from verification |
+| created_at | DateTime | ✅ | Creation timestamp |
+| updated_at | DateTime | ✅ | Last update |
+
+---
+
+## Payment Statuses
+
+| Status | Description |
+|--------|-------------|
+| PENDING_VERIFICATION | Awaiting staff verification |
+| VERIFIED | Payment confirmed |
+| REJECTED | Payment rejected |
+| CANCELLED | Payment cancelled |
+
+---
+
+## Payment Methods
+
+| Method | Description |
+|--------|-------------|
+| CASH | Cash payment at branch |
+| BANK_TRANSFER | Bank transfer payment |
+| MOBILE_MONEY | Mobile money payment |
+| CHEQUE | Cheque payment |
+
+---
+
+## Business Rules
+
+- One-to-one with PendingOrder.
+- Cash payments are automatically verified.
+- Non-cash payments require manual verification.
+- Non-cash payments require at least a transaction_reference or attachment.
+- Verified payments trigger Order creation.
+- Rejected payments cancel the Pending Order.
+
+---
+
+## Ownership
+
+Owned by:
+
+Pending Order
+
+---
 
 Represents products awaiting payment.
 
@@ -234,31 +297,32 @@ Created only after payment verification.
 
 ## Fields
 
-| Field | Type | Required |
-|------|------|----------|
-| id | UUID | ✅ |
-| order_number | String | ✅ |
-| user | FK → User | ❌ |
-| branch | FK → Branch | ✅ |
-| payment_reference | String | ✅ |
-| subtotal | Decimal | ✅ |
-| total | Decimal | ✅ |
-| status | Enum | ✅ |
-| paid_at | DateTime | ✅ |
-| completed_at | DateTime | ❌ |
-| created_at | DateTime | ✅ |
+| Field | Type | Required | Description |
+|------|------|----------|-------------|
+| id | UUID | ✅ | Primary Key |
+| order_number | String(50) | ✅ | Human-readable identifier |
+| user | FK → User (SET_NULL) | ❌ | Authenticated customer |
+| branch | FK → Branch (CASCADE) | ✅ | Pickup branch |
+| payment_reference | String(255) | ❌ | Transaction reference |
+| subtotal | Decimal | ✅ | Order subtotal |
+| total | Decimal | ✅ | Final total |
+| status | Enum | ✅ | PAID / PREPARING / READY_FOR_PICKUP / COMPLETED / CANCELLED / REFUNDED |
+| paid_at | DateTime | ✅ | Payment timestamp |
+| completed_at | DateTime | ❌ | Completion timestamp |
+| cancelled_at | DateTime | ❌ | Cancellation timestamp |
+| refunded_at | DateTime | ❌ | Refund timestamp |
+| guest_name | String(255) | ❌ | Guest full name |
+| guest_email | EmailField(255) | ❌ | Guest email |
+| guest_phone | String(20) | ❌ | Guest phone |
+| created_at | DateTime | ✅ | Creation timestamp |
 
 ---
 
 ## Guest Information
 
-Guest information is permanently stored.
+Guest information is stored directly on the Order.
 
-| Field | Type |
-|------|------|
-| guest_name | String |
-| guest_email | String |
-| guest_phone | String |
+Same structure as Pending Order guest fields.
 
 ---
 
@@ -271,12 +335,39 @@ Guest information is permanently stored.
 
 ---
 
+## Order Statuses
+
+| Status | Description |
+|--------|-------------|
+| PAID | Payment confirmed, order created |
+| PREPARING | Staff are preparing the order |
+| READY_FOR_PICKUP | Ready for customer pickup |
+| COMPLETED | Customer collected the order |
+| CANCELLED | Order was cancelled |
+| REFUNDED | Order was refunded |
+
+---
+
+## Status Transitions
+
+```text
+PAID
+ ↓
+PREPARING → CANCELLED
+ ↓
+READY_FOR_PICKUP → CANCELLED
+ ↓
+COMPLETED → REFUNDED
+```
+
+---
+
 ## Order Number
 
 Example
 
 ```text
-ORD-branch initials-2026-000125
+ORD-BRCH-2026-000125
 ```
 
 Generated after successful payment.
@@ -338,15 +429,15 @@ Tracks every Order status change.
 
 ## Fields
 
-| Field | Type |
-|------|------|
-| id | UUID |
-| order | FK → Order |
-| previous_status | Enum |
-| new_status | Enum |
-| changed_by | FK → User |
-| changed_at | DateTime |
-| notes | Text |
+| Field | Type | Required | Description |
+|------|------|----------|-------------|
+| id | UUID | ✅ | Primary Key |
+| order | FK → Order (CASCADE) | ✅ | Parent order |
+| previous_status | Enum | ❌ | Status before change |
+| new_status | Enum | ✅ | Status after change |
+| changed_by | FK → User (SET_NULL) | ❌ | Staff who performed the change |
+| changed_at | DateTime | ✅ | Change timestamp |
+| notes | Text | ❌ | Reason or notes |
 
 ---
 
@@ -358,19 +449,17 @@ Example
 
 ```text
 PAID
-
-↓
-
+ ↓
 PREPARING
-
-↓
-
+ ↓
 READY_FOR_PICKUP
-
-↓
-
+ ↓
 COMPLETED
 ```
+
+Cancellation and refund are also recorded.
+
+History cannot be modified.
 
 ---
 
@@ -382,14 +471,17 @@ ShoppingCart
       ▼
 ShoppingCartItem
 
-------------------------
+-----------------------
 
 PendingOrder
       │
       ▼
 PendingOrderItem
+      │
+      ▼
+StorePayment
 
-------------------------
+-----------------------
 
 Order
       │
@@ -415,6 +507,16 @@ OrderItem   OrderStatusHistory
 - Expires after 30 minutes.
 - Never deducts inventory.
 - Converted into Order after payment verification.
+
+---
+
+## StorePayment
+
+- One-to-one with Pending Order.
+- Cash payments are auto-verified.
+- Non-cash payments require manual verification.
+- Verified payment triggers Order creation.
+- Rejected payment cancels the Pending Order.
 
 ---
 
@@ -491,6 +593,14 @@ History cannot be modified.
 
 ---
 
+## StorePayment
+
+- pending_order
+- transaction_reference
+- status
+
+---
+
 # Part 2 Summary
 
 This document defines:
@@ -499,12 +609,13 @@ This document defines:
 - ✅ Shopping Cart Items
 - ✅ Pending Orders
 - ✅ Pending Order Items
+- ✅ Store Payments
 - ✅ Orders
 - ✅ Order Items
 - ✅ Guest Checkout Information
 - ✅ Order Status History
 
-Inventory movement and payment processing are handled through the Store Services and Shared Payment application.
+Inventory movement and payment processing are handled through the Store Services.
 
 ---
 

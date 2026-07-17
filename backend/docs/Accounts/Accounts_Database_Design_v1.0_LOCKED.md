@@ -102,21 +102,7 @@ Purpose:
 -   Skip email OTP on known devices.
 -   Trigger device verification only for new devices.
 
-------------------------------------------------------------------------
-
-## 6. LoginAttempt
-
-Tracks authentication events.
-
-Examples:
-
--   Successful login
--   Failed login
--   Account locked
-
-Used for lockout protection.
-
-------------------------------------------------------------------------
+-------------------------------------------------------------------------
 
 # Shared Infrastructure
 
@@ -149,6 +135,7 @@ Example roles:
 
 -   SUPER_ADMIN
 -   BRANCH_MANAGER
+-   SECRETARY
 -   INSTRUCTOR
 -   STUDENT
 
@@ -186,7 +173,6 @@ OTPChallenge - Role constants - DRF permissions - Services
 -   UserAssignment replaces UserRole and UserBranch.
 -   One reusable OTPChallenge model.
 -   TrustedDevice for remembered devices.
--   LoginAttempt for authentication security.
 -   AuditLog belongs to shared infrastructure.
 -   Branch authorization uses query filtering.
 -   Multiple roles and branches are fully supported.

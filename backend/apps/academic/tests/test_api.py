@@ -32,6 +32,7 @@ from apps.academic.services.staff_attendance_service import (
 )
 from apps.academic.services.enrollment_service import (
     enroll_student,
+    _generate_pending_code,
 )
 from apps.academic.services.payment_service import (
     record_payment,
@@ -1028,7 +1029,9 @@ class EnrollmentAPITest(AcademicAPITestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["status"], EnrollmentStatus.PENDING_VERIFICATION)
-        self.assertIsNotNone(response.json().get("pending_code"))
+        pending_code = response.json().get("pending_code")
+        self.assertIsNotNone(pending_code)
+        self.assertIn(self.individual_class.branch.code, pending_code)
 
     def test_online_enrollment_unauthenticated_missing_fields_raises(self):
         response = self.client.post(
@@ -1049,6 +1052,81 @@ class EnrollmentAPITest(AcademicAPITestCase):
                 "email": "new@test.com",
                 "first_name": "New",
                 "last_name": "Student",
+                "password": "TestPass123!",
+                "payment_method": "CASH",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_available_branches_returns_branches(self):
+        response = self.client.get(
+            f"{self.base_url}/enrollments/available-branches/",
+            {"sub_program": str(self.sub_program.pk), "class_type": "GROUP"},
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertGreaterEqual(len(data), 1)
+        self.assertIn(str(self.branch.pk), [b["id"] for b in data])
+
+    def test_available_branches_missing_params(self):
+        response = self.client.get(
+            f"{self.base_url}/enrollments/available-branches/",
+            {"sub_program": str(self.sub_program.pk)},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_available_branches_invalid_class_type(self):
+        response = self.client.get(
+            f"{self.base_url}/enrollments/available-branches/",
+            {"sub_program": str(self.sub_program.pk), "class_type": "INVALID"},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_online_enrollment_with_triplet(self):
+        response = self.client.post(
+            f"{self.base_url}/enrollments/online/",
+            {
+                "sub_program": str(self.sub_program.pk),
+                "class_type": "INDIVIDUAL",
+                "branch": str(self.branch.pk),
+                "email": "triplet@test.com",
+                "first_name": "Triplet",
+                "last_name": "User",
+                "password": "TestPass123!",
+                "payment_method": "CASH",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["status"], EnrollmentStatus.PENDING_VERIFICATION)
+
+    def test_online_enrollment_triplet_no_active_class(self):
+        response = self.client.post(
+            f"{self.base_url}/enrollments/online/",
+            {
+                "sub_program": str(self.sub_program.pk),
+                "class_type": "GROUP",
+                "branch": "00000000-0000-0000-0000-000000000000",
+                "email": "noclass@test.com",
+                "first_name": "No",
+                "last_name": "Class",
+                "password": "TestPass123!",
+                "payment_method": "CASH",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_online_enrollment_triplet_missing_fields(self):
+        response = self.client.post(
+            f"{self.base_url}/enrollments/online/",
+            {
+                "sub_program": str(self.sub_program.pk),
+                "class_type": "INDIVIDUAL",
+                "email": "missing@test.com",
+                "first_name": "Missing",
+                "last_name": "Branch",
                 "password": "TestPass123!",
                 "payment_method": "CASH",
             },
@@ -1294,6 +1372,7 @@ class PaymentAPITest(AcademicAPITestCase):
 
     def test_reject_enrollment(self):
         self.authenticate_as_secretary()
+        self.enrollment.pending_code = _generate_pending_code(self.branch.code, date.today().year)
         self.enrollment.verification_status = VerificationStatus.SUBMITTED
         self.enrollment.save()
         EnrollmentPayment.objects.create(
@@ -1307,6 +1386,9 @@ class PaymentAPITest(AcademicAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 200)
+        self.enrollment.refresh_from_db()
+        self.assertIsNotNone(self.enrollment.pending_code)
+        self.assertIn(self.enrollment.enrolled_class.branch.code, self.enrollment.pending_code)
 
 
 class AttendanceAPITest(AcademicAPITestCase):
@@ -2483,7 +2565,9 @@ class SwitchSubProgramAPITest(AcademicAPITestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["new_enrollment"]["status"], EnrollmentStatus.ACTIVE)
-        self.assertIsNotNone(data["new_enrollment"]["enrollment_number"])
+        enrollment_number = data["new_enrollment"]["enrollment_number"]
+        self.assertIsNotNone(enrollment_number)
+        self.assertIn(self.target_class.branch.code, enrollment_number)
         self.assertEqual(data["amount_due"], 200.0)
 
     def test_switch_subprogram_unauthenticated_returns_401(self):

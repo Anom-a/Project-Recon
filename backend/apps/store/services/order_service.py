@@ -1,5 +1,3 @@
-import logging
-
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
@@ -15,8 +13,6 @@ from apps.store.models.order import (
 )
 from apps.store.models.pending_order import PendingOrder
 from apps.store.services.branch_inventory_service import add_inventory, reduce_inventory
-
-logger = logging.getLogger(__name__)
 
 
 def generate_order_number(branch) -> str:

@@ -162,7 +162,6 @@ Choices:
 -   Pending
 -   Active
 -   Suspended
--   Locked
 -   Archived
 
 Default:
@@ -228,8 +227,6 @@ User
 → OTPChallenge (One-to-Many)
 
 → TrustedDevice (One-to-Many)
-
-→ LoginAttempt (One-to-Many)
 
 AuditLog references User as the actor.
 

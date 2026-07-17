@@ -41,6 +41,7 @@ from apps.academic.services.staff_attendance_service import (
 )
 from apps.academic.services.enrollment_service import (
     enroll_student,
+    _generate_pending_code,
     cancel_enrollment,
     complete_enrollment,
     get_enrollment_or_404,
@@ -1010,6 +1011,7 @@ class PaymentServiceTest(TestCase):
         self.assertEqual(self.enrollment.status, EnrollmentStatus.ACTIVE)
         self.assertEqual(self.enrollment.verification_status, VerificationStatus.VERIFIED)
         self.assertIsNotNone(self.enrollment.enrollment_number)
+        self.assertIn(self.branch.code, self.enrollment.enrollment_number)
 
     def test_record_payment_bank_transfer(self):
         payment = record_payment(
@@ -1063,6 +1065,7 @@ class PaymentServiceTest(TestCase):
             set_under_review(self.instructor, enrollment=self.enrollment)
 
     def test_reject_payment(self):
+        self.enrollment.pending_code = _generate_pending_code(self.branch.code, date.today().year)
         self.enrollment.verification_status = VerificationStatus.SUBMITTED
         self.enrollment.save()
         EnrollmentPayment.objects.create(
@@ -1078,6 +1081,8 @@ class PaymentServiceTest(TestCase):
         self.assertEqual(result.verification_status, VerificationStatus.REJECTED)
         self.assertEqual(result.rejection_reason, "Transaction not found.")
         self.assertEqual(result.status, EnrollmentStatus.REJECTED)
+        self.assertIsNotNone(result.pending_code)
+        self.assertIn(result.enrolled_class.branch.code, result.pending_code)
 
     def test_list_payments(self):
         EnrollmentPayment.objects.create(
@@ -2164,6 +2169,7 @@ class TransferServiceTest(TestCase):
         self.assertEqual(new_enrollment.status, EnrollmentStatus.ACTIVE)
         self.assertEqual(new_enrollment.transferred_from, self.enrollment)
         self.assertIsNotNone(new_enrollment.enrollment_number)
+        self.assertIn(self.branch_b.code, new_enrollment.enrollment_number)
         self.enrollment.refresh_from_db()
         self.assertEqual(self.enrollment.status, EnrollmentStatus.CANCELLED)
 
@@ -2264,6 +2270,7 @@ class SwitchSubProgramServiceTest(TestCase):
         self.assertEqual(new_enrollment.status, EnrollmentStatus.ACTIVE)
         self.assertEqual(new_enrollment.transferred_from, self.enrollment)
         self.assertIsNotNone(new_enrollment.enrollment_number)
+        self.assertIn(self.target_class.branch.code, new_enrollment.enrollment_number)
         self.enrollment.refresh_from_db()
         self.assertEqual(self.enrollment.status, EnrollmentStatus.CANCELLED)
 

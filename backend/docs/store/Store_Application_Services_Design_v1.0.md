@@ -29,10 +29,10 @@ Every modification to Store data passes through a Service.
 - Services own all business logic.
 - Models never perform business operations.
 - Views never contain business rules.
-- Services communicate with Shared Payment.
-- Services communicate with Shared Notification.
+- Services communicate with Store Payment Service.
+- Services communicate with Store Notification Service.
 - Services communicate with Shared Audit.
-- Services never communicate directly with payment providers.
+- Services never communicate directly with payment providers except through the Store Payment Service.
 - Services are reusable across APIs, Admin actions, and future integrations.
 
 ---
@@ -47,10 +47,16 @@ The Store application consists of the following services:
 - Branch Inventory Service
 - Shopping Cart Service
 - Checkout Service
-- Pending Order Service
+- Pending Order Service (includes expiration cleanup)
 - Order Service
-- Inventory Service
-- Refund Service
+- Payment Service
+- Notification Service
+- Report Service
+  - OrderReportService
+  - InventoryReportService
+  - PaymentReportService
+  - SalesReportService
+  - CsvExportService
 
 ---
 
@@ -183,8 +189,10 @@ Inventory is **not reserved**.
 - Validate shopping cart
 - Calculate totals
 - Create Pending Order
-- Initialize payment
-- Send payment request to Shared Payment
+- Create PendingOrderItem snapshots
+- Submit payment evidence (if provided during checkout)
+- Clear the shopping cart after checkout
+- Collect guest information (name, email, phone)
 
 ---
 
@@ -209,6 +217,7 @@ Checkout is rejected.
 - Deduct inventory
 - Confirm payment
 - Create completed orders
+- Verify payments
 
 ---
 
@@ -221,6 +230,8 @@ Checkout is rejected.
 - Store guest information
 - Track payment state
 - Expire unpaid pending orders
+- Cancel pending order (for rejected payments)
+- Retrieve pending orders by user
 
 ---
 
@@ -236,11 +247,13 @@ Checkout is rejected.
 
 ## Responsibilities
 
-- Create confirmed order
+- Create confirmed order (from PendingOrder after payment verification)
 - Generate order number
-- Copy purchased items
+- Copy purchased items with historical data
 - Maintain order history
-- Change order status
+- Change order status (with transition validation)
+- Restore inventory on cancellation or refund
+- Trigger notifications on status changes
 
 ---
 
@@ -261,7 +274,7 @@ Order numbers are unique.
 Example
 
 ```text
-RCN-2026-000245
+ORD-BRCH-2026-000245
 ```
 
 Historical product information is copied into Order Items.
@@ -275,99 +288,163 @@ Future product changes never affect historical orders.
 Allowed transitions
 
 ```text
-Pending Payment
+PAID
 
 ↓
 
-Paid
+PREPARING → CANCELLED
 
 ↓
 
-Preparing
+READY_FOR_PICKUP → CANCELLED
 
 ↓
 
-Ready for Pickup
-
-↓
-
-Completed
+COMPLETED → REFUNDED
 ```
 
 Administrative transitions
 
 ```text
-Paid
-
-↓
-
-Refunded
-
---------------------
-
-Paid
-
-↓
-
-Cancelled
+PAID → REFUNDED
 ```
 
 Every transition creates an Order Status History record.
 
+### Side Effects by Status
+
+- **CANCELLED / REFUNDED**: Inventory is restored (items returned to stock).
+- **READY_FOR_PICKUP**: Customer notified that order is ready.
+- **COMPLETED**: Customer notified that order is complete.
+
 ---
 
-# Inventory Service
+# Payment Service
 
 ## Responsibilities
 
-- Deduct inventory after successful payment
-- Validate stock during deduction
-- Prevent negative inventory
-- Record inventory changes
+- Submit payment evidence (for non-cash payments)
+- Record cash payments
+- Verify payments (change status to VERIFIED)
+- Reject payments (change status to REJECTED)
+- List payments (filtered by status or pending order)
+- Trigger Order creation on verification
 
 ---
 
-## Business Rules
-
-Inventory is deducted
-
-ONLY AFTER
+## Payment Statuses
 
 ```text
-Payment Verified
+PENDING_VERIFICATION
+
+↓
+
+VERIFIED  →  Order Created
+
+↓
+
+REJECTED  →  Pending Order Cancelled
+
+↓
+
+CANCELLED
 ```
-
-Never before.
-
-Inventory updates occur atomically with order confirmation.
-
----
-
-# Refund Service
-
-## Responsibilities
-
-- Process manual refunds
-- Process administrative cancellations
-- Update order status
-- Trigger notifications
-- Record audit logs
 
 ---
 
 ## Business Rules
 
-Customers cannot request automatic refunds through the Store.
-
-Authorized staff perform refunds manually according to organizational procedures.
-
-The service updates Store records after payment handling has been completed through Shared Payment.
+- Cash payments are recorded directly as VERIFIED.
+- Non-cash payments start as PENDING_VERIFICATION.
+- Only PENDING_VERIFICATION payments can be verified or rejected.
+- Verification notes are required when rejecting a payment.
+- Verification creates an Order through the Order Service.
+- One payment per Pending Order.
 
 ---
 
-# Shared Payment Integration
+# Notification Service
 
-The Store never communicates directly with Chapa or Stripe.
+## Responsibilities
+
+- Send order confirmation email (payment verified)
+- Send ready-for-pickup notification
+- Send order completion notification
+- Send cancellation notice
+- Send refund notification
+
+---
+
+## Events
+
+- `notify_payment_and_order_confirmed` — sent when payment is verified and order is created
+- `notify_ready_for_pickup` — sent when order status changes to READY_FOR_PICKUP
+- `notify_order_completed` — sent when order status changes to COMPLETED
+- `notify_cancelled` — sent when order is cancelled
+- `notify_refund` — sent when refund is processed
+
+---
+
+## Business Rules
+
+- Notifications are sent via Shared Email service.
+- Recipient is determined by Order: authenticated user's email or guest email.
+- Notifications are best-effort; failures are logged.
+- Notification content is owned by the Store.
+
+---
+
+# Report Service
+
+Provides business analytics for the Store.
+
+## Sub-Services
+
+### OrderReportService
+
+- Order trends over time (daily, weekly, monthly)
+- Filterable by status, branch, and date range
+
+### InventoryReportService
+
+- Full inventory snapshot per branch
+- Low-stock report (items below minimum or out of stock)
+
+### PaymentReportService
+
+- Payment status breakdown
+- Payment method distribution
+
+### SalesReportService
+
+- Sales aggregated by day, week, or month
+- Revenue, order count, average order value
+- Per-branch sales breakdown
+- Product statistics (total, active, archived, by category)
+
+### CsvExportService
+
+- Export any report data as CSV
+- Uses `StreamingHttpResponse` for efficient large exports
+
+---
+
+## Report Endpoints
+
+```text
+admin/reports/products/       — Product statistics
+admin/reports/inventory/      — Full inventory snapshot
+admin/reports/low-stock/      — Low stock items
+admin/reports/sales/          — Sales trends
+admin/reports/orders/         — Order trends
+admin/reports/branch-sales/   — Per-branch sales
+```
+
+---
+
+# Store Payment Service Integration
+
+The Store owns its payment records.
 
 Workflow
 
@@ -376,39 +453,24 @@ Checkout Service
 
 ↓
 
-Shared Payment
+Pending Order Service
 
 ↓
 
-Payment Provider
+Payment Service (submit evidence / record cash)
 
 ↓
 
-Verification Callback
+Payment Service (verify / reject)
 
 ↓
 
-Shared Payment
+Order Service (create order)
 
 ↓
 
-Order Service
+Notification Service (send confirmation)
 ```
-
----
-
-# Shared Notification Integration
-
-The Store requests notifications from Shared Notification.
-
-Events
-
-- Order Confirmed
-- Ready for Pickup
-- Order Completed
-- Refund Processed
-
-Notification content is not owned by the Store.
 
 ---
 
@@ -448,11 +510,11 @@ Pending Order Service
 
 ↓
 
-Shared Payment
+Payment Service (submit evidence / record cash)
 
 ↓
 
-Payment Verification
+Payment Service (verify / reject)
 
 ↓
 
@@ -460,11 +522,7 @@ Order Service
 
 ↓
 
-Inventory Service
-
-↓
-
-Shared Notification
+Notification Service
 
 ↓
 
@@ -504,7 +562,7 @@ Pending Order Service
 
 ↓
 
-Shared Payment
+Payment Service
 
 ↓
 
@@ -512,15 +570,11 @@ Order Service
 
 ↓
 
-Inventory Service
+Notification Service
 
 ↓
 
-Refund Service
-
-↓
-
-Shared Notification
+Report Service
 
 ↓
 
@@ -542,13 +596,17 @@ Shared Audit
 - Checkout creates Pending Orders.
 - Pending Orders expire after 30 minutes.
 - Orders are created only after successful payment verification.
+- Cash payments are auto-verified.
+- Non-cash payments require manual verification.
+- Only PENDING_VERIFICATION payments can be verified or rejected.
 - Inventory is deducted only after successful payment verification.
 - Product information is snapshotted into Order Items.
 - Order status transitions create history records.
-- Refunds are manual administrative actions.
-- Shared Payment owns payment providers.
-- Shared Notification owns customer notifications.
+- Cancellation and refund restore inventory.
+- Store Payment Service owns payment records.
+- Store Notification Service sends customer notifications.
 - Shared Audit owns audit records.
+- Report Service provides analytics and CSV export.
 
 ---
 

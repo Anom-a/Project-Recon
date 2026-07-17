@@ -19,12 +19,12 @@ Its primary purpose is to allow customers to purchase physical products from the
 The Store integrates with:
 
 - Accounts
-- Shared Payment
-- Shared Notification
+- Store Payment Service
+- Store Notification Service
 - Shared Audit
 - Branch Management
 
-The Store **never communicates directly with payment providers**. All payment processing is delegated to the Shared Payment application.
+The Store **never communicates directly with payment providers except Chapa/Stripe**. Payment processing is handled by the Store's own Payment Service.
 
 ---
 
@@ -45,7 +45,7 @@ The Store **never communicates directly with payment providers**. All payment pr
 - Inventory is reduced only after successful payment verification.
 - Customers cannot cancel paid orders.
 - Refunds are handled manually by authorized staff.
-- Order confirmation emails are delegated to Shared Notification.
+- Order confirmation emails are sent by Store Notification Service.
 - Audit logging is delegated to Shared Audit.
 
 ---
@@ -64,6 +64,7 @@ The Store application consists of the following business domains:
 - Orders
 - Payments
 - Inventory Management
+- Reports
 
 ---
 
@@ -240,9 +241,9 @@ Pending Orders automatically expire.
 
 # Payment Flow
 
-Payment is completely delegated to the Shared Payment application.
+Payment is handled by the Store application through manual verification.
 
-## Workflow
+## Workflow (Non-Cash Payment)
 
 ```text
 Shopping Cart
@@ -254,22 +255,47 @@ Checkout
 Pending Order
         │
         ▼
-Initialize Payment
-        │
-        ▼
-Shared Payment
-        │
-        ▼
-Chapa / Stripe
-        │
-        ▼
-Verification Callback
-        │
-        ▼
-Shared Payment Verification
+Customer Submits Payment Evidence
         │
         ▼
 Store Payment Service
+        │
+        ▼
+Staff Verifies Payment
+        │
+        ├─────────────┐
+        ▼             ▼
+    Verified       Rejected
+        │             │
+        ▼             ▼
+  Confirm Order    Cancel Pending
+        │
+        ▼
+  Reduce Inventory
+        │
+        ▼
+  Generate Order Number
+        │
+        ▼
+  Confirmation Email
+```
+
+## Workflow (Cash Payment)
+
+```text
+Shopping Cart
+        │
+        ▼
+Checkout
+        │
+        ▼
+Pending Order
+        │
+        ▼
+Staff Records Cash Payment
+        │
+        ▼
+Auto-Verified
         │
         ▼
 Confirm Order
@@ -279,14 +305,14 @@ Reduce Inventory
         │
         ▼
 Generate Order Number
-        │
-        ▼
-Confirmation Email
 ```
 
-The Store never communicates directly with payment providers.
+The Store accepts the following payment methods:
 
-The Store only reacts to successful payment verification.
+- Cash (auto-verified at branch)
+- Bank Transfer (manual verification)
+- Mobile Money (manual verification)
+- Cheque (manual verification)
 
 ---
 
@@ -354,7 +380,6 @@ COMPLETED
 
 ### Additional Statuses
 
-- PAYMENT_FAILED
 - CANCELLED
 - REFUNDED
 
@@ -471,22 +496,24 @@ When exceptional situations occur, authorized staff may manually perform:
 
 These actions follow the organization's internal business procedures.
 
-Payment processing remains the responsibility of the Shared Payment application.
+Payment processing remains the responsibility of the Store Payment Service.
 
 ---
 
 # Email Notifications
 
-The Store delegates all notifications to the Shared Notification application.
+The Store sends notifications through its own Notification Service, which uses the Shared Email service.
 
 Notifications include:
 
-- Payment Successful
-- Order Ready for Pickup
+- Payment Confirmed
+- Order Confirmed
+- Ready for Pickup
 - Order Completed
+- Cancellation Notice
 - Refund Processed
 
-The Store never constructs or sends emails directly.
+The Store Notification Service constructs email content for store-specific events.
 
 ---
 
@@ -504,7 +531,37 @@ Examples:
 - Refund processing
 - Administrative actions
 
-The Store does not implement its own audit mechanism.
+---
+
+# Reports
+
+The Store provides built-in reporting capabilities.
+
+## Product Reports
+
+- Product statistics (total, active, archived, by category)
+- Price statistics (min, max, average)
+
+## Inventory Reports
+
+- Full inventory snapshot (optionally filtered by branch)
+- Low-stock report (items below minimum quantity or out of stock)
+
+## Sales Reports
+
+- Sales aggregated by day, week, or month
+- Filterable by date range and branch
+- Revenue, order count, and average order value
+
+## Order Reports
+
+- Order trends over time
+- Filterable by status, branch, and date range
+
+## Branch Sales Reports
+
+- Per-branch sales breakdown
+- Revenue and order count per branch
 
 ---
 
@@ -570,25 +627,29 @@ Provides authenticated users and staff.
 
 ---
 
-## Shared Payment
+## Store Payment Service
 
 Responsible for:
 
-- Payment Initialization
+- Payment Evidence Submission
 - Payment Verification
-- Payment Providers
-- Transaction Management
+- Cash Payment Recording
+- Manual Payment Rejection
+- Payment Status Management (PENDING_VERIFICATION, VERIFIED, REJECTED, CANCELLED)
 
 ---
 
-## Shared Notification
+## Store Notification Service
 
 Responsible for:
 
 - Order Confirmation Emails
-- Pickup Notifications
+- Ready for Pickup Notifications
 - Completion Notifications
+- Cancellation Notices
 - Refund Notifications
+
+Uses the Shared Email service to send notifications.
 
 ---
 
@@ -632,19 +693,17 @@ Checkout
 Pending Order
         │
         ▼
-Initialize Payment
+Submit Payment Evidence
         │
         ▼
-Shared Payment
+Staff Verifies Payment
         │
-        ▼
-Customer Pays
-        │
-        ▼
-Payment Verification
-        │
-        ▼
-Order Confirmed
+        ├─────────────┐
+        ▼             ▼
+    Verified       Rejected
+        │             │
+        ▼             ▼
+Order Confirmed   Pending Order Cancelled
         │
         ▼
 Reduce Branch Inventory
@@ -685,16 +744,20 @@ Completed
 - Pending Orders expire after **30 minutes** if payment is not successfully verified.
 - One Order belongs to exactly one Branch.
 - Orders are confirmed only after successful payment verification.
-- Payments are processed exclusively through the Shared Payment application.
+- Payments are processed through the Store Payment Service.
+- Cash payments are auto-verified at the branch.
+- Non-cash payments (bank transfer, mobile money, cheque) require manual verification by staff.
+- Rejected payments cancel the Pending Order.
 - Inventory is reduced only after successful payment verification.
 - Inventory is never reserved before payment.
 - Guest customer information is stored with the Order.
 - Customers cannot cancel paid Orders.
 - Refunds and administrative cancellations are performed only by authorized staff.
 - Every confirmed Order receives a human-readable Order Number.
-- Email notifications are delegated to the Shared Notification application.
+- Email notifications are sent by the Store Notification Service via Shared Email.
 - Significant Store actions are recorded through the Shared Audit application.
 - Branch Managers operate only within their assigned Branches.
+- Reports provide product, inventory, sales, and order analytics.
 
 ---
 

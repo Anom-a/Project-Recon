@@ -1,4 +1,3 @@
-import logging
 from datetime import timedelta
 
 from django.db import transaction
@@ -9,8 +8,6 @@ from apps.accounts.models import Branch
 from apps.store.models import Product
 from apps.store.models.pending_order import PendingOrder, PendingOrderItem
 from apps.store.services.branch_inventory_service import validate_stock
-
-logger = logging.getLogger(__name__)
 
 
 def checkout(cart, branch_input, actor=None, guest_info: dict = None, payment_data: dict = None) -> PendingOrder:
