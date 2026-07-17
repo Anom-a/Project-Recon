@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User, Mail, Phone, BookOpen, ShieldCheck, Lock, MapPin, CheckCircle2, ChevronRight, ChevronLeft, Laptop, Cpu, Clock, Eye, EyeOff, Loader2, Building2, Hash, FileUp, Users, RotateCcw, User as UserIcon, Smartphone, FileText, Wallet, GraduationCap, Check, Info, ArrowRight } from 'lucide-react';
 import { registerApi } from '../api/registerApi';
 import { fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, fetchBankAccountsApi } from '../../../learning/academics/api/academicApi';
-import type { Program, SubProgram, AcademicClass } from '@/shared/types';
+import type { Program, SubProgram, AcademicClass, Enrollment } from '@/shared/types';
 
 type PaymentMethodType = 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'CASH';
 
@@ -46,6 +46,7 @@ export default function StudentRegistration() {
   const [submitError, setSubmitError] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [enrollmentNumber, setEnrollmentNumber] = useState('');
+  const [enrollmentData, setEnrollmentData] = useState<Enrollment | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [subPrograms, setSubPrograms] = useState<SubProgram[]>([]);
   const [programsLoading, setProgramsLoading] = useState(true);
@@ -126,12 +127,9 @@ export default function StudentRegistration() {
         transaction_reference: paymentDetails.transaction_reference || undefined,
         transfer_reference: paymentDetails.transfer_reference || undefined,
       });
-      setEnrollmentNumber(
-        (result.enrollment as { enrollment_number?: string; pending_code?: string })?.enrollment_number
-        || (result.enrollment as { pending_code?: string })?.pending_code
-        || result.enrollment?.id?.slice(0, 8)
-        || ''
-      );
+      const enrollment = result.enrollment as Enrollment;
+      setEnrollmentData(enrollment);
+      setEnrollmentNumber(enrollment.enrollment_number || enrollment.pending_code || enrollment.id?.slice(0, 8) || '');
       setIsSubmitting(false);
       setIsSuccess(true);
     } catch (err) {
@@ -154,27 +152,74 @@ export default function StudentRegistration() {
           initial={{ scale: 0.92, opacity: 0, y: 24 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="bg-white/95 backdrop-blur-xl p-10 md:p-12 rounded-3xl shadow-[0_30px_80px_-12px_rgba(0,0,0,0.15)] text-center max-w-md border border-white/20 relative"
+          className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_30px_80px_-12px_rgba(0,0,0,0.15)] max-w-lg w-full border border-white/20 relative overflow-hidden"
         >
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-brand-blue via-brand-red to-brand-blue rounded-t-3xl" />
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-brand-blue via-brand-red to-brand-blue" />
+
+          <div className="p-8 md:p-10 text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            </div>
+            <h2 className="font-black text-2xl text-slate-900 tracking-tight mb-1">Registration Complete!</h2>
+            <p className="text-slate-500 text-sm font-medium">Your enrollment has been submitted successfully.</p>
           </div>
-          <h2 className="font-black text-2xl text-slate-900 tracking-tight mb-2">Registration Complete!</h2>
-          <div className="bg-slate-100 rounded-xl px-5 py-3.5 mb-5 inline-block mx-auto">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">Reference</span>
-            <span className="font-black text-lg text-brand-red tracking-widest">{enrollmentNumber || "Submitted"}</span>
+
+          {/* Enrollment Details */}
+          {enrollmentData && (
+            <div className="px-8 md:px-10 pb-2">
+              <div className="bg-slate-50 rounded-xl border border-slate-100 divide-y divide-slate-100">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-xs font-medium text-slate-500">Program</span>
+                  <span className="text-sm font-bold text-slate-900 text-right">{enrollmentData.program_name || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-xs font-medium text-slate-500">Course</span>
+                  <span className="text-sm font-bold text-slate-900 text-right">{enrollmentData.sub_program_name || enrollmentData.class_name || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-xs font-medium text-slate-500">Class Type</span>
+                  <span className="text-sm font-bold text-slate-900 text-right capitalize">{enrollmentData.class_type?.toLowerCase() || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-xs font-medium text-slate-500">Branch</span>
+                  <span className="text-sm font-bold text-slate-900 text-right">{enrollmentData.branch_name || '—'}</span>
+                </div>
+                {enrollmentData.payment_method && (
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-xs font-medium text-slate-500">Payment</span>
+                    <span className="text-sm font-bold text-slate-900 text-right capitalize">{enrollmentData.payment_method.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-xs font-medium text-slate-500">Status</span>
+                  <span className={`text-sm font-bold text-right ${enrollmentData.status === 'PENDING_VERIFICATION' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {enrollmentData.status === 'PENDING_VERIFICATION' ? 'Pending Verification' : enrollmentData.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="px-8 md:px-10 pb-2">
+            <div className="bg-brand-red/[0.04] border border-brand-red/15 rounded-xl px-4 py-3.5 flex items-center justify-between">
+              <span className="text-[10px] font-black text-brand-red uppercase tracking-wider">Reference</span>
+              <span className="font-black text-base text-brand-red tracking-widest">{enrollmentNumber || "Submitted"}</span>
+            </div>
           </div>
-          <p className="text-slate-600 font-medium mb-8 text-sm leading-relaxed">
-            Thank you for registering <strong className="text-slate-900">{formData.name}</strong>. Your enrollment was submitted for payment verification. Sign in with <strong className="text-brand-red">{formData.studentEmail}</strong> after verifying your email to open the Student Dashboard.
-          </p>
-          <div className="flex gap-3">
+
+          <div className="px-8 md:px-10 pb-6">
+            <p className="text-slate-600 text-xs leading-relaxed text-center">
+              Thank you <strong className="text-slate-900">{formData.name}</strong>. Your enrollment is pending payment verification. Sign in with <strong className="text-brand-red">{formData.studentEmail}</strong> after email verification to open the <strong className="text-slate-900">Student Dashboard</strong>.
+            </p>
+          </div>
+
+          <div className="px-8 md:px-10 pb-8 flex gap-3">
             <button onClick={() => { setIsSuccess(false); setStep(1); setFormData({ name: '', studentEmail: '', password: '', age: '', grade: '', school: '', parentName: '', parentPhone: '', parentEmail: '' }); setSelectedClassId(''); }}
-              className="flex-1 bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-8 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm shadow-lg shadow-brand-red/30 hover:shadow-xl hover:shadow-brand-red/45 transition-all active:scale-[0.97]">
+              className="flex-1 bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-6 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm shadow-lg shadow-brand-red/30 hover:shadow-xl hover:shadow-brand-red/45 transition-all active:scale-[0.97]">
               New Registration
             </button>
             <button onClick={() => window.location.reload()}
-              className="flex-1 bg-slate-100 text-slate-700 px-8 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm hover:bg-slate-200 transition-all active:scale-[0.97]">
+              className="flex-1 bg-slate-100 text-slate-700 px-6 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm hover:bg-slate-200 transition-all active:scale-[0.97]">
               Back to Home
             </button>
           </div>
