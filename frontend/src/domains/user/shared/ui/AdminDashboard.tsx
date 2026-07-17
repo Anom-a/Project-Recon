@@ -25,8 +25,9 @@ import AnnouncementsManager from '@/domains/user/manager/dashboard/ui/Announceme
 import CommunicationsCenter from '@/domains/user/manager/dashboard/ui/CommunicationsCenter';
 import type { UserProfile } from '@/shared/types';
 import {
-  fetchEnrollmentsApi, fetchPaymentsApi, fetchProgramsApi, fetchClassesApi,
+  fetchEnrollmentsPaginatedApi, fetchPaymentsApi, fetchProgramsApi, fetchClassesApi,
 } from '@/domains/learning/academics/api/academicApi';
+import { fetchAllPages } from '@/shared/api/pagination';
 import {
   fetchAllUsersApi, branchesApi, resolveRole,
 } from '../api/adminApi';
@@ -147,7 +148,7 @@ export default function AdminDashboard({ currentUser, onLogout }: Props) {
       branchesApi.list(),
       fetchProgramsApi(),
       fetchClassesApi(),
-      fetchEnrollmentsApi(),
+      fetchAllPages((p) => fetchEnrollmentsPaginatedApi(p)),
       fetchPaymentsApi(),
     ]).then(([usersRes, branchesRes, programsRes, classesRes, enrollmentsRes, paymentsRes]) => {
       const summary = summarizeSettled([usersRes, branchesRes, programsRes, classesRes, enrollmentsRes, paymentsRes]);

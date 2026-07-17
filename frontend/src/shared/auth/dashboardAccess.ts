@@ -9,11 +9,13 @@ import {
   canManageContactRequests,
   canManageCms,
   canManageEvents,
+  canManageEventRegistrations,
   canManagePayments,
   canManageStaffAttendance,
   canManageStore,
   canManageStoreInventory,
   canManageLearningContent,
+  canManageEnrollmentPeriods,
   canViewAnnouncements,
   canViewAuditLogs,
   isSuperAdmin,
@@ -75,6 +77,8 @@ const MANAGER_SECTION_ACCESS: Record<ManagerSectionId, (u: UserProfile) => boole
   reports: isSuperAdminOrBranchManager,
   analytics: isSuperAdminOrBranchManager,
   walkin: isSuperAdminOrBranchManager,
+  periods: canManageEnrollmentPeriods,
+  students: canManageAcademicCatalog,
   account: () => true,
 };
 
@@ -86,16 +90,19 @@ const SECRETARY_SECTION_ACCESS: Record<SecretarySectionId, (u: UserProfile) => b
   certificates: () => true,
   templates: () => true,
   reports: () => true,
-  periods: () => true,
+  periods: canManageEnrollmentPeriods,
   announcements: () => true,
   students: () => true,
-  'event-registrations': () => true,
+  'event-registrations': canManageEventRegistrations,
+  transfers: () => true,
   account: () => true,
 };
 
 const TEACHER_SECTION_ACCESS: Record<TeacherSectionId, (u: UserProfile) => boolean> = {
+  overview: () => true,
   class: () => true,
   workshops: () => true,
+  calendar: () => true,
   attendance: () => true,
   progress: () => true,
   milestones: () => true,
@@ -105,6 +112,7 @@ const TEACHER_SECTION_ACCESS: Record<TeacherSectionId, (u: UserProfile) => boole
   reports: () => true,
   announcements: () => true,
   account: () => true,
+  profile: () => true,
 };
 
 export function canAccessAdminSection(user: UserProfile, section: AdminSectionId): boolean {

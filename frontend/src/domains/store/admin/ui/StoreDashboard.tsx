@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard, LayoutGrid, Package, Archive, ShoppingCart, Banknote,
-  X, CheckCircle, AlertCircle, Lock, DollarSign, AlertTriangle, RefreshCw,
+  X, CheckCircle, AlertCircle, Lock, AlertTriangle, RefreshCw,
   TrendingUp, Clock, BarChart3, Filter,
 } from 'lucide-react';
 import CategoryManager from './CategoryManager';

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { GraduationCap, Users, User, MapPin, Wallet } from 'lucide-react';
 
@@ -55,22 +56,35 @@ export function EnrollmentSummaryPanel({
   isSubmitting,
   onSubmit,
 }: EnrollmentSummaryPanelProps) {
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const classTypeLabel = classType === 'GROUP' ? 'Group' : classType === 'INDIVIDUAL' ? 'Individual' : '';
   const branchLabel = branchName ? (branchCity ? `${branchName} · ${branchCity}` : branchName) : '';
 
   const submitButton = (
-    <button
-      type="button"
-      onClick={onSubmit}
-      disabled={!canSubmit || isSubmitting}
-      className="w-full min-h-[48px] bg-brand-blue disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white px-4 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm flex items-center justify-center gap-2 hover:bg-brand-blue-dark transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-offset-2"
-    >
-      {isSubmitting ? (
-        <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden />
-      ) : (
-        'Submit Enrollment'
-      )}
-    </button>
+    <div className="space-y-3">
+      <label className="flex items-start gap-2 cursor-pointer">
+        <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-blue focus:ring-brand-blue/30" />
+        <span className="text-xs text-slate-600 leading-relaxed">
+          I have read and agree to the{' '}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-brand-blue underline hover:no-underline">Terms of Service</a>
+          {' '}and{' '}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-brand-blue underline hover:no-underline">Privacy Policy</a>.
+        </span>
+      </label>
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={!canSubmit || !termsAccepted || isSubmitting}
+        className="w-full min-h-[48px] bg-brand-blue disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white px-4 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm flex items-center justify-center gap-2 hover:bg-brand-blue-dark transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-offset-2"
+      >
+        {isSubmitting ? (
+          <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden />
+        ) : (
+          'Submit Enrollment'
+        )}
+      </button>
+    </div>
   );
 
   return (

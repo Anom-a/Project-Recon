@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, BookOpen, Globe, Trophy, ArrowUpRight,
   Globe2, Send, Loader, CheckCircle2,
-  ChevronRight, Sparkles
+   ChevronRight,
 } from 'lucide-react';
 import Hero from '../domains/learning/programs/ui/Hero';
 import DemoSlider from '../domains/learning/programs/ui/DemoSlider';

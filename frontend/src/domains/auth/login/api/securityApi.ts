@@ -7,6 +7,11 @@ export const securityApi = {
   changePassword: (data: { old_password: string; new_password: string }) => http.put('/accounts/password/change/', data),
 
   /**
+   * Logout all sessions
+   */
+  logoutAllSessions: () => http.post('/accounts/logout/all/', {}),
+
+  /**
    * Email Verification flow
    */
   requestEmailVerification: () => http.post('/accounts/email-verification/request/', {}),

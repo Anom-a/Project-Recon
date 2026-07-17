@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, CreditCard, Loader2, Store, Calendar, CheckCircle, XCircle, Shield, Search, ExternalLink } from 'lucide-react';
-import { fetchPaymentsApi, fetchEnrollmentsApi } from '@/domains/learning/academics/api/academicApi';
+import { fetchPaymentsApi, fetchEnrollmentsPaginatedApi } from '@/domains/learning/academics/api/academicApi';
+import { fetchAllPages } from '@/shared/api/pagination';
 import PendingPaymentManager from '@/domains/store/admin/ui/PendingPaymentManager';
 import { canManageStore } from '@/shared/auth/permissions';
 import { getUserProfile } from '@/shared/utils/storage';
@@ -27,7 +28,7 @@ export default function PaymentTracker() {
   useEffect(() => {
     Promise.all([
       fetchPaymentsApi().catch(() => []),
-      fetchEnrollmentsApi().catch(() => []),
+      fetchAllPages((p) => fetchEnrollmentsPaginatedApi(p)).catch(() => []),
     ]).then(([pay, enr]) => {
       setPayments(Array.isArray(pay) ? pay : []);
       setEnrollments(Array.isArray(enr) ? enr : []);

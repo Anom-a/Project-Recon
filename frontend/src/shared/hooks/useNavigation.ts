@@ -21,6 +21,9 @@ function tabFromPath(path: string): ActiveTab {
   if (path.startsWith('/reset-password')) return 'reset-password';
   if (path.startsWith('/registration')) return 'registration';
   if (path.startsWith('/cert-verify')) return 'cert-verify';
+  if (path.startsWith('/privacy')) return 'privacy';
+  if (path.startsWith('/terms')) return 'terms';
+  if (path.startsWith('/help')) return 'help';
   return 'home';
 }
 
