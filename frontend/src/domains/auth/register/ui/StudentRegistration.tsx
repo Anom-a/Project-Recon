@@ -52,6 +52,13 @@ export default function StudentRegistration() {
   const [programsLoading, setProgramsLoading] = useState(true);
   const [programsError, setProgramsError] = useState('');
   const [enrollmentType, setEnrollmentType] = useState<'GROUP' | 'INDIVIDUAL'>('GROUP');
+  const [selectedSubProgramId, setSelectedSubProgramId] = useState('');
+
+  const handleSubProgramSelect = (subId: string) => {
+    setSelectedSubProgramId(subId);
+    const match = classes.find(c => c.sub_program === subId && c.class_type === enrollmentType && c.is_active);
+    setSelectedClassId(match ? match.id : '');
+  };
 
   const loadPrograms = () => {
     setProgramsLoading(true);
@@ -82,7 +89,9 @@ export default function StudentRegistration() {
   }, []);
 
   const selectedClass = classes.find(c => c.id === selectedClassId);
-  const selectedSub = selectedClass
+  const selectedSub = selectedSubProgramId
+    ? subPrograms.find(s => s.id === selectedSubProgramId)
+    : selectedClass
     ? subPrograms.find(s => s.id === selectedClass.sub_program)
     : undefined;
   const classFee = selectedSub
@@ -98,7 +107,7 @@ export default function StudentRegistration() {
   const handleSubmit = async () => {
     setSubmitError('');
     if (!selectedClassId) {
-      setSubmitError('Please select a class to enroll in.');
+      setSubmitError(selectedSubProgramId ? 'No class slot currently available for this course. Please contact the admin.' : 'Please select a course to enroll in.');
       return;
     }
     if (!formData.studentEmail.trim() || !formData.password.trim()) {
@@ -478,7 +487,7 @@ export default function StudentRegistration() {
                   <div className="flex bg-white/90 backdrop-blur-sm border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
                     <button
                       type="button"
-                      onClick={() => { setEnrollmentType('GROUP'); setSelectedClassId(''); }}
+                      onClick={() => { setEnrollmentType('GROUP'); if (selectedSubProgramId) handleSubProgramSelect(selectedSubProgramId); }}
                       className={`flex items-center gap-2.5 px-6 py-2.5 rounded-lg text-sm font-black uppercase tracking-wider transition-all duration-200 ${
                         enrollmentType === 'GROUP'
                           ? 'bg-brand-red text-white shadow-md shadow-brand-red/30'
@@ -489,7 +498,7 @@ export default function StudentRegistration() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setEnrollmentType('INDIVIDUAL'); setSelectedClassId(''); }}
+                      onClick={() => { setEnrollmentType('INDIVIDUAL'); if (selectedSubProgramId) handleSubProgramSelect(selectedSubProgramId); }}
                       className={`flex items-center gap-2.5 px-6 py-2.5 rounded-lg text-sm font-black uppercase tracking-wider transition-all duration-200 ${
                         enrollmentType === 'INDIVIDUAL'
                           ? 'bg-brand-red text-white shadow-md shadow-brand-red/30'
@@ -522,71 +531,82 @@ export default function StudentRegistration() {
                         Retry
                       </button>
                     </div>
-                  ) : filteredClasses.length === 0 ? (
+                  ) : subPrograms.length === 0 ? (
                     <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/40 p-12 text-center">
                       <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4">
                         <BookOpen className="w-8 h-8 text-slate-400" />
                       </div>
-                      <p className="text-lg font-bold text-slate-600">No {enrollmentType === 'GROUP' ? 'group' : 'individual'} classes available</p>
-                      <p className="text-sm text-slate-500 mt-1 max-w-xs mx-auto">Open classes will appear here once they are published. Check back later or contact the admin.</p>
+                      <p className="text-lg font-bold text-slate-600">No programs available</p>
+                      <p className="text-sm text-slate-500 mt-1 max-w-xs mx-auto">Courses will appear here once they are published.</p>
                     </div>
                   ) : (
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/40 overflow-hidden shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)]"
-                    >
-                      <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
-                        <BookOpen className="w-5 h-5 text-brand-red" />
-                        <h3 className="font-black text-base text-slate-900 tracking-tight">Available Classes</h3>
-                        <span className="ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{filteredClasses.length} classes</span>
-                      </div>
-                      <div className="p-5 flex flex-col gap-3">
-                        {filteredClasses.map((cls, ci) => {
-                          const sub = subPrograms.find(s => s.id === cls.sub_program);
-                          const fee = Number(enrollmentType === 'GROUP' ? sub?.group_fee : (sub?.individual_fee ?? 0));
-                          const selected = selectedClassId === cls.id;
-                          const programName = cls.sub_program_name || sub?.name || 'Program';
-                          const initials = programName.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-                          const colors = ['from-brand-red to-brand-red-dark', 'from-brand-blue to-blue-700', 'from-emerald-500 to-emerald-700', 'from-amber-500 to-orange-600', 'from-violet-500 to-violet-700', 'from-cyan-500 to-cyan-700'];
-                          const colorIdx = [...(programName)].reduce((acc, c) => acc + c.charCodeAt(0), 0) % colors.length;
-                          return (
-                            <motion.button
-                              key={cls.id}
-                              type="button"
-                              onClick={() => setSelectedClassId(cls.id)}
-                              whileHover={{ scale: 1.005 }}
-                              whileTap={{ scale: 0.995 }}
-                              className={`text-left rounded-xl p-4 border-2 transition-all ${
-                                selected
-                                  ? 'border-brand-red bg-brand-red/[0.04] shadow-lg shadow-brand-red/5'
-                                  : 'border-slate-100 hover:border-slate-200 bg-white shadow-sm hover:shadow-md'
-                              }`}
-                            >
-                              <div className="flex gap-4 items-center">
-                                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colors[colorIdx]} flex items-center justify-center text-white font-black text-sm shrink-0 shadow-sm`}>
-                                  {initials}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-slate-900 text-sm leading-tight truncate">{cls.name}</h4>
-                                  <p className="text-xs text-slate-500 mt-0.5 truncate flex items-center gap-1.5">
-                                    <GraduationCap className="w-3 h-3 shrink-0" />
-                                    <span>{programName}</span>
-                                    {cls.branch_name && <><span className="text-slate-300">·</span><span>{cls.branch_name}</span></>}
-                                  </p>
-                                </div>
-                                <div className="text-right shrink-0 ml-2">
-                                  <p className={`font-black text-sm ${selected ? 'text-brand-red' : 'text-slate-800'}`}>
-                                    {fee > 0 ? `${fee.toLocaleString()} Birr` : 'Free'}
-                                  </p>
-                                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">{enrollmentType === 'GROUP' ? 'Group' : 'Individual'}</p>
-                                </div>
+                    <div className="space-y-6">
+                      {programs.filter(p => subPrograms.some(sp => sp.program === p.id)).map(program => {
+                        const subs = subPrograms.filter(sp => sp.program === program.id);
+                        return (
+                          <motion.div
+                            key={program.id}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/40 overflow-hidden shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)]"
+                          >
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-brand-red/10 flex items-center justify-center">
+                                <GraduationCap className="w-4 h-4 text-brand-red" />
                               </div>
-                            </motion.button>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
+                              <h3 className="font-black text-base text-slate-900 tracking-tight">{program.name}</h3>
+                              <span className="ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{subs.length} courses</span>
+                            </div>
+                            <div className="p-5 flex flex-col gap-3">
+                              {subs.map(sub => {
+                                const fee = Number(enrollmentType === 'GROUP' ? sub.group_fee : (sub.individual_fee ?? 0));
+                                const selected = selectedSubProgramId === sub.id;
+                                const initials = sub.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                                const colors = ['from-brand-red to-brand-red-dark', 'from-brand-blue to-blue-700', 'from-emerald-500 to-emerald-700', 'from-amber-500 to-orange-600', 'from-violet-500 to-violet-700', 'from-cyan-500 to-cyan-700'];
+                                const colorIdx = [...(sub.name)].reduce((acc, c) => acc + c.charCodeAt(0), 0) % colors.length;
+                                const hasClass = classes.some(c => c.sub_program === sub.id && c.class_type === enrollmentType && c.is_active);
+                                return (
+                                  <motion.button
+                                    key={sub.id}
+                                    type="button"
+                                    onClick={() => handleSubProgramSelect(sub.id)}
+                                    whileHover={{ scale: 1.005 }}
+                                    whileTap={{ scale: 0.995 }}
+                                    className={`text-left rounded-xl p-4 border-2 transition-all ${
+                                      selected
+                                        ? 'border-brand-red bg-brand-red/[0.04] shadow-lg shadow-brand-red/5'
+                                        : 'border-slate-100 hover:border-slate-200 bg-white shadow-sm hover:shadow-md'
+                                    }`}
+                                  >
+                                    <div className="flex gap-4 items-center">
+                                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colors[colorIdx]} flex items-center justify-center text-white font-black text-sm shrink-0 shadow-sm`}>
+                                        {initials}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="font-bold text-slate-900 text-sm leading-tight truncate">{sub.name}</h4>
+                                        <p className="text-xs text-slate-500 mt-0.5 truncate flex items-center gap-1.5">
+                                          <GraduationCap className="w-3 h-3 shrink-0" />
+                                          <span>{program.name}</span>
+                                          {sub.duration && <><span className="text-slate-300">·</span><span>{sub.duration} {sub.duration_unit?.toLowerCase() || 'hrs'}</span></>}
+                                        </p>
+                                      </div>
+                                      <div className="text-right shrink-0 ml-2">
+                                        <p className={`font-black text-sm ${selected ? 'text-brand-red' : 'text-slate-800'}`}>
+                                          {fee > 0 ? `${fee.toLocaleString()} Birr` : 'Free'}
+                                        </p>
+                                        {!hasClass && selected && (
+                                          <p className="text-[9px] text-amber-600 font-bold mt-0.5">No class slot</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
                   )}
                 </motion.div>
               )}
@@ -617,38 +637,42 @@ export default function StudentRegistration() {
 
                 {/* Summary Body */}
                 <div className="p-6">
-                  {!selectedClass ? (
+                  {!selectedSubProgramId ? (
                     <div className="flex flex-col items-center justify-center text-center text-slate-500 py-8">
                       <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
                         <GraduationCap className="w-8 h-8 text-slate-400" />
                       </div>
-                      <p className="text-sm font-bold text-slate-600 mb-1">No class selected</p>
-                      <p className="text-xs text-slate-400 max-w-[180px]">Choose a program from the left to see the summary.</p>
+                      <p className="text-sm font-bold text-slate-600 mb-1">Select a course</p>
+                      <p className="text-xs text-slate-400 max-w-[200px]">Choose a program from the left to see the summary.</p>
                     </div>
-                  ) : (
+                  ) : selectedSub ? (
                     <>
-                      {/* Selected Class */}
                       <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                         <div className="flex justify-between items-start">
                           <div className="flex-1 min-w-0">
-                            <span className="font-bold text-slate-900 text-sm leading-tight block mb-1 truncate">{selectedClass.name}</span>
+                            <span className="font-bold text-slate-900 text-sm leading-tight block mb-1 truncate">{selectedSub.name}</span>
                             <span className="inline-flex text-[10px] font-black tracking-wider text-brand-red uppercase bg-brand-red/10 px-2 py-0.5 rounded-md">
-                              {selectedClass.class_type === 'GROUP' ? 'Group Class' : '1-on-1 Tutoring'}
+                              {enrollmentType === 'GROUP' ? 'Group Class' : '1-on-1 Tutoring'}
                             </span>
-                            {selectedSub?.name && (
+                            {selectedSub.program_name && (
                               <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
                                 <GraduationCap className="w-3 h-3 shrink-0" />
-                                {selectedSub.name}
+                                {selectedSub.program_name}
+                              </p>
+                            )}
+                            {!selectedClass && (
+                              <p className="text-[10px] text-amber-600 font-bold mt-2 flex items-center gap-1">
+                                <Info className="w-3 h-3 shrink-0" />
+                                No class slot available — admin will assign
                               </p>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Fee Breakdown */}
                       <div className="mt-5 space-y-2.5">
                         <div className="flex justify-between items-center text-sm py-2">
-                          <span className="text-slate-600 font-medium">Class Fee</span>
+                          <span className="text-slate-600 font-medium">Course Fee</span>
                           <span className="font-bold text-slate-900">{classFee.toLocaleString()} Birr</span>
                         </div>
                         <div className="border-t border-slate-100" />
@@ -666,7 +690,7 @@ export default function StudentRegistration() {
                         </p>
                       </div>
                     </>
-                  )}
+                  ) : null}
                 </div>
               </motion.div>
 
