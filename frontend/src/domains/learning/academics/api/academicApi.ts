@@ -42,7 +42,8 @@ export type AcademicSubProgramPayload = {
   image?: string | File | null;
   duration?: number | null;
   duration_unit?: string | null;
-  fee: string;
+  group_fee: string;
+  individual_fee?: string;
 };
 
 export type OnlineEnrollmentPayload = {
