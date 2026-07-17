@@ -39,6 +39,7 @@ import StaffAttendanceManager from '@/domains/user/shared/ui/StaffAttendanceMana
 import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
 import TransferRequestsPanel from '@/domains/user/shared/ui/TransferRequestsPanel';
 import EnrollmentsPanel from '@/domains/user/secretary/dashboard/ui/EnrollmentsPanel';
+import StudentDetailPanel from '@/domains/user/secretary/dashboard/ui/StudentDetailPanel';
 import TournamentManager from '@/domains/competition/admin/TournamentManager';
 import WorkshopManager from '@/domains/competition/admin/WorkshopManager';
 import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
@@ -48,7 +49,8 @@ import CertificateManager from '@/domains/user/shared/ui/CertificateManager';
 import StoreDashboard from '@/domains/store/admin/ui/StoreDashboard';
 import LearningMaterialsPanel from '@/domains/user/secretary/dashboard/ui/LearningMaterialsPanel';
 import LearningMilestonesManager from '@/domains/user/secretary/dashboard/ui/LearningMilestonesManager';
-import { fetchEnrollmentsApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/domains/learning/academics/api/academicApi';
+import { fetchEnrollmentsPaginatedApi, fetchPaymentsApi, fetchStudentsApi, fetchProgramsApi, fetchSubProgramsApi, fetchClassesApi, downloadStudentReportPdf, downloadEnrollmentReportPdf, downloadAttendanceReportPdf, downloadProgressReportPdf, downloadCertificateReportPdf, downloadClassReportPdf, downloadSubProgramReportPdf, downloadProgramReportPdf } from '@/domains/learning/academics/api/academicApi';
+import { fetchAllPages } from '@/shared/api/pagination';
 
 interface Props {
   currentUser: UserProfile;
@@ -62,6 +64,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'academic-catalog', label: 'Academic Catalog', icon: BookOpen, group: 'academic' },
   { id: 'classes', label: 'Classes', icon: BookOpen, group: 'academic' },
   { id: 'enrollments', label: 'Academic Enrollments', icon: UserPlus, group: 'academic' },
+  { id: 'students', label: 'Students', icon: Users, group: 'academic' },
   { id: 'periods', label: 'Enrollment Periods', icon: Calendar, group: 'academic' },
   { id: 'transfers', label: 'Branch Transfers', icon: ArrowRightLeft, group: 'academic' },
   { id: 'staff-attendance', label: 'Staff Attendance', icon: Calendar, group: 'academic' },
@@ -102,7 +105,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
     setLoadError(null);
     Promise.allSettled([
       fetchStudentsApi(),
-      fetchEnrollmentsApi(),
+      fetchAllPages((p) => fetchEnrollmentsPaginatedApi(p)),
       fetchPaymentsApi(),
       fetchProgramsApi(),
     ]).then(([stu, enr, pay, pro]) => {
@@ -177,6 +180,7 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'schools': return <SchoolManagement currentUser={currentUser} />;
       case 'enrollments': return <EnrollmentsPanel />;
       case 'periods': return <EnrollmentPeriodsPanel currentUser={currentUser} />;
+      case 'students': return <StudentDetailPanel />;
       case 'transfers': return <TransferRequestsPanel />;
       case 'event-registrations': return <RegistrationManager />;
       case 'store': return <StoreDashboard currentUser={currentUser} />;
@@ -418,7 +422,7 @@ function ReportsSection() {
       fetchClassesApi().catch(() => []),
       fetchProgramsApi().catch(() => []),
       fetchSubProgramsApi().catch(() => []),
-      fetchEnrollmentsApi().catch(() => []),
+      fetchAllPages((p) => fetchEnrollmentsPaginatedApi(p)).catch(() => []),
     ]).then(([stu, cls, pro, sp, enr]) => {
       setStudents(Array.isArray(stu) ? stu : []);
       setClasses(Array.isArray(cls) ? cls : []);

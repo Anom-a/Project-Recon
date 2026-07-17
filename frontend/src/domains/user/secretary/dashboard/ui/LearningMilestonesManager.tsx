@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Search, X, Loader2, AlertCircle, Target, BookOpen, Archive, Filter, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { LearningMilestone, UserProfile } from '@/shared/types';
 import { fetchMilestonesApi, createMilestoneApi, updateMilestoneApi, archiveMilestoneApi, fetchSubProgramsApi, fetchClassesApi } from '@/domains/learning/academics/api/academicApi';
+import { isInstructor } from '@/shared/auth/permissions';
 
 const defaultForm = {
   sub_program: '', title: '', description: '', scope_class: '',
@@ -22,11 +23,11 @@ export default function LearningMilestonesManager({ currentUser }: { currentUser
 
   const load = () => {
     setLoading(true);
-    const isSecretary = currentUser?.role === 'Secretary';
+    const skipStaffCalls = currentUser?.role === 'Secretary' || isInstructor(currentUser);
     Promise.allSettled([
-      isSecretary ? Promise.resolve([]) : fetchMilestonesApi(),
+      skipStaffCalls ? Promise.resolve([]) : fetchMilestonesApi(),
       fetchSubProgramsApi(),
-      isSecretary ? Promise.resolve([]) : fetchClassesApi(),
+      skipStaffCalls ? Promise.resolve([]) : fetchClassesApi(),
     ]).then(([m, sp, c]) => {
       setMilestones(m.status === 'fulfilled' && Array.isArray(m.value) ? m.value : []);
       setSubPrograms(sp.status === 'fulfilled' && Array.isArray(sp.value) ? sp.value : []);
@@ -191,11 +192,11 @@ export default function LearningMilestonesManager({ currentUser }: { currentUser
                       <option value="">Select sub-program...</option>
                       {subPrograms.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
                     </select></div>
-                  <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Scope Class (optional)</label>
+                  {classes.length > 0 && <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Scope Class (optional)</label>
                     <select value={form.scope_class} onChange={e => setForm(p => ({ ...p, scope_class: e.target.value }))} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-blue-600">
                       <option value="">All classes (shared milestone)</option>
                       {classes.map(c => <option key={c.id} value={c.id}>{c.name} — {(c as any).sub_program_name || ''}</option>)}
-                    </select></div>
+                    </select></div>}
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Description</label>
                     <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full px-3 py-2 bg-slate-50 border border-brand-border rounded-lg text-sm focus:outline-none focus:border-blue-600" /></div>
                 </div>

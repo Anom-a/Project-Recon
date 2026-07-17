@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   User, Home, GraduationCap, Briefcase, Calendar, Megaphone,
-  MessageCircle, FileText, ShoppingBag, Loader2,
+  MessageCircle, FileText, ShoppingBag, Loader2, Target, BookOpen, DollarSign,
 } from 'lucide-react';
 import { UserProfile } from '@/shared/types';
 import {
@@ -28,6 +28,11 @@ import AnnouncementsPage from './modules/AnnouncementsPage';
 import MessagingModule from './modules/MessagingModule';
 import CertificateGenerator from './CertificateGenerator';
 import StoreModule from './modules/StoreModule';
+import MyRegistrations from './MyRegistrations';
+import ProgressMilestones from './ProgressMilestones';
+import AttendanceTracker from './AttendanceTracker';
+import LearningResources from './LearningResources';
+import PaymentHistory from './PaymentHistory';
 
 interface StudentDashboardProps {
   currentUser: UserProfile;
@@ -38,6 +43,11 @@ interface StudentDashboardProps {
 function buildNavItems(): NavItem[] {
   return [
     { id: 'home', label: 'Dashboard', icon: Home, group: 'main' },
+    { id: 'academics', label: 'My Programs', icon: GraduationCap, group: 'academic' },
+    { id: 'progress', label: 'Progress', icon: Target, group: 'academic' },
+    { id: 'attendance', label: 'Attendance', icon: Calendar, group: 'academic' },
+    { id: 'materials', label: 'Learning Materials', icon: BookOpen, group: 'academic' },
+    { id: 'payments', label: 'Payments', icon: DollarSign, group: 'academic' },
     { id: 'store', label: 'Store', icon: ShoppingBag, group: 'main' },
     { id: 'certificates', label: 'Certificates', icon: FileText, group: 'academic' },
     { id: 'career', label: 'Career Center', icon: Briefcase, group: 'career' },
@@ -129,7 +139,7 @@ export default function StudentDashboard({ currentUser, onLogout, onUserUpdate }
         : <AdminAccount currentUser={currentUser} onUserUpdate={onUserUpdate} />;
     }
 
-    const needsStudent = ['home', 'store', 'career', 'certificates'].includes(activeSection);
+    const needsStudent = ['home', 'store', 'career', 'certificates', 'academics', 'progress', 'attendance', 'payments'].includes(activeSection);
 
     if (!studentId && needsStudent) {
       return (
@@ -152,6 +162,16 @@ export default function StudentDashboard({ currentUser, onLogout, onUserUpdate }
     switch (activeSection) {
       case 'home':
         return <DashboardHome currentUser={currentUser} studentId={studentId!} onNavigate={handleHomeNavigate} />;
+      case 'academics':
+        return <MyRegistrations studentId={studentId!} />;
+      case 'progress':
+        return <ProgressMilestones studentId={studentId!} />;
+      case 'attendance':
+        return <AttendanceTracker studentId={studentId!} />;
+      case 'materials':
+        return <LearningResources studentId={studentId!} />;
+      case 'payments':
+        return <PaymentHistory studentId={studentId!} />;
       case 'store':
         return <StoreModule currentUser={currentUser} />;
       case 'career':

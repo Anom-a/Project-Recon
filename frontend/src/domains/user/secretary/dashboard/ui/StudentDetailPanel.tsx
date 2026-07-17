@@ -189,7 +189,12 @@ export default function StudentDetailPanel() {
                         <div className="space-y-1.5">
                           {studentData.enrollments.map(e => (
                             <div key={e.id} className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg text-xs">
-                              <span className="font-medium text-slate-700">{e.class_name || e.sub_program_name || 'Class'}</span>
+                              <div>
+                                <span className="font-medium text-slate-700">{e.class_name || e.sub_program_name || 'Class'}</span>
+                                {e.pending_code && e.status === 'PENDING_VERIFICATION' && (
+                                  <span className="block text-[10px] font-mono text-brand-blue mt-0.5">{e.pending_code}</span>
+                                )}
+                              </div>
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${e.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : e.status === 'PENDING_VERIFICATION' ? 'bg-amber-100 text-amber-700' : e.status === 'COMPLETED' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
                                 {e.status?.replace('_', ' ')}
                               </span>
