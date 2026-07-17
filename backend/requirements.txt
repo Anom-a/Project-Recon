@@ -13,3 +13,4 @@ whitenoise
 django-storages
 requests
 reportlab>=4.0,<5.0
+gunicorn
