@@ -1,8 +1,8 @@
-import { http } from '@/src/shared/api/http';
-import { computeEventState, type Tournament, type Workshop, type MatchResult, type EventStoredStatus, type RegistrationMode } from '@/src/shared/types';
+import { http } from '@/shared/api/http';
+import { computeEventState, type Tournament, type Workshop, type MatchResult, type EventStoredStatus, type RegistrationMode } from '@/shared/types';
 import * as eventsApi from './eventsApi';
 import { mapBackendMatchToDetail, type MatchDetail } from './matchMappers';
-import { unwrapList } from '@/src/shared/api/pagination';
+import { unwrapList } from '@/shared/api/pagination';
 
 /* ═══ TOURNAMENT INDEX (event UUID → tournament record) ═══ */
 
@@ -119,7 +119,7 @@ export async function getEvents(params?: Record<string, string>): Promise<(Tourn
       return mapBackendEventToTournament(e, index.get(e.id));
     });
   } catch (err) {
-    /* console.error */('getEvents failed:', err);
+    console.error('getEvents failed:', err);
     return [];
   }
 }
@@ -132,7 +132,7 @@ export async function getTournaments(params?: Record<string, string>): Promise<T
     ]);
     return events.map(e => mapBackendEventToTournament(e, index.get(e.id)));
   } catch (err) {
-    /* console.error */('getTournaments failed:', err);
+    console.error('getTournaments failed:', err);
     return [];
   }
 }
@@ -154,7 +154,7 @@ export async function getWorkshops(params?: Record<string, string>): Promise<Wor
     const events = await eventsApi.getPublicEvents({ ...params, event_type: 'WORKSHOP' });
     return events.map(mapBackendEventToWorkshop);
   } catch (err) {
-    /* console.error */('getWorkshops failed:', err);
+    console.error('getWorkshops failed:', err);
     return [];
   }
 }
@@ -164,7 +164,7 @@ export async function getWorkshopById(id: string): Promise<Workshop | null> {
     const event = await eventsApi.getPublicEventDetail(id);
     return mapBackendEventToWorkshop(event);
   } catch (err) {
-    /* console.error */('getWorkshopById failed:', err);
+    console.error('getWorkshopById failed:', err);
     return null;
   }
 }
@@ -177,7 +177,7 @@ export async function getMatches(eventId: string): Promise<MatchResult[]> {
     const matches = await eventsApi.getPublicTournamentMatches(tournamentId);
     return (Array.isArray(matches) ? matches : []).map(mapBackendMatchToResult);
   } catch (err) {
-    /* console.error */('getMatches failed:', err);
+    console.error('getMatches failed:', err);
     return [];
   }
 }
@@ -228,6 +228,12 @@ export interface PublicRegistrationData {
   public_email?: string;
   public_phone?: string;
   public_organization?: string;
+  payment?: {
+    amount: string;
+    payment_method: 'CASH' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE';
+    transaction_reference?: string;
+    bank_name?: string;
+  };
 }
 
 export async function registerForEvent(eventId: string, data: PublicRegistrationData = {}) {
@@ -238,7 +244,7 @@ export async function getMyRegistrations() {
   try {
     return await eventsApi.getMyRegistrations();
   } catch (err) {
-    /* console.error */('getMyRegistrations failed:', err);
+    console.error('getMyRegistrations failed:', err);
     return [];
   }
 }

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle, X, Activity, FileText, UserPlus, Award } from 'lucide-react';
-import type { Certificate, StudentCertificate, StudentProfile } from '@/src/shared/types';
+import type { Certificate, StudentCertificate, StudentProfile } from '@/shared/types';
 import {
    fetchCertificateTemplatesApi, fetchSubProgramsApi, fetchStudentCertificatesApi,
    fetchStudentsApi,
- } from '@/src/domains/learning/academics/api/academicApi';
+ } from '@/domains/learning/academics/api/academicApi';
 
 import OverviewTab from './components/OverviewTab';
 import TemplatesTab from './components/TemplatesTab';
@@ -18,11 +18,16 @@ interface SubProgram {
   name: string;
 }
 
+import type { UserProfile } from '@/shared/types';
+import { canManageCertificates } from '@/shared/auth/permissions';
+
 interface Props {
+  currentUser?: UserProfile;
+  /** @deprecated Use currentUser instead */
   currentUserRole?: string;
 }
 
-export default function CertificateManager({ currentUserRole }: Props) {
+export default function CertificateManager({ currentUser, currentUserRole }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [templates, setTemplates] = useState<Certificate[]>([]);
   const [issuedCerts, setIssuedCerts] = useState<StudentCertificate[]>([]);
@@ -48,7 +53,9 @@ export default function CertificateManager({ currentUserRole }: Props) {
 
   useEffect(() => { loadAll(); }, []);
 
-  const canManage = !currentUserRole || currentUserRole === 'Admin' || currentUserRole === 'Manager' || currentUserRole === 'Secretary';
+  const canManage = currentUser
+    ? canManageCertificates(currentUser)
+    : !currentUserRole || currentUserRole === 'Admin' || currentUserRole === 'Manager' || currentUserRole === 'Secretary';
 
   const activeTemplates = templates.filter(t => t.is_active !== false);
   const recentCerts = issuedCerts.filter(c => new Date(c.issued_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import type { Enrollment, EnrollmentPayment } from '@/src/shared/types';
-import { fetchEnrollmentsApi, fetchPaymentsApi } from '@/src/domains/learning/academics/api/academicApi';
+import type { Enrollment, EnrollmentPayment } from '@/shared/types';
+import { fetchEnrollmentsApi, fetchPaymentsApi } from '@/domains/learning/academics/api/academicApi';
 
 export default function AdminRegistrationsPanel() {
   const [registrations, setRegistrations] = useState<Enrollment[]>([]);

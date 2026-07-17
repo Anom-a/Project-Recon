@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Users, Edit3, BarChart3, Activity, BookOpen, Calendar, FileText, CheckCircle2, DollarSign, RefreshCw, Loader2, AlertCircle, User, GraduationCap, Clock, Target } from 'lucide-react';
-import { UserProfile, Enrollment, StudentProfile } from '@/src/shared/types';
-import { AppLayout } from '@/src/shared/ui/AppLayout';
-import { NavItem } from '@/src/shared/ui/Sidebar';
-import DashboardCommandCenter from '@/src/shared/ui/DashboardCommandCenter';
-import InlineAlert from '@/src/shared/ui/InlineAlert';
-import PageSpinner from '@/src/shared/ui/PageSpinner';
-import EmptyState from '@/src/shared/ui/EmptyState';
+import { Users, Edit3, BarChart3, Activity, BookOpen, Calendar, FileText, DollarSign, RefreshCw, Loader2, User, GraduationCap, Clock, Target, Megaphone, Shield } from 'lucide-react';
+import { UserProfile, Enrollment, StudentProfile } from '@/shared/types';
+import { AppLayout } from '@/shared/ui/AppLayout';
+import { NavItem } from '@/shared/ui/Sidebar';
+import DashboardCommandCenter from '@/shared/ui/DashboardCommandCenter';
+import InlineAlert from '@/shared/ui/InlineAlert';
+import PageSpinner from '@/shared/ui/PageSpinner';
+import EmptyState from '@/shared/ui/EmptyState';
 import { getTeacherCommandCenter, type TeacherSectionId } from '../teacherCommandCenter';
-import AdminAccount from '@/src/domains/user/shared/ui/AdminAccount';
+import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
+import AnnouncementsPage from '@/domains/user/student/dashboard/ui/modules/AnnouncementsPage';
+import {
+  canAccessTeacherSection,
+  filterTeacherNavItems,
+  resolveTeacherSection,
+} from '@/shared/auth/dashboardAccess';
 import {
   loadTeacherDashboardData,
   loadClassRoster,
   type TeacherClassOption,
-} from '@/src/domains/user/teacher/api/teacherData';
+} from '@/domains/user/teacher/api/teacherData';
 
 import ClassManagement from './ClassManagement';
 import ProgressSubmissions from './ProgressSubmissions';
@@ -21,10 +27,10 @@ import PerformanceMetrics from './PerformanceMetrics';
 import ActivityFeed from './ActivityFeed';
 import AttendanceHistory from './AttendanceHistory';
 import Reports from './Reports';
-import LearningMaterialsPanel from '@/src/domains/user/secretary/dashboard/ui/LearningMaterialsPanel';
-import LearningMilestonesManager from '@/src/domains/user/secretary/dashboard/ui/LearningMilestonesManager';
-import { adminGetWorkshops } from '@/src/domains/competition/api/eventsApi';
-import type { BackendWorkshop } from '@/src/domains/competition/api/eventsApi';
+import LearningMaterialsPanel from '@/domains/user/secretary/dashboard/ui/LearningMaterialsPanel';
+import LearningMilestonesManager from '@/domains/user/secretary/dashboard/ui/LearningMilestonesManager';
+import { adminGetWorkshops } from '@/domains/competition/api/eventsApi';
+import type { BackendWorkshop } from '@/domains/competition/api/eventsApi';
 
 interface TeacherDashboardProps { currentUser: UserProfile; onLogout: () => void; }
 
@@ -40,11 +46,14 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'metrics', label: 'Performance', icon: BarChart3, group: 'teaching' },
   { id: 'activity', label: 'Activity', icon: Activity, group: 'teaching' },
   { id: 'reports', label: 'Reports', icon: FileText, group: 'reports' },
+  { id: 'announcements', label: 'Announcements', icon: Megaphone, group: 'reports' },
   { id: 'account', label: 'Account', icon: User, group: 'system' },
 ];
 
 export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashboardProps) {
-  const [activeSection, setActiveSection] = useState<SectionId>('class');
+  const [activeSection, setActiveSection] = useState<SectionId>(
+    () => resolveTeacherSection(currentUser, 'class')
+  );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mode, setMode] = useState<'staff' | 'instructor'>('instructor');
@@ -61,14 +70,14 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await loadTeacherDashboardData(currentUser.role);
+      const data = await loadTeacherDashboardData(currentUser.role, currentUser.id);
       setMode(data.mode);
       setAllEnrollments(data.enrollments);
       setAllStudents(data.students);
       setClasses(data.classes);
       const classId = data.selectedClassId;
       setSelectedClassId(classId);
-      const roster = await loadClassRoster(data.mode, classId, data.enrollments, data.students);
+      const roster = await loadClassRoster(data.mode, classId, data.enrollments, data.students, currentUser.id);
       setClassEnrollments(roster.enrollments);
       setClassStudents(roster.students);
     } catch {
@@ -76,7 +85,7 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
     } finally {
       setLoading(false);
     }
-  }, [currentUser.role]);
+  }, [currentUser.role, currentUser.id]);
 
   useEffect(() => { refreshData(); }, [refreshData]);
 
@@ -101,17 +110,29 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
   useEffect(() => {
     if (!selectedClassId || loading) return;
     let cancelled = false;
-    loadClassRoster(mode, selectedClassId, allEnrollments, allStudents).then(roster => {
+    loadClassRoster(mode, selectedClassId, allEnrollments, allStudents, currentUser.id).then(roster => {
       if (!cancelled) {
         setClassEnrollments(roster.enrollments);
         setClassStudents(roster.students);
       }
     });
     return () => { cancelled = true; };
-  }, [selectedClassId, mode, allEnrollments, allStudents, loading]);
+  }, [selectedClassId, mode, allEnrollments, allStudents, loading, currentUser.id]);
+
+  const filteredNav = useMemo(
+    () => filterTeacherNavItems(currentUser, NAV_ITEMS),
+    [currentUser],
+  );
+
+  const handleSectionChange = useCallback((id: string) => {
+    const sectionId = id as SectionId;
+    if (canAccessTeacherSection(currentUser, sectionId)) {
+      setActiveSection(sectionId);
+    }
+  }, [currentUser]);
 
   const classActive = classEnrollments.filter(e => e.status === 'ACTIVE').length;
-  const classPending = classEnrollments.filter(e => e.status === 'PENDING_PAYMENT').length;
+  const classPending = classEnrollments.filter(e => e.status === 'PENDING_VERIFICATION').length;
 
   const commandCenter = useMemo(() => getTeacherCommandCenter(activeSection, {
     classStudents: classStudents.length,
@@ -124,6 +145,20 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
   }), [activeSection, classStudents.length, classActive, classPending, classes.length, myWorkshops.length, mode, loading]);
 
   const renderPage = () => {
+    if (!canAccessTeacherSection(currentUser, activeSection)) {
+      return (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-sm text-amber-800">
+          <div className="flex items-start gap-3">
+            <Shield className="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Access Restricted</p>
+              <p className="mt-1 text-amber-700">You do not have permission to access this section.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (loading) {
       return <PageSpinner label="Loading class data" />;
     }
@@ -206,6 +241,8 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
         return <ActivityFeed mode={mode} classId={selectedClassId} />;
       case 'reports':
         return <Reports classId={selectedClassId} />;
+      case 'announcements':
+        return <AnnouncementsPage />;
       case 'account':
         return <AdminAccount currentUser={currentUser} />;
     }
@@ -216,9 +253,9 @@ export default function TeacherDashboard({ currentUser, onLogout }: TeacherDashb
   return (
     <AppLayout
       sidebar={{
-        items: NAV_ITEMS,
+        items: filteredNav,
         activeSection,
-        onSectionChange: (id) => setActiveSection(id as SectionId),
+        onSectionChange: handleSectionChange,
         title: 'Teacher Dashboard',
         icon: BookOpen,
         userName: currentUser.name,

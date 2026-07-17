@@ -10,27 +10,14 @@ import DemoSlider from '../domains/learning/programs/ui/DemoSlider';
 import Updates from '../domains/learning/programs/ui/Updates';
 import { UserProfile, ActiveTab, type ProgramDisplay } from '../shared/types';
 import { getPrograms } from '../domains/learning/programs/api/programApi';
-import { cmsPublicApi, type CmsPartnerResponse, type FaqResponse, type PlatformStats } from '../domains/cms/public/api/cmsPublicApi';
-import { ChevronDown } from 'lucide-react';
-
-import galleryImg1 from '../../assets/photo_2026-06-15_14-39-46.jpg';
-import galleryImg2 from '../../assets/photo_2026-06-15_14-39-52.jpg';
-import galleryImg3 from '../../assets/photo_2026-06-15_14-39-58.jpg';
-import galleryImg4 from '../../assets/photo_2026-06-15_14-40-04.jpg';
-import galleryImg5 from '../../assets/photo_2026-06-15_14-40-10.jpg';
-import galleryImg6 from '../../assets/0M6A6595.00_00_03_09.Still001.jpg';
-import galleryImg7 from '../../assets/0M6A6595.00_07_19_06.Still027.jpg';
-import galleryImg8 from '../../assets/0M6A6595.00_13_52_12.Still006.jpg';
-
-// Placeholder mp4 files in /assets are 0 bytes and cause HTTP 416 — use poster images instead.
-const demoVideo = null;
-const demoVideo2 = null;
+import { cmsPublicApi, type CmsPartnerResponse, type FaqResponse, type PlatformStats, type GalleryItemResponse } from '../domains/cms/public/api/cmsPublicApi';
+import { ChevronDown, Image } from 'lucide-react';
 
 interface HomePageProps {
   currentUser: UserProfile | null;
   onEnrollInProgram: (programId: string) => void;
   onNavigate: (tab: ActiveTab) => void;
-  onSetSelectedProgramSpec: (program: any) => void;
+  onSetSelectedProgramSpec: (program: ProgramDisplay) => void;
 }
 
 export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, onSetSelectedProgramSpec }: HomePageProps) {
@@ -43,6 +30,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [programs, setPrograms] = useState<ProgramDisplay[]>([]);
   const [programsLoading, setProgramsLoading] = useState(true);
+  const [galleryItems, setGalleryItems] = useState<GalleryItemResponse[]>([]);
   const [stats, setStats] = useState<PlatformStats>({
     students_trained: 0,
     program_tracks: 0,
@@ -56,21 +44,25 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
 
     cmsPublicApi.getPartners(signal)
       .then(data => setPartners(data.filter(p => p.is_active)))
-      .catch(err => { if (err.name !== 'AbortError') /* console.error */(err); });
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
 
     cmsPublicApi.getFaqs(signal)
       .then(data => setFaqs(data.filter(f => f.is_active).sort((a, b) => (a.order ?? 999) - (b.order ?? 999))))
-      .catch(err => { if (err.name !== 'AbortError') /* console.error */(err); });
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
 
     cmsPublicApi.getPlatformStats(signal)
       .then(data => setStats(data))
-      .catch(err => { if (err.name !== 'AbortError') /* console.error */(err); });
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
 
     setProgramsLoading(true);
     getPrograms(signal)
       .then(data => setPrograms(data))
-      .catch(err => { if (err.name !== 'AbortError') /* console.error */(err); })
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); })
       .finally(() => setProgramsLoading(false));
+
+    cmsPublicApi.getGallery(signal)
+      .then(data => setGalleryItems(data.filter(g => g.is_active)))
+      .catch(() => {});
 
     return () => abort.abort();
   }, []);
@@ -99,7 +91,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
       setContactMessage({ name: '', email: '', body: '' });
       setTimeout(() => setContactStatus('idle'), 5000);
     } catch (error) {
-      /* console.error */('Contact submission error:', error);
+      console.error('Contact submission error:', error);
       setContactStatus('error');
       setTimeout(() => setContactStatus('idle'), 5000);
     }
@@ -154,6 +146,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
           </div>
         </div>
       </motion.section>
+
 
       <section className="border-y border-brand-border/70 bg-white/90 py-10 overflow-hidden relative shadow-premium-sm" id="sponsor-banner">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#25338d]/5 to-transparent animate-glow-shift opacity-50" />
@@ -279,8 +272,14 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               transition={{ duration: 0.5, delay: Math.min(idx * 0.15, 0.6) }}
               className="surface-card interactive-lift rounded-card overflow-hidden flex flex-col group h-full"
             >
-              <div className="relative aspect-video w-full bg-slate-100 overflow-hidden cursor-pointer" onClick={() => onSetSelectedProgramSpec(prog)}>
-                {prog.image && <img src={prog.image} alt={prog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />}
+              <div className="relative aspect-video w-full overflow-hidden cursor-pointer" onClick={() => onSetSelectedProgramSpec(prog)}>
+                {prog.image ? (
+                  <img src={prog.image} alt={prog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-brand-blue/20 via-brand-red/10 to-slate-100 flex items-center justify-center">
+                    <BookOpen className="w-10 h-10 text-slate-400/40" />
+                  </div>
+                )}
                 <div className="absolute top-4 left-4">
                   <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-white/95 px-2.5 py-1 rounded-full text-slate-800 shadow-sm border border-slate-100">{prog.category}</span>
                 </div>
@@ -336,22 +335,24 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
 
       <section className="section-shell py-10" id="video-demo">
         {(() => {
+          const videoItems = galleryItems.filter(g => g.video_url);
+          const imageItems = galleryItems.filter(g => g.image);
           const DEMO_SLIDES = [
             {
               tag: 'Watch The Demo',
               title: 'Building the Next Generation',
               quote: '"Encouraging creativity through Competition."',
               body: 'Experience the innovation and teamwork that drive Ethio Robotics. From our advanced robotics labs to national championship arenas, see how we empower students to transform ideas into working mechatronic reality.',
-              video: demoVideo,
-              poster: galleryImg1,
+              video: videoItems[0]?.video_url ?? null,
+              poster: imageItems[0]?.image ?? undefined,
             },
             {
               tag: 'Ethio Robotics Demo',
               title: 'Encouraging Creativity Through Competition',
               quote: '"5 Million Engineers Starts Here."',
               body: 'Watch our students compete, collaborate, and create at the highest levels. From autonomous driving challenges to VEX championship arenas — this is where future engineers are forged.',
-              video: demoVideo2,
-              poster: galleryImg6,
+              video: videoItems[1]?.video_url ?? null,
+              poster: imageItems[1]?.image ?? undefined,
             },
           ];
           return <DemoSlider slides={DEMO_SLIDES} onCta={() => onEnrollInProgram('prog-vex-v5')} />;
@@ -419,32 +420,40 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {[
-            { src: galleryImg1, label: 'Preparation Day' },
-            { src: galleryImg2, label: 'Friendship Winners' },
-            { src: galleryImg3, label: 'Blue Vs Red Team' },
-            { src: galleryImg4, label: 'Friendship Match' },
-            { src: galleryImg5, label: 'Teams Celebration' },
-            { src: galleryImg6, label: '3rd African Robotics Championship' },
-            { src: galleryImg7, label: "Mentorship Session" },
-            { src: galleryImg8, label: 'Student Teams' },
-          ].map((photo, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: Math.min(idx * 0.08, 0.6) }}
-              className="group relative rounded-card overflow-hidden border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all aspect-[4/3]"
-            >
-              <img src={photo.src} alt={photo.label} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        {galleryItems.length === 0 ? (
+          <p className="text-center text-sm text-slate-400">Gallery coming soon...</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {galleryItems.map((item, idx) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: Math.min(idx * 0.08, 0.6) }}
+                className="group relative rounded-card overflow-hidden border border-brand-border-light/60 shadow-premium-sm hover:shadow-premium-md transition-all aspect-[4/3] cursor-pointer"
+              >
+                {item.image ? (
+                  <img src={item.image} alt={item.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : item.video_url ? (
+                  <div className="w-full h-full bg-slate-900 flex items-center justify-center">
+                    <Image className="w-8 h-8 text-white/40" />
+                  </div>
+                ) : (
+                  <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                    <Image className="w-8 h-8 text-slate-300" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                <span className="text-white font-sans font-bold text-xs">{photo.label}</span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                  <span className="text-white font-sans font-bold text-xs">{item.title}</span>
+                </div>
+                {item.video_url && (
+                  <div className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">Video</div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
 
       <motion.section

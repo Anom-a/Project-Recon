@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, ShoppingCart, Store, ShoppingBag } from 'lucide-react';
-import { useCart } from '@/shared/hooks/useCart';
+import { useCartContext } from '@/shared/context/CartContext';
 import { listProducts } from '@/domains/store/products/api/productApi';
 import { listActiveCategories } from '@/domains/store/categories/api/categoriesApi';
 import type { Product, ProductCategory, BranchInventory } from '@/domains/store/model/types';
@@ -8,6 +8,7 @@ import { getProductAvailability } from '@/domains/store/inventory/api/inventoryA
 import { Button } from '@/shared/ui/Button';
 import EmptyState from '@/shared/ui/EmptyState';
 import { CategoryChips } from '@/domains/store/ui/CategoryChips';
+import { CategoryShowcase } from '@/domains/store/ui/CategoryShowcase';
 import { ProductGrid } from '@/domains/store/ui/ProductGrid';
 import { SectionHeader } from '@/domains/store/ui/SectionHeader';
 import { SearchInput } from '@/domains/store/ui/SearchInput';
@@ -24,12 +25,17 @@ import {
 } from '@/domains/store/utils/catalog';
 import { ProductDetailView } from '@/domains/store/products/ui/ProductDetailView';
 import { StoreCategoryView } from '@/domains/store/products/ui/StoreCategoryView';
+import PendingOrderView from '@/domains/store/checkout/ui/PendingOrderView';
 import { DesktopCartSidebar } from '@/domains/store/cart/ui/DesktopCartSidebar';
 import { getUserProfile } from '@/shared/utils/storage';
 
 const PAGE_SIZE = 12;
 
-export function StoreTab() {
+interface StoreTabProps {
+  openCart: () => void;
+}
+
+export default function StoreTab({ openCart }: StoreTabProps) {
   const [view, setView] = useState<StoreView>(() => parseStorePath(window.location.pathname));
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -49,8 +55,8 @@ export function StoreTab() {
   const {
     cart, loading: cartLoading, error: cartError,
     handleAddToCart, handleUpdateQuantity, handleRemoveFromCart,
-    openCart, clearCartError,
-  } = useCart();
+    clearCartError,
+  } = useCartContext();
 
   useEffect(() => {
     const sync = () => setView(parseStorePath(window.location.pathname));
@@ -152,13 +158,14 @@ export function StoreTab() {
       }
       await handleAddToCart({ product: product.id, branch, quantity });
       setAddedToCart(product.id);
+      openCart();
       setTimeout(() => setAddedToCart((id) => (id === product.id ? null : id)), 1800);
     } catch (err: unknown) {
       setCartErrorMessage(err instanceof Error ? err.message : 'Failed to add item to cart');
     } finally {
       setAddingToCart(null);
     }
-  }, [handleAddToCart, clearCartError]);
+  }, [handleAddToCart, clearCartError, openCart]);
 
   if (view.kind === 'product') {
     return (
@@ -173,6 +180,10 @@ export function StoreTab() {
         onClearError={() => { setCartErrorMessage(null); clearCartError(); }}
       />
     );
+  }
+
+  if (view.kind === 'pending-order') {
+    return <PendingOrderView orderId={view.orderId} onBack={goHomeBrowse} />;
   }
 
   if (view.kind === 'category') {
@@ -200,37 +211,48 @@ export function StoreTab() {
     <div className="min-h-screen bg-brand-paper">
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-blue via-brand-blue-dark to-[#0a1028] text-white">
+        {/* Decorative orbs */}
         <div className="absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_20%_20%,rgba(87,223,254,0.3),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(37,99,235,0.35),transparent_40%)]" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-          <p className="eyebrow text-brand-cyan mb-3 flex items-center gap-2">
-            <Store className="w-3.5 h-3.5" />
-            Ethio Robotics Store
-          </p>
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight max-w-2xl leading-[1.15]">
-            Parts, kits, and gear for your next build
-          </h1>
-          <p className="mt-3 text-sm sm:text-base text-white/70 max-w-xl leading-relaxed">
-            Browse products, check branch stock, and pick up your order after payment.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              variant="secondary"
-              onClick={openCart}
-              className="border-white/20 text-white bg-white/10 hover:bg-white/15 backdrop-blur-sm"
-              size="lg"
-            >
-              <ShoppingCart className="w-4 h-4 mr-2 inline" />
-              Cart{cartItemCount > 0 ? ` (${cartItemCount})` : ''}
-            </Button>
-            {currentUser && (
+
+        {/* Desktop: left-to-right scrim */}
+        <div className="hidden lg:block absolute inset-0 z-[1] bg-gradient-to-r from-[#0a1028]/90 via-[#0a1028]/50 to-transparent" />
+        {/* Desktop: bottom scrim */}
+        <div className="hidden lg:block absolute inset-x-0 bottom-0 h-[35%] z-[1] bg-gradient-to-t from-[#0a1028]/85 to-transparent" />
+        {/* Mobile: single bottom scrim */}
+        <div className="block lg:hidden absolute inset-x-0 bottom-0 h-[70%] z-[1] bg-gradient-to-t from-[#0a1028]/90 to-transparent" />
+
+        <div className="relative z-10 flex w-full flex-1 flex-col justify-end lg:justify-center max-w-7xl mx-auto px-4 sm:px-6 pb-12 pt-8 lg:py-16">
+          <div className="w-full max-w-xl text-left flex flex-col gap-4">
+            <p className="eyebrow text-brand-cyan flex items-center gap-2">
+              <Store className="w-3.5 h-3.5" />
+              Ethio Robotics Store
+            </p>
+            <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.15]">
+              Parts, kits, and gear for your next build
+            </h1>
+            <p className="text-sm sm:text-base text-white/70 leading-relaxed">
+              Browse products, check branch stock, and pick up your order after payment.
+            </p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
               <Button
-                variant="ghost"
-                className="text-white/80 hover:bg-white/10"
-                onClick={() => navigateStore('/store/orders')}
+                variant="secondary"
+                onClick={openCart}
+                className="border-white/20 text-white bg-white/10 hover:bg-white/15 backdrop-blur-md w-full sm:w-auto"
+                size="lg"
               >
-                My orders
+                <ShoppingCart className="w-4 h-4 mr-2 inline" />
+                Cart{cartItemCount > 0 ? ` (${cartItemCount})` : ''}
               </Button>
-            )}
+              {currentUser && (
+                <Button
+                  variant="ghost"
+                  className="text-white/60 bg-white/[0.06] backdrop-blur-md border border-white/15 hover:bg-white/15 hover:text-white w-full sm:w-auto"
+                  onClick={() => navigateStore('/store/orders')}
+                >
+                  My orders
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -251,6 +273,18 @@ export function StoreTab() {
           )}
         </button>
       </div>
+
+      {/* Category Showcase */}
+      {!selectedCategory && !debouncedSearch && categories.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4">
+          <SectionHeader
+            eyebrow="Departments"
+            title="Browse by Category"
+            description={`${categories.length} product categories`}
+          />
+          <CategoryShowcase categories={categories} loading={categoriesLoading} onSelect={handleCategoryChip} />
+        </section>
+      )}
 
       {/* Catalog */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">

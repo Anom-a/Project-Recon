@@ -12,28 +12,36 @@ import AnimatedParticles from '../shared/ui/AnimatedParticles';
 import CartDrawer from '../domains/store/cart/ui/CartDrawer';
 import ProgramDetailModal from '../domains/learning/programs/ui/ProgramDetailModal';
 import Footer from '../shared/ui/Footer';
-import PaymentReturnBanner from '../shared/ui/PaymentReturnBanner';
 
 import HomePage from '../pages/HomePage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import StorePage from '../pages/store/StorePage';
 import CompetitionPage from '../pages/competition/CompetitionPage';
+import CertificateVerifyPage from '../pages/certificate/CertificateVerifyPage';
 
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import OrderHistoryPage from '../domains/store/orders/ui/OrderHistoryPage';
 import OrderDetailPage from '../domains/store/orders/ui/OrderDetailPage';
 
 import { useAuth } from '../shared/hooks/useAuth';
-import { useCart } from '../shared/hooks/useCart';
+import { CartProvider, useCartContext } from '../shared/context/CartContext';
 import { useNavigation } from '../shared/hooks/useNavigation';
 import { hasPermission } from '../shared/auth/permissions';
 
-import { ActiveTab, UserProfile } from '../shared/types';
+import { ActiveTab, UserProfile, ProgramDisplay, PendingOrder } from '../shared/types';
 
 const LoginView = React.lazy(() => import('../domains/auth/login/ui/LoginView'));
 const AuthModal = React.lazy(() => import('../domains/auth/modal/ui/AuthModal'));
 
 export default function App() {
+  return (
+    <CartProvider>
+      <AppInner />
+    </CartProvider>
+  );
+}
+
+function AppInner() {
   const {
     currentUser, setCurrentUser,
     authModalOpen, setAuthModalOpen, authInitialMode,
@@ -41,12 +49,12 @@ export default function App() {
   } = useAuth();
 
   const {
-    cart, cartOpen,
+    cart, cartOpen, loading,
     fetchCart, handleAddToCart, handleUpdateQuantity, handleRemoveFromCart, clearCart,
     openCart, closeCart,
-  } = useCart();
+  } = useCartContext();
 
-  const handleCheckoutSuccess = (_pendingOrder: any) => {
+  const handleCheckoutSuccess = (_pendingOrder: PendingOrder) => {
     fetchCart();
   };
 
@@ -57,21 +65,13 @@ export default function App() {
     forceNavigate('login');
   };
 
-  const [selectedProgramSpec, setSelectedProgramSpec] = useState<any>(null);
+  const [selectedProgramSpec, setSelectedProgramSpec] = useState<ProgramDisplay | null>(null);
 
   const handleEnrollInProgram = (_programId: string) => {
     if (!currentUser) {
-      handleTabChange('login');
+      handleTabChange('register');
       return;
     }
-    const updatedUser: UserProfile = {
-      ...currentUser,
-      xpPoints: currentUser.xpPoints + 50,
-      badges: currentUser.badges.includes('Class Pioneer')
-        ? currentUser.badges
-        : [...currentUser.badges, 'Class Pioneer']
-    };
-    setCurrentUser(updatedUser);
     handleTabChange('dashboard');
   };
 
@@ -151,7 +151,7 @@ export default function App() {
           )}
 
           {activeTab === 'store' && (
-            <StorePage />
+            <StorePage openCart={openCart} />
           )}
 
           {activeTab === 'store-orders' && (
@@ -179,6 +179,12 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'cert-verify' && (
+            <motion.div key="cert-verify-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+              <CertificateVerifyPage onNavigateHome={() => handleTabChange('home')} />
+            </motion.div>
+          )}
+
           {activeTab === 'registration' && (
             <motion.div key="registration-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
               <StudentRegistration />
@@ -202,6 +208,7 @@ export default function App() {
       <CartDrawer
         cartOpen={cartOpen}
         cart={cart}
+        loading={loading}
         onClose={closeCart}
         currentUser={currentUser}
         onUpdateQuantity={handleUpdateQuantity}
@@ -224,7 +231,6 @@ export default function App() {
 
       {!currentUser && <Footer onNavigate={handleTabChange} />}
 
-      <PaymentReturnBanner />
     </div>
   );
 }
