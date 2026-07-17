@@ -35,8 +35,6 @@ export default function StudentRegistration() {
   const [formData, setFormData] = useState({
     name: '', studentEmail: '', password: '', age: '', grade: '', school: '', parentName: '', parentPhone: '', parentEmail: ''
   });
-  const [selectedClassId, setSelectedClassId] = useState('');
-  const [classes, setClasses] = useState<AcademicClass[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('BANK_TRANSFER');
   const [paymentDetails, setPaymentDetails] = useState({ bank_name: '', transaction_reference: '', transfer_reference: '' });
   const [paymentAttachment, setPaymentAttachment] = useState<File | null>(null);
@@ -53,10 +51,16 @@ export default function StudentRegistration() {
   const [programsError, setProgramsError] = useState('');
   const [enrollmentType, setEnrollmentType] = useState<'GROUP' | 'INDIVIDUAL'>('GROUP');
   const [selectedSubProgramId, setSelectedSubProgramId] = useState('');
+  const [classes, setClasses] = useState<AcademicClass[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
 
-  const handleSubProgramSelect = (subId: string) => {
+  const handleSubProgramSelect = (subId: string, classType?: 'GROUP' | 'INDIVIDUAL') => {
     setSelectedSubProgramId(subId);
-    const match = classes.find(c => c.sub_program === subId && c.class_type === enrollmentType && c.is_active);
+    const type = classType || enrollmentType;
+    console.log('[Class Match] Searching classes for sub_program:', subId, 'class_type:', type);
+    console.log('[Class Match] Available active classes:', classes.map(c => ({ id: c.id, sub_program: c.sub_program, name: c.name, class_type: c.class_type, is_active: c.is_active })));
+    const match = classes.find(c => c.sub_program === subId && c.class_type === type && c.is_active);
+    console.log('[Class Match] Result:', match ? `found: ${match.id} - ${match.name}` : 'NO MATCH FOUND');
     setSelectedClassId(match ? match.id : '');
   };
 
@@ -71,7 +75,9 @@ export default function StudentRegistration() {
     ]).then(([progs, subs, cls, banks]) => {
       if (progs.length > 0) setPrograms(progs);
       if (subs.length > 0) setSubPrograms(subs);
-      setClasses((cls || []).filter(c => c.is_active));
+      const activeClasses = (cls || []).filter(c => c.is_active);
+      console.log('[Classes Loaded] Raw from API:', cls, 'Active only:', activeClasses);
+      setClasses(activeClasses);
       if (Array.isArray(banks) && banks.length > 0) setBankAccounts(banks);
     }).catch((err) => {
       const msg = err instanceof Error ? err.message : String(err);
@@ -88,11 +94,8 @@ export default function StudentRegistration() {
     return () => clearInterval(timer);
   }, []);
 
-  const selectedClass = classes.find(c => c.id === selectedClassId);
   const selectedSub = selectedSubProgramId
     ? subPrograms.find(s => s.id === selectedSubProgramId)
-    : selectedClass
-    ? subPrograms.find(s => s.id === selectedClass.sub_program)
     : undefined;
   const classFee = selectedSub
     ? Number(enrollmentType === 'GROUP' ? selectedSub.group_fee : (selectedSub.individual_fee ?? 0))
@@ -109,6 +112,10 @@ export default function StudentRegistration() {
       setSubmitError('Please select a course to enroll in.');
       return;
     }
+    if (!selectedClassId) {
+      setSubmitError('No class is currently available for the selected course. Please contact administration or try a different enrollment type.');
+      return;
+    }
     if (!formData.studentEmail.trim() || !formData.password.trim()) {
       setSubmitError('Student email and password are required.');
       return;
@@ -119,6 +126,7 @@ export default function StudentRegistration() {
     }
     setIsSubmitting(true);
     try {
+      console.log('[Enrollment] Submitting with enrolled_class:', selectedClassId);
       const result = await registerApi({
         name: formData.name,
         studentEmail: formData.studentEmail.trim(),
@@ -129,7 +137,7 @@ export default function StudentRegistration() {
         parentName: formData.parentName,
         parentPhone: formData.parentPhone,
         parentEmail: formData.parentEmail,
-        enrolledClassId: selectedClassId || selectedSubProgramId,
+        enrolledClassId: selectedClassId,
         paymentMethod,
         bank_name: paymentDetails.bank_name || undefined,
         transaction_reference: paymentDetails.transaction_reference || undefined,
@@ -141,7 +149,9 @@ export default function StudentRegistration() {
       setIsSubmitting(false);
       setIsSuccess(true);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      console.error('[Enrollment Error]', message, err);
+      setSubmitError(message);
       setIsSubmitting(false);
     }
   };
@@ -222,7 +232,7 @@ export default function StudentRegistration() {
           </div>
 
           <div className="px-8 md:px-10 pb-8 flex gap-3">
-            <button onClick={() => { setIsSuccess(false); setStep(1); setFormData({ name: '', studentEmail: '', password: '', age: '', grade: '', school: '', parentName: '', parentPhone: '', parentEmail: '' }); setSelectedClassId(''); setSelectedSubProgramId(''); setEnrollmentType('GROUP'); }}
+            <button onClick={() => { setIsSuccess(false); setStep(1); setFormData({ name: '', studentEmail: '', password: '', age: '', grade: '', school: '', parentName: '', parentPhone: '', parentEmail: '' }); setSelectedSubProgramId(''); setSelectedClassId(''); setEnrollmentType('GROUP'); }}
               className="flex-1 bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-6 py-3.5 rounded-xl font-black uppercase tracking-wider text-sm shadow-lg shadow-brand-red/30 hover:shadow-xl hover:shadow-brand-red/45 transition-all active:scale-[0.97]">
               New Registration
             </button>
@@ -486,7 +496,7 @@ export default function StudentRegistration() {
                   <div className="flex bg-white/90 backdrop-blur-sm border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
                     <button
                       type="button"
-                      onClick={() => { setEnrollmentType('GROUP'); if (selectedSubProgramId) handleSubProgramSelect(selectedSubProgramId); }}
+                      onClick={() => { setEnrollmentType('GROUP'); if (selectedSubProgramId) handleSubProgramSelect(selectedSubProgramId, 'GROUP'); }}
                       className={`flex items-center gap-2.5 px-6 py-2.5 rounded-lg text-sm font-black uppercase tracking-wider transition-all duration-200 ${
                         enrollmentType === 'GROUP'
                           ? 'bg-brand-red text-white shadow-md shadow-brand-red/30'
@@ -497,7 +507,7 @@ export default function StudentRegistration() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setEnrollmentType('INDIVIDUAL'); if (selectedSubProgramId) handleSubProgramSelect(selectedSubProgramId); }}
+                      onClick={() => { setEnrollmentType('INDIVIDUAL'); if (selectedSubProgramId) handleSubProgramSelect(selectedSubProgramId, 'INDIVIDUAL'); }}
                       className={`flex items-center gap-2.5 px-6 py-2.5 rounded-lg text-sm font-black uppercase tracking-wider transition-all duration-200 ${
                         enrollmentType === 'INDIVIDUAL'
                           ? 'bg-brand-red text-white shadow-md shadow-brand-red/30'
@@ -563,7 +573,6 @@ export default function StudentRegistration() {
                                 const initials = sub.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
                                 const colors = ['from-brand-red to-brand-red-dark', 'from-brand-blue to-blue-700', 'from-emerald-500 to-emerald-700', 'from-amber-500 to-orange-600', 'from-violet-500 to-violet-700', 'from-cyan-500 to-cyan-700'];
                                 const colorIdx = [...(sub.name)].reduce((acc, c) => acc + c.charCodeAt(0), 0) % colors.length;
-                                const hasClass = classes.some(c => c.sub_program === sub.id && c.class_type === enrollmentType && c.is_active);
                                 return (
                                   <motion.button
                                     key={sub.id}
@@ -593,9 +602,6 @@ export default function StudentRegistration() {
                                         <p className={`font-black text-sm ${selected ? 'text-brand-red' : 'text-slate-800'}`}>
                                           {fee > 0 ? `${fee.toLocaleString()} Birr` : 'Free'}
                                         </p>
-                                        {!hasClass && selected && (
-                                          <p className="text-[9px] text-amber-600 font-bold mt-0.5">No class slot</p>
-                                        )}
                                       </div>
                                     </div>
                                   </motion.button>
@@ -657,12 +663,6 @@ export default function StudentRegistration() {
                               <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
                                 <GraduationCap className="w-3 h-3 shrink-0" />
                                 {selectedSub.program_name}
-                              </p>
-                            )}
-                            {!selectedClass && (
-                              <p className="text-[10px] text-amber-600 font-bold mt-2 flex items-center gap-1">
-                                <Info className="w-3 h-3 shrink-0" />
-                                No class slot — admin assigns on verification
                               </p>
                             )}
                           </div>
@@ -890,10 +890,30 @@ export default function StudentRegistration() {
                       <motion.div
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-bold text-red-700 flex items-start gap-2.5"
+                        className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4"
                       >
-                        <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                        <span>{submitError}</span>
+                        <div className="flex items-start gap-2.5">
+                          <Info className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-red-700">{submitError}</p>
+                            <p className="text-[10px] text-red-500 mt-1">Your form data is preserved. Fix the issue and retry, or go back to edit.</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                          <button onClick={handleSubmit} disabled={isSubmitting}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-[11px] font-black uppercase tracking-wider transition-all">
+                            {isSubmitting ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            )}
+                            Retry
+                          </button>
+                          <button onClick={() => setSubmitError('')}
+                            className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 text-[11px] font-black uppercase tracking-wider hover:bg-slate-50 transition-all">
+                            Dismiss
+                          </button>
+                        </div>
                       </motion.div>
                     )}
                   </div>
