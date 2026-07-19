@@ -126,7 +126,12 @@ export default function PublicEventsListPage({
         setState('ready');
       })
       .catch(err => {
-        setError(err instanceof Error ? err.message : 'Failed to load events');
+        const msg = err instanceof Error ? err.message : '';
+        setError(
+          msg.includes('No Event') || msg.includes('not found') || msg.includes('matches the given query')
+            ? 'Events are temporarily unavailable. Please try again later.'
+            : msg || 'Failed to load events',
+        );
         setState('error');
       });
   };
