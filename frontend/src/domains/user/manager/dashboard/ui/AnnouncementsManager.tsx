@@ -47,8 +47,13 @@ export default function AnnouncementsManager() {
     setLoading(true); setError(null);
     try {
       const res = await cmsNewsApi.list();
+<<<<<<< HEAD
       setItems((res || []).filter((a: NewsArticleResponse) => a.type === 'ANNOUNCEMENT' || !a.type));
     } catch (e) { setError(formatApiError(e)); }
+=======
+      setItems(res.filter((a: NewsArticleResponse) => a.type === 'ANNOUNCEMENT' || !a.type));
+    } catch (e) { setItems([]); setError(formatApiError(e)); }
+>>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
     setLoading(false);
   };
 

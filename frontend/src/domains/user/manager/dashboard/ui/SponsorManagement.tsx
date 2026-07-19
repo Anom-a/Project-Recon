@@ -35,10 +35,17 @@ export default function SponsorManagement({ currentUser }: Props) {
     try {
       if (canManage) {
         const data = await cmsPartnersApi.list();
+<<<<<<< HEAD
         setSponsors(data);
       } else {
         const data = await cmsPublicApi.getPartners();
         setSponsors(data);
+=======
+        setSponsors(Array.isArray(data) ? data : []);
+      } else {
+        const data = await cmsPublicApi.getPartners();
+        setSponsors(Array.isArray(data) ? data : []);
+>>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
       }
     } catch (e) {
       setError(formatApiError(e));

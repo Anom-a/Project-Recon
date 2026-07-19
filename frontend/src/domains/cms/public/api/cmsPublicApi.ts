@@ -1,7 +1,8 @@
 import { http } from '../../../../shared/api/http';
+import { unwrapList, type PaginatedResponse } from '@/shared/api/pagination';
 import type { CmsPartnerResponse, NewsArticleResponse } from '../../shared/api/cmsApi';
 
-export type { CmsPartnerResponse, NewsArticleResponse };
+export type { CmsPartnerResponse, NewsArticleResponse, PaginatedResponse };
 
 export interface HeroBannerResponse {
   id: string;
@@ -65,6 +66,21 @@ export interface TeamMemberResponse {
   order?: number;
 }
 
+<<<<<<< HEAD
+=======
+export interface TestimonialResponse {
+  id: string;
+  name: string;
+  role: string;
+  quote: string;
+  image: string | null;
+  /** YouTube / Vimeo / direct mp4 URL */
+  video_url: string | null;
+  is_active: boolean;
+  order?: number;
+}
+
+>>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
 export interface GalleryItemResponse {
   id: string;
   title: string;
@@ -94,13 +110,19 @@ export interface HomepageStats {
 export const cmsPublicApi = {
   getPlatformStats: (signal?: AbortSignal) => http.get<PlatformStats>('/cms/stats/', { signal }),
   getHomepageStats: (signal?: AbortSignal) => http.get<HomepageStats>('/public/homepage/statistics/', { signal }),
+<<<<<<< HEAD
   getHeroBanners: (signal?: AbortSignal) => http.get<HeroBannerResponse[]>('/cms/hero-banners/', { signal }),
+=======
+  getHeroBanners: async (signal?: AbortSignal) =>
+    unwrapList(await http.get<HeroBannerResponse[] | PaginatedResponse<HeroBannerResponse>>('/cms/hero-banners/', { signal })),
+>>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
   getNews: (params?: Record<string, string>, signal?: AbortSignal) => http.get<PaginatedResponse<NewsArticleResponse>>('/cms/news/', { params, signal }),
   getNewsDetail: (slug: string) => http.get<NewsArticleResponse>(`/cms/news/${slug}/`),
-  getPartners: (signal?: AbortSignal) => http.get<CmsPartnerResponse[]>('/cms/partners/', { signal }),
+  getPartners: async (signal?: AbortSignal) =>
+    unwrapList(await http.get<CmsPartnerResponse[] | PaginatedResponse<CmsPartnerResponse>>('/cms/partners/', { signal })),
   getAboutUs: async () => {
-    const rows = await http.get<AboutUsResponse[]>('/cms/about/');
-    return (Array.isArray(rows) ? rows : []).map(row => ({
+    const rows = unwrapList(await http.get<AboutUsResponse[] | PaginatedResponse<AboutUsResponse>>('/cms/about/'));
+    return rows.map(row => ({
       ...row,
       content: row.description,
     }));
@@ -109,25 +131,31 @@ export const cmsPublicApi = {
     const row = await http.get<AboutUsResponse>(`/cms/about/${slug}/`);
     return { ...row, content: row.description, image: row.image ?? '' };
   },
+<<<<<<< HEAD
   getGallery: async (signal?: AbortSignal) => {
     const res = await http.get<GalleryItemResponse[] | { results: GalleryItemResponse[] }>('/cms/gallery/', { signal });
     return Array.isArray(res) ? res : (res.results ?? []);
   },
   getGalleryDetail: (id: string) => http.get<GalleryItemResponse>(`/cms/gallery/${id}/`),
   getMapNodes: () => http.get<MapNodeResponse[]>('/cms/map-nodes/'),
+=======
+  getGallery: async (signal?: AbortSignal) =>
+    unwrapList(await http.get<GalleryItemResponse[] | PaginatedResponse<GalleryItemResponse>>('/cms/gallery/', { signal })),
+  getGalleryDetail: (id: string) => http.get<GalleryItemResponse>(`/cms/gallery/${id}/`),
+  getMapNodes: async () =>
+    unwrapList(await http.get<MapNodeResponse[] | PaginatedResponse<MapNodeResponse>>('/cms/map-nodes/')),
+>>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
   /** No backend endpoint — returns empty list for compatibility */
   getTeamMembers: async () => [] as TeamMemberResponse[],
-  getFaqs: async (signal?: AbortSignal) => {
-    const res = await http.get<FaqResponse[] | { results: FaqResponse[] }>('/cms/faqs/', { signal });
-    return Array.isArray(res) ? res : (res.results ?? []);
+  getTestimonials: async (signal?: AbortSignal) => {
+    try {
+      return unwrapList(await http.get<TestimonialResponse[] | PaginatedResponse<TestimonialResponse>>('/cms/testimonials/', { signal }));
+    } catch {
+      return [] as TestimonialResponse[];
+    }
   },
+  getFaqs: async (signal?: AbortSignal) =>
+    unwrapList(await http.get<FaqResponse[] | PaginatedResponse<FaqResponse>>('/cms/faqs/', { signal })),
   submitContactRequest: (data: { name: string; email: string; subject?: string; description: string }) => 
     http.post('/cms/contact-requests/', data),
 };
-
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-}

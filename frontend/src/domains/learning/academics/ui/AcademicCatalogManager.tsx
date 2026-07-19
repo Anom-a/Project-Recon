@@ -1,29 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   AlertCircle,
   BookOpen,
-  Building,
   CheckCircle2,
-  ClipboardList,
   GraduationCap,
   Layers3,
   Loader2,
+  Pencil,
   Plus,
+  Power,
   RefreshCw,
   Save,
   ShieldCheck,
   Users,
   XCircle,
   Search,
-  Trash2,
-  Eye,
-  EyeOff,
   ArrowUpDown,
-  Clock,
-  DollarSign,
   X,
-  Check,
 } from 'lucide-react';
 import type { Program, SubProgram } from '@/shared/types';
 import {
@@ -38,9 +32,11 @@ import {
   type AcademicProgramPayload,
   type AcademicSubProgramPayload,
 } from '@/domains/learning/academics/api/academicApi';
+import { formatApiError } from '@/shared/utils/formatApiError';
 
 type ProgramForm = AcademicProgramPayload & { id?: string };
 type SubProgramForm = AcademicSubProgramPayload & { id?: string };
+type ConfirmAction = { title: string; message: string; confirmLabel: string; onConfirm: () => void };
 
 const emptyProgram: ProgramForm = {
   name: '', slug: '', description: '', supports_group: true, supports_individual: true,
@@ -66,6 +62,9 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'created'>('name');
   const [expandedProgram, setExpandedProgram] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
+  const programFormRef = useRef<HTMLDivElement>(null);
+  const subProgramFormRef = useRef<HTMLDivElement>(null);
 
   const loadCatalog = async () => {
     setLoading(true);
@@ -75,8 +74,8 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
       setPrograms(programData);
       setSubPrograms(subProgramData);
       setSubProgramForm(prev => ({ ...prev, program: prev.program || programData[0]?.id || '' }));
-    } catch {
-      setError('Could not load academic catalog.');
+    } catch (err) {
+      setError(formatApiError(err) || 'Could not load academic catalog.');
     } finally {
       setLoading(false);
     }
@@ -94,12 +93,69 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
 
   const filteredPrograms = useMemo(() => {
     let list = [...programs];
-    if (search) list = list.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.slug.includes(search.toLowerCase()));
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q));
+    }
     if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
+    else list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
     return list;
   }, [programs, search, sortBy]);
 
+  const filteredSubPrograms = useMemo(() => {
+    let list = [...subPrograms];
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(sp => {
+        const parent = programs.find(p => p.id === sp.program)?.name || '';
+        return sp.name.toLowerCase().includes(q) || sp.slug.includes(q) || parent.toLowerCase().includes(q);
+      });
+    }
+    if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
+    else list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    return list;
+  }, [subPrograms, programs, search, sortBy]);
+
   const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); };
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+    requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+
+  const editProgram = (program: Program) => {
+    setProgramForm({
+      id: program.id,
+      name: program.name,
+      slug: program.slug,
+      description: program.description || '',
+      image: program.image || undefined,
+      supports_group: program.supports_group,
+      supports_individual: program.supports_individual,
+    });
+    scrollTo(programFormRef);
+  };
+
+  const editSubProgram = (sp: SubProgram) => {
+    setSubProgramForm({
+      id: sp.id,
+      program: sp.program,
+      name: sp.name,
+      slug: sp.slug,
+      description: sp.description || '',
+      image: sp.image || undefined,
+      duration: sp.duration ?? null,
+      duration_unit: sp.duration_unit || null,
+      group_fee: String(sp.group_fee ?? ''),
+      individual_fee: sp.individual_fee != null ? String(sp.individual_fee) : '',
+    });
+    scrollTo(subProgramFormRef);
+  };
+
+  const startSubProgramFor = (programId: string) => {
+    setSubProgramForm({ ...emptySubProgram, program: programId });
+    setExpandedProgram(programId);
+    scrollTo(subProgramFormRef);
+  };
 
   const saveProgram = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +176,7 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
       setProgramForm(emptyProgram);
       await loadCatalog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save program.');
+      setError(formatApiError(err) || 'Could not save program.');
     } finally { setSaving(null); }
   };
 
@@ -146,32 +202,52 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
       setSubProgramForm({ ...emptySubProgram, program: payload.program });
       await loadCatalog();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save sub program.');
+      setError(formatApiError(err) || 'Could not save sub program.');
     } finally { setSaving(null); }
   };
 
-  const toggleProgram = async (program: Program) => {
-    setSaving(program.id);
-    setError('');
-    try {
-      await setProgramActiveApi(program.id, !program.is_active);
-      showSuccess(program.is_active ? 'Program deactivated' : 'Program activated');
-      await loadCatalog();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update program status.');
-    } finally { setSaving(null); }
+  const toggleProgram = (program: Program) => {
+    const activating = !program.is_active;
+    const run = async () => {
+      setSaving(program.id);
+      setError('');
+      try {
+        await setProgramActiveApi(program.id, activating);
+        showSuccess(activating ? 'Program activated' : 'Program deactivated');
+        await loadCatalog();
+      } catch (err) {
+        setError(formatApiError(err) || 'Could not update program status.');
+      } finally { setSaving(null); }
+    };
+    if (activating) { void run(); return; }
+    setConfirm({
+      title: 'Deactivate Program',
+      message: `"${program.name}" will be hidden from new enrollments. Sub-programs stay as-is.`,
+      confirmLabel: 'Deactivate',
+      onConfirm: () => { void run(); },
+    });
   };
 
-  const toggleSubProgram = async (subProgram: SubProgram) => {
-    setSaving(subProgram.id);
-    setError('');
-    try {
-      await setSubProgramActiveApi(subProgram.id, !subProgram.is_active);
-      showSuccess(subProgram.is_active ? 'Sub program deactivated' : 'Sub program activated');
-      await loadCatalog();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update sub program status.');
-    } finally { setSaving(null); }
+  const toggleSubProgram = (subProgram: SubProgram) => {
+    const activating = !subProgram.is_active;
+    const run = async () => {
+      setSaving(subProgram.id);
+      setError('');
+      try {
+        await setSubProgramActiveApi(subProgram.id, activating);
+        showSuccess(activating ? 'Sub program activated' : 'Sub program deactivated');
+        await loadCatalog();
+      } catch (err) {
+        setError(formatApiError(err) || 'Could not update sub program status.');
+      } finally { setSaving(null); }
+    };
+    if (activating) { void run(); return; }
+    setConfirm({
+      title: 'Deactivate Sub Program',
+      message: `"${subProgram.name}" will no longer be available for new enrollments.`,
+      confirmLabel: 'Deactivate',
+      onConfirm: () => { void run(); },
+    });
   };
 
   return (
@@ -220,8 +296,8 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search programs..."
-                className="w-48 pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search programs & sub-programs..."
+                className="w-56 pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red" />
             </div>
             <button onClick={() => setSortBy(sortBy === 'name' ? 'created' : 'name')}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
@@ -264,6 +340,7 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
 
       {/* Forms */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <div ref={programFormRef}>
         <FormCard icon={BookOpen} title={programForm.id ? 'Edit Program' : 'New Program'} onClear={() => setProgramForm(emptyProgram)} showClear={!!programForm.id}>
           <form onSubmit={saveProgram} className="flex flex-col gap-4">
             <FormField label="Program Name" required>
@@ -305,13 +382,15 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
             <ActionButton loading={saving === 'program'} label={programForm.id ? 'Save Changes' : 'Create Program'} />
           </form>
         </FormCard>
+        </div>
 
+        <div ref={subProgramFormRef}>
         <FormCard icon={Layers3} title={subProgramForm.id ? 'Edit Sub Program' : 'New Sub Program'} onClear={() => setSubProgramForm({ ...emptySubProgram, program: programs[0]?.id || '' })} showClear={!!subProgramForm.id}>
           <form onSubmit={saveSubProgram} className="flex flex-col gap-4">
             <FormField label="Parent Program" required>
               <select value={subProgramForm.program} onChange={e => setSubProgramForm(p => ({ ...p, program: e.target.value }))} className="form-input">
                 <option value="">Select program...</option>
-                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {programs.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_active === false ? ' (Inactive)' : ''}</option>)}
               </select>
             </FormField>
             <FormField label="Sub Program Name" required>
@@ -371,6 +450,7 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
             <ActionButton loading={saving === 'sub-program'} label={subProgramForm.id ? 'Save Changes' : 'Create Sub Program'} disabled={programs.length === 0} />
           </form>
         </FormCard>
+        </div>
       </div>
 
       {/* Lists */}
@@ -432,23 +512,40 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
                       ) : (
                         subPrograms.filter(sp => sp.program === program.id).map(sp => (
                           <div key={sp.id} className="flex items-center gap-2 pl-6 py-1.5 text-xs text-slate-600 border-l-2 border-brand-red/20">
+<<<<<<< HEAD
                             <span className="w-1.5 h-1.5 rounded-full bg-brand-red/30 shrink-0" />
                             <span className="font-medium">{sp.name}</span>
+=======
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sp.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                            <span className="font-medium flex-1 truncate">{sp.name}</span>
+>>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
                             <span className="text-slate-400">{Number(sp.group_fee).toLocaleString()} Birr</span>
                             {sp.duration && <span className="text-slate-400">({sp.duration} {sp.duration_unit?.toLowerCase()})</span>}
+                            <button type="button" onClick={() => editSubProgram(sp)} className="text-[10px] font-bold text-blue-600 hover:underline">Edit</button>
                           </div>
                         ))
                       )}
+                      <button type="button" onClick={() => startSubProgramFor(program.id)}
+                        className="ml-6 mt-1 inline-flex items-center gap-1 text-[10px] font-black text-brand-red hover:bg-brand-red/5 px-2 py-1 rounded-lg transition-colors">
+                        <Plus className="w-3 h-3" /> Add sub-program
+                      </button>
                     </div>
                   )}
-                  <div className="px-5 pb-3 flex items-center gap-2">
-                    <button onClick={() => setProgramForm({ ...emptyProgram, ...program })}
-                      className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2.5 py-1 rounded-lg transition-colors">
-                      Edit
+                  <div className="px-5 pb-3 flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => editProgram(program)}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                      <Pencil className="w-3 h-3" /> Edit
                     </button>
-                    <button onClick={() => toggleProgram(program)} disabled={saving === program.id}
-                      className="text-xs font-bold text-slate-600 hover:bg-slate-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50">
-                      {saving === program.id ? '...' : program.is_active ? 'Deactivate' : 'Activate'}
+                    <button type="button" onClick={() => startSubProgramFor(program.id)}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:bg-purple-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                      <Plus className="w-3 h-3" /> Add sub
+                    </button>
+                    <button type="button" onClick={() => toggleProgram(program)} disabled={saving === program.id}
+                      className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                        program.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'
+                      }`}>
+                      {saving === program.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Power className="w-3 h-3" />}
+                      {program.is_active ? 'Deactivate' : 'Activate'}
                     </button>
                   </div>
                 </div>
@@ -463,23 +560,24 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
             <div className="flex items-center gap-2">
               <Layers3 className="w-4 h-4 text-purple-500" />
               <h3 className="font-black text-sm text-slate-900">Sub Programs</h3>
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{subPrograms.length}</span>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{filteredSubPrograms.length}{search ? ` / ${subPrograms.length}` : ''}</span>
             </div>
           </div>
           {loading ? (
             <div className="p-4 space-y-2">
               {[1,2,3].map(i => <div key={i} className="h-16 rounded-xl bg-slate-100 animate-pulse" />)}
             </div>
-          ) : subPrograms.length === 0 ? (
+          ) : filteredSubPrograms.length === 0 ? (
             <div className="p-8 text-center">
               <Layers3 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-400">No sub programs yet</p>
+              <p className="text-sm font-medium text-slate-400">{search ? 'No sub programs match your search' : 'No sub programs yet'}</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {subPrograms.map(sp => {
+              {filteredSubPrograms.map(sp => {
                 const parentProgram = programs.find(p => p.id === sp.program);
                 return (
+<<<<<<< HEAD
                   <div key={sp.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors">
                     {sp.image ? (
                       <img src={sp.image} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0 border border-slate-200" />
@@ -503,11 +601,40 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
                       <button onClick={() => setSubProgramForm({ ...emptySubProgram, ...sp, group_fee: String(sp.group_fee), individual_fee: sp.individual_fee != null ? String(sp.individual_fee) : '' })}
                         className="p-1 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors" title="Edit">
                         <Eye className="w-3.5 h-3.5" />
+=======
+                  <div key={sp.id} className="px-5 py-3 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {sp.image ? (
+                        <img src={sp.image} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0 border border-slate-200" />
+                      ) : (
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${sp.is_active ? 'bg-purple-50 text-purple-500' : 'bg-slate-100 text-slate-400'}`}>
+                          <Layers3 className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-800 truncate">{sp.name}</p>
+                        <p className="text-xs text-slate-400 truncate">{parentProgram?.name || sp.program_name || '—'}</p>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 shrink-0">
+                        {Number(sp.group_fee) > 0 && <span className="font-bold text-slate-700">{Number(sp.group_fee).toLocaleString()} Birr</span>}
+                        {sp.duration && <span className="text-slate-400">| {sp.duration}{sp.duration_unit?.charAt(0)?.toLowerCase()}</span>}
+                      </div>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sp.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {sp.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 pl-12">
+                      <button type="button" onClick={() => editSubProgram(sp)}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                        <Pencil className="w-3 h-3" /> Edit
+>>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
                       </button>
-                      <button onClick={() => toggleSubProgram(sp)} disabled={saving === sp.id}
-                        className={`p-1 rounded-lg transition-colors ${sp.is_active ? 'text-slate-400 hover:text-red-500 hover:bg-red-50' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-50'}`}
-                        title={sp.is_active ? 'Deactivate' : 'Activate'}>
-                        {sp.is_active ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      <button type="button" onClick={() => toggleSubProgram(sp)} disabled={saving === sp.id}
+                        className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                          sp.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'
+                        }`}>
+                        {saving === sp.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Power className="w-3 h-3" />}
+                        {sp.is_active ? 'Deactivate' : 'Activate'}
                       </button>
                     </div>
                   </div>
@@ -517,6 +644,30 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {confirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setConfirm(null)}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-6"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mb-4">
+                <Power className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="font-black text-lg text-slate-900 mb-1">{confirm.title}</h3>
+              <p className="text-sm text-slate-600 mb-6">{confirm.message}</p>
+              <div className="flex items-center justify-end gap-3">
+                <button type="button" onClick={() => setConfirm(null)} className="px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl">Cancel</button>
+                <button type="button" onClick={() => { confirm.onConfirm(); setConfirm(null); }}
+                  className="px-4 py-2.5 text-xs font-black text-white bg-red-500 hover:bg-red-600 rounded-xl shadow-lg shadow-red-500/25">
+                  {confirm.confirmLabel}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

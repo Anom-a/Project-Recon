@@ -216,7 +216,12 @@ export default function PublicEventDetailsPage({
           setPermissionDenied(true);
           setError('You don\'t have permission to view this event.');
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load event');
+          const msg = err instanceof Error ? err.message : '';
+          setError(
+            msg.includes('No Event') || msg.includes('not found') || msg.includes('matches the given query')
+              ? 'This event could not be found. It may have ended, been removed, or is no longer publicly available.'
+              : msg || 'Failed to load event',
+          );
         }
         setState('error');
       });

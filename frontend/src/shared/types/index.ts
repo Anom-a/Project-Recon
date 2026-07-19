@@ -43,7 +43,11 @@ export interface UserProfile {
   studentId?: string;
 }
 
+<<<<<<< HEAD
 export type ActiveTab = 'home' | 'about' | 'store' | 'store-orders' | 'store-order-detail' | 'dashboard' | 'login' | 'register' | 'registration' | 'simulator' | 'competitions' | 'command-center' | 'forgot-password' | 'reset-password' | 'cert-verify' | 'privacy' | 'terms' | 'help';
+=======
+export type ActiveTab = 'home' | 'about' | 'history' | 'store' | 'store-orders' | 'store-order-detail' | 'dashboard' | 'login' | 'register' | 'registration' | 'simulator' | 'competitions' | 'command-center' | 'forgot-password' | 'reset-password' | 'cert-verify' | 'privacy' | 'terms' | 'help';
+>>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
 
 export interface SubscriptionTier {
   id: 'free' | 'explorer' | 'pro' | 'school';
