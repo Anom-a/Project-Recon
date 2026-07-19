@@ -82,7 +82,12 @@ export default function PublicTournamentPage({ eventId, onBack, onOpenMatch }: P
           setPermissionDenied(true);
           setError('You don’t have permission to view this tournament.');
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load tournament');
+          const msg = err instanceof Error ? err.message : '';
+          setError(
+            msg.includes('No Event') || msg.includes('not found') || msg.includes('matches the given query')
+              ? 'This tournament could not be found. It may have ended or been removed.'
+              : msg || 'Failed to load tournament',
+          );
         }
         setState('error');
       });
