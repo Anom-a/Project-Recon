@@ -20,11 +20,6 @@ const HERO_PARTICLES = Array.from({ length: 10 }, (_, i) => ({
 
 const trustItems = ['Competitions', '120+ Labs', 'STEM Kits', 'Awards'];
 
-const stats = [
-  { value: '5M+', label: 'Future Engineers', accent: 'from-blue-300 to-blue-400' },
-  { value: '120+', label: 'Programs', accent: 'from-cyan-300 to-cyan-400' },
-  { value: '500+', label: 'Competitions', accent: 'from-indigo-300 to-indigo-400' },
-];
 
 interface HeroProps {
   onDiscoverPrograms: () => void;
@@ -290,27 +285,8 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
             className="w-full"
           >
             <div className="w-full bg-white/[0.04] backdrop-blur-sm rounded-xl border border-white/[0.06] p-4">
-              {/* Stats row */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                {stats.map((stat, i) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={mounted ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.5, delay: 0.55 + i * 0.1 }}
-                  >
-                    <div className={`text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r ${stat.accent}`}>
-                      {stat.value}
-                    </div>
-                    <div className="text-[10px] text-white/40 font-medium mt-0.5 uppercase tracking-widest">
-                      {stat.label}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
               {/* Progress bar */}
-              <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[9px] font-mono font-semibold text-white/30 uppercase tracking-[0.15em]">Mission Progress</span>
                   <span className="text-[11px] font-semibold text-white/50 font-mono">1,240,500 / 5,000,000</span>

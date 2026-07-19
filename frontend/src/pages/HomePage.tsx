@@ -337,25 +337,17 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
       <section className="section-shell py-10" id="video-demo">
         {(() => {
           const videoItems = galleryItems.filter(g => g.video_url);
-          const imageItems = galleryItems.filter(g => g.image);
-          const DEMO_SLIDES = [
-            {
-              tag: 'Watch The Demo',
-              title: 'Building the Next Generation',
-              quote: '"Encouraging creativity through Competition."',
-              body: 'Experience the innovation and teamwork that drive Ethio Robotics. From our advanced robotics labs to national championship arenas, see how we empower students to transform ideas into working mechatronic reality.',
-              video: videoItems[0]?.video_url ?? null,
-              poster: imageItems[0]?.image ?? undefined,
-            },
-            {
-              tag: 'Ethio Robotics Demo',
-              title: 'Encouraging Creativity Through Competition',
-              quote: '"5 Million Engineers Starts Here."',
-              body: 'Watch our students compete, collaborate, and create at the highest levels. From autonomous driving challenges to VEX championship arenas — this is where future engineers are forged.',
-              video: videoItems[1]?.video_url ?? null,
-              poster: imageItems[1]?.image ?? undefined,
-            },
-          ];
+          if (videoItems.length === 0) return null;
+          
+          const DEMO_SLIDES = videoItems.map(item => ({
+            tag: item.category || 'Video',
+            title: item.title || '',
+            quote: '',
+            body: item.description || '',
+            video: item.video_url,
+            poster: item.image ?? undefined,
+          }));
+          
           return <DemoSlider slides={DEMO_SLIDES} onCta={() => onEnrollInProgram('prog-vex-v5')} />;
         })()}
       </section>

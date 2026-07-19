@@ -76,12 +76,6 @@ function MissionVisionPair({ mission, vision }: { mission?: string; vision?: str
   );
 }
 
-const OUR_VALUES = [
-  { title: 'Innovation', desc: 'We push creative problem-solving in every build, lesson, and competition.', icon: Lightbulb },
-  { title: 'Teamwork', desc: 'We grow stronger by mentoring, collaborating, and competing together.', icon: Users },
-  { title: 'Inclusivity', desc: 'We open STEM doors for every student who wants to learn and lead.', icon: Heart },
-  { title: 'Excellence', desc: 'We hold a high bar for how we teach, mentor, and compete.', icon: Award },
-];
 
 export default function AboutTab() {
   const [hoveredNode, setHoveredNode] = useState<MapNode | null>(null);
@@ -372,26 +366,7 @@ export default function AboutTab() {
 
       </div>
 
-      {/* Our Values */}
-      <section id="about-values" className="max-w-7xl mx-auto px-6 md:px-12 py-20 mt-10 border-t border-slate-200">
-        <div className="text-center mb-12">
-          <h2 className="font-display font-bold text-slate-900 tracking-tight text-3xl md:text-4xl">Our Values</h2>
-          <p className="text-slate-600 mt-4 max-w-2xl mx-auto">
-            Innovation, teamwork, inclusivity, and excellence—guiding how we teach, mentor, and compete.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {OUR_VALUES.map(({ title, desc, icon: Icon }) => (
-            <div key={title} className="bg-white rounded-2xl border border-slate-200 p-6 text-center hover:shadow-md transition-shadow">
-              <div className="mx-auto mb-4 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                <Icon className="w-5 h-5 text-brand-blue" />
-              </div>
-              <h3 className="font-bold text-slate-900 text-lg mb-2">{title}</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+
 
       {/* Testimonials */}
       <section id="about-testimonials" className="max-w-7xl mx-auto px-6 md:px-12 py-20 border-t border-slate-200">
