@@ -7,8 +7,7 @@ from rest_framework.throttling import AnonRateThrottle
 from apps.academic.models import Student
 from apps.accounts.permissions.roles import (
     get_active_branch_ids,
-    user_is_branch_manager,
-    user_is_secretary,
+    user_is_super_admin,
 )
 from apps.events.api.permissions import IsEventRegistrationStaff, IsEventStaff
 from apps.events.api.serializers import (
@@ -24,6 +23,7 @@ from apps.events.services.registration_service import (
     list_registrations,
     register_for_event,
     reject_registration,
+    verify_registration_email,
 )
 
 
@@ -33,6 +33,7 @@ from apps.events.services.registration_service import (
 class EventRegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]
+    throttle_scope = "events_register"
     serializer_class = PublicRegistrationSerializer
 
     def create(self, request, *args, **kwargs):
@@ -70,6 +71,32 @@ class EventRegisterView(generics.CreateAPIView):
         return Response(
             RegistrationAdminSerializer(registration).data,
             status=status.HTTP_201_CREATED,
+        )
+
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Events - Registration"],
+        summary="Verify registration email",
+        description="Verify a public registration's email using the 6-digit OTP sent to their email.",
+    ),
+)
+class RegistrationVerifyEmailView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "events_register"
+    serializer_class = PublicRegistrationSerializer
+
+    def post(self, request, pk):
+        otp = request.data.get("otp")
+        if not otp:
+            return Response(
+                {"otp": "Verification code is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        registration = verify_registration_email(pk, otp)
+        return Response(
+            RegistrationAdminSerializer(registration).data,
+            status=status.HTTP_200_OK,
         )
 
 
@@ -128,6 +155,7 @@ class MyRegistrationCancelView(generics.CreateAPIView):
 )
 class AdminRegistrationListView(generics.ListAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
     serializer_class = RegistrationAdminSerializer
 
     def get_queryset(self):
@@ -135,7 +163,7 @@ class AdminRegistrationListView(generics.ListAPIView):
         status_filter = self.request.query_params.get("status")
         user = self.request.user
         branch_ids = None
-        if user_is_branch_manager(user) or user_is_secretary(user):
+        if not user_is_super_admin(user):
             branch_ids = get_active_branch_ids(user)
         return list_registrations(event_id=event_id, status=status_filter, branch_ids=branch_ids)
 
@@ -145,6 +173,7 @@ class AdminRegistrationListView(generics.ListAPIView):
 )
 class AdminRegistrationDetailView(generics.RetrieveAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
     serializer_class = RegistrationAdminSerializer
     lookup_url_kwarg = "pk"
 
@@ -159,6 +188,7 @@ class AdminRegistrationDetailView(generics.RetrieveAPIView):
 )
 class AdminRegistrationApproveView(generics.CreateAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
 
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
@@ -172,6 +202,7 @@ class AdminRegistrationApproveView(generics.CreateAPIView):
 )
 class AdminRegistrationRejectView(generics.CreateAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
 
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
@@ -185,6 +216,7 @@ class AdminRegistrationRejectView(generics.CreateAPIView):
 )
 class AdminRegistrationCancelView(generics.CreateAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
 
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
@@ -198,6 +230,7 @@ class AdminRegistrationCancelView(generics.CreateAPIView):
 )
 class AdminRegistrationConvertTeamView(generics.CreateAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
 
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])

@@ -140,6 +140,34 @@ export interface MapNodeModel {
   isActive?: boolean;
 }
 
+export interface Testimonial {
+  id: string;
+  name: string;
+  role: string;
+  quote: string;
+  image: string | null;
+  video_url: string | null;
+  is_active: boolean;
+  order?: number;
+  created_at?: string;
+  updated_at?: string;
+  imageUrl?: string;
+  videoUrl?: string | null;
+  isActive?: boolean;
+  priority?: number;
+}
+
+export interface HomepageStatistic {
+  id: string;
+  future_engineers: number;
+  programs: number;
+  competitions: number;
+  mission_current: number;
+  mission_target: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;

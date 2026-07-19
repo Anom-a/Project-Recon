@@ -25,6 +25,8 @@ from apps.cms.services.faq_service import create_faq
 from apps.cms.services.contact_request_service import create_contact_request
 from apps.cms.services.map_node_service import create_map_node
 from apps.cms.services.gallery_service import create_gallery_item
+from apps.cms.services.testimonial_service import create_testimonial
+from apps.cms.services.homepage_statistic_service import get_stats, create_stats
 from apps.cms.constants import MapNodeCategory
 
 
@@ -105,7 +107,22 @@ class CMSApiTestCase(APITestCase):
             "title": "Inactive Gallery",
             "description": "Hidden",
             "is_active": False,
+            "video_url": "https://example.com/inactive-video",
         })
+        self.testimonial = create_testimonial({
+            "name": "Happy Parent",
+            "role": "Parent",
+            "quote": "This program changed my child's life!",
+            "order": 1,
+        })
+        self.inactive_testimonial = create_testimonial({
+            "name": "Hidden",
+            "role": "Student",
+            "quote": "Inactive",
+            "is_active": False,
+            "order": 2,
+        })
+        self.homepage_stats = get_stats()
         # DRF caches SimpleRateThrottle.THROTTLE_RATES at import time,
         # so override_settings(REST_FRAMEWORK=...) has no effect on it.
         self._old_throttle_rates = SimpleRateThrottle.THROTTLE_RATES
@@ -143,8 +160,8 @@ class PublicEndpointTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/hero-banners/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [b["title"] for b in data]
+        self.assertIn("results", data)
+        titles = [b["title"] for b in data["results"]]
         self.assertIn("Hero Banner", titles)
         self.assertNotIn("Inactive Banner", titles)
 
@@ -169,9 +186,8 @@ class PublicEndpointTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/about/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        if data:
-            item = data[0]
+        if data["results"]:
+            item = data["results"][0]
             self.assertIn("image", item)
             self.assertIn("mission", item)
             self.assertIn("vision", item)
@@ -208,8 +224,8 @@ class PublicEndpointTest(CMSApiTestCase):
         self.assertEqual(data["email"], "jane@test.com")
         self.assertEqual(data["subject"], "Issue")
         self.assertEqual(data["description"], "Help!")
-        self.assertEqual(data["status"], "OPEN")
-        self.assertEqual(data["priority"], "MEDIUM")
+        self.assertNotIn("status", data)
+        self.assertNotIn("priority", data)
         self.assertIsNone(data.get("phone"))
 
     def test_create_contact_request_with_phone(self):
@@ -243,12 +259,51 @@ class PublicEndpointTest(CMSApiTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_duplicate_contact_request_rejected(self):
+        payload = {
+            "name": "Spammer",
+            "email": "spam@test.com",
+            "subject": "Same Issue",
+            "description": "Help!",
+        }
+        response = self.client.post(
+            f"{self.base_url}/contact-requests/", payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post(
+            f"{self.base_url}/contact-requests/", payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_duplicate_different_subject_allowed(self):
+        response = self.client.post(
+            f"{self.base_url}/contact-requests/",
+            {
+                "name": "User",
+                "email": "user@test.com",
+                "subject": "First Issue",
+                "description": "Help!",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post(
+            f"{self.base_url}/contact-requests/",
+            {
+                "name": "User",
+                "email": "user@test.com",
+                "subject": "Different Issue",
+                "description": "Help!",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def test_list_map_nodes_public(self):
         response = self.client.get(f"{self.base_url}/map-nodes/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [n["title"] for n in data]
+        titles = [n["title"] for n in data["results"]]
         self.assertIn("Test Map Node", titles)
         self.assertNotIn("Inactive Map Node", titles)
 
@@ -256,8 +311,7 @@ class PublicEndpointTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/gallery/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [g["title"] for g in data]
+        titles = [g["title"] for g in data["results"]]
         self.assertIn("Gallery Photo", titles)
         self.assertNotIn("Inactive Gallery", titles)
 
@@ -275,10 +329,78 @@ class PublicEndpointTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/gallery/{uuid.uuid4()}/")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_list_testimonials_public(self):
+        response = self.client.get(f"{self.base_url}/testimonials/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        names = [t["name"] for t in data["results"]]
+        self.assertIn("Happy Parent", names)
+        self.assertNotIn("Hidden", names)
+
+    def test_list_testimonials_public_ordered_by_order(self):
+        create_testimonial({"name": "A", "role": "P", "quote": "Q", "order": 0})
+        create_testimonial({"name": "Z", "role": "P", "quote": "Q", "order": 5})
+        response = self.client.get(f"{self.base_url}/testimonials/")
+        results = response.json()["results"]
+        orders = [t["order"] for t in results]
+        self.assertEqual(orders, sorted(orders))
+
+    def test_retrieve_testimonial_public(self):
+        response = self.client.get(
+            f"{self.base_url}/testimonials/{self.testimonial.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["name"], "Happy Parent")
+        self.assertNotIn("is_active", data)
+
+    def test_retrieve_testimonial_public_inactive_returns_404(self):
+        response = self.client.get(
+            f"{self.base_url}/testimonials/{self.inactive_testimonial.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_retrieve_testimonial_public_not_found(self):
+        response = self.client.get(f"{self.base_url}/testimonials/{uuid.uuid4()}/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_homepage_stats_public(self):
+        response = self.client.get(f"{self.base_url}/homepage/statistics/current/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn("future_engineers", data)
+        self.assertIn("programs", data)
+        self.assertIn("competitions", data)
+        self.assertIn("mission", data)
+        self.assertIn("current", data["mission"])
+        self.assertIn("target", data["mission"])
+        self.assertIn("percentage", data["mission"])
+        self.assertEqual(data["mission"]["current"], 1_240_500)
+        self.assertEqual(data["mission"]["target"], 5_000_000)
+        self.assertAlmostEqual(data["mission"]["percentage"], 24.81, places=2)
+
+    def test_list_homepage_stats_public(self):
+        response = self.client.get(f"{self.base_url}/homepage/statistics/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn("results", data)
+        self.assertEqual(len(data["results"]), 1)
+        self.assertIn("mission", data["results"][0])
+
+    def test_retrieve_homepage_stats_detail_public(self):
+        response = self.client.get(
+            f"{self.base_url}/homepage/statistics/{self.homepage_stats.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn("future_engineers", data)
+        self.assertIn("mission", data)
+        self.assertEqual(data["mission"]["current"], 1_240_500)
+
     def test_list_map_nodes_public_returns_all_fields(self):
         response = self.client.get(f"{self.base_url}/map-nodes/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        for node in response.json():
+        for node in response.json()["results"]:
             self.assertIn("id", node)
             self.assertIn("city", node)
             self.assertIn("country", node)
@@ -299,7 +421,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
     def test_list_hero_banners_admin(self):
         response = self.client.get(f"{self.base_url}/admin/hero-banners/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        titles = [b["title"] for b in response.json()]
+        titles = [b["title"] for b in response.json()["results"]]
         self.assertIn("Inactive Banner", titles)
 
     def test_create_hero_banner_admin(self):
@@ -419,8 +541,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/admin/contact-requests/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        self.assertGreaterEqual(len(data), 1)
+        self.assertGreaterEqual(len(data["results"]), 1)
 
     def test_retrieve_contact_request_admin(self):
         response = self.client.get(
@@ -473,8 +594,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/admin/map-nodes/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [n["title"] for n in data]
+        titles = [n["title"] for n in data["results"]]
         self.assertIn("Test Map Node", titles)
         self.assertIn("Inactive Map Node", titles)
 
@@ -544,8 +664,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/admin/gallery/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [g["title"] for g in data]
+        titles = [g["title"] for g in data["results"]]
         self.assertIn("Gallery Photo", titles)
         self.assertIn("Inactive Gallery", titles)
 
@@ -565,14 +684,27 @@ class AdminSuperAdminTest(CMSApiTestCase):
         self.assertEqual(data["description"], "Brand new")
         self.assertTrue(data["is_active"])
 
-    def test_create_gallery_admin_minimal(self):
+    def test_create_gallery_admin_no_media_rejected(self):
         response = self.client.post(
             f"{self.base_url}/admin/gallery/",
-            {"title": "Minimal"},
+            {"title": "No Media"},
             format="json",
         )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_gallery_admin_with_image_only(self):
+        temp_image = tempfile.NamedTemporaryFile(suffix=".png")
+        image = Image.new("RGB", (100, 100))
+        image.save(temp_image, format="PNG")
+        temp_image.seek(0)
+        response = self.client.post(
+            f"{self.base_url}/admin/gallery/",
+            {"title": "Image Only", "image": temp_image},
+            format="multipart",
+        )
+        temp_image.close()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.json()["title"], "Minimal")
+        self.assertEqual(response.json()["title"], "Image Only")
 
     def test_retrieve_gallery_admin(self):
         response = self.client.get(
@@ -609,6 +741,14 @@ class AdminSuperAdminTest(CMSApiTestCase):
         self.assertEqual(response.json()["title"], "Fully Updated")
         self.assertEqual(response.json()["description"], "New description")
 
+    def test_update_gallery_admin_clears_last_media(self):
+        response = self.client.patch(
+            f"{self.base_url}/admin/gallery/{self.gallery_item.id}/",
+            {"video_url": ""},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_delete_gallery_admin_hard_delete(self):
         response = self.client.delete(
             f"{self.base_url}/admin/gallery/{self.gallery_item.id}/"
@@ -637,8 +777,130 @@ class AdminSuperAdminTest(CMSApiTestCase):
     def test_delete_map_node_then_list_excludes_it_from_public(self):
         self.client.delete(f"{self.base_url}/admin/map-nodes/{self.map_node.id}/")
         response = self.client.get(f"{self.base_url}/map-nodes/")
-        titles = [n["title"] for n in response.json()]
+        titles = [n["title"] for n in response.json()["results"]]
         self.assertNotIn("Test Map Node", titles)
+
+    # Testimonials admin -------------------------------------------------
+
+    def test_list_testimonials_admin(self):
+        response = self.client.get(f"{self.base_url}/admin/testimonials/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        names = [t["name"] for t in response.json()["results"]]
+        self.assertIn("Happy Parent", names)
+        self.assertIn("Hidden", names)
+
+    def test_create_testimonial_admin(self):
+        response = self.client.post(
+            f"{self.base_url}/admin/testimonials/",
+            {"name": "New Person", "role": "Partner", "quote": "Excellent work!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        self.assertEqual(data["name"], "New Person")
+        self.assertEqual(data["role"], "Partner")
+        self.assertEqual(data["quote"], "Excellent work!")
+        self.assertTrue(data["is_active"])
+
+    def test_retrieve_testimonial_admin(self):
+        response = self.client.get(
+            f"{self.base_url}/admin/testimonials/{self.testimonial.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["name"], "Happy Parent")
+
+    def test_update_testimonial_admin(self):
+        response = self.client.patch(
+            f"{self.base_url}/admin/testimonials/{self.testimonial.id}/",
+            {"name": "Updated Name", "order": 10},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["name"], "Updated Name")
+        self.assertEqual(response.json()["order"], 10)
+
+    def test_delete_testimonial_admin(self):
+        response = self.client.delete(
+            f"{self.base_url}/admin/testimonials/{self.testimonial.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # Verify gone
+        response = self.client.get(
+            f"{self.base_url}/admin/testimonials/{self.testimonial.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Homepage Stats admin -------------------------------------------------
+
+    def test_list_homepage_stats_admin(self):
+        response = self.client.get(f"{self.base_url}/admin/homepage/statistics/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn("results", data)
+        self.assertGreaterEqual(len(data["results"]), 1)
+
+    def test_create_homepage_stats_admin(self):
+        response = self.client.post(
+            f"{self.base_url}/admin/homepage/statistics/",
+            {
+                "future_engineers": 9_000_000,
+                "programs": 300,
+                "competitions": 750,
+                "mission_current": 3_000_000,
+                "mission_target": 9_000_000,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        self.assertEqual(data["future_engineers"], 9_000_000)
+        self.assertEqual(data["programs"], 300)
+
+    def test_retrieve_homepage_stats_admin(self):
+        response = self.client.get(
+            f"{self.base_url}/admin/homepage/statistics/{self.homepage_stats.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn("future_engineers", data)
+        self.assertIn("programs", data)
+        self.assertIn("competitions", data)
+        self.assertIn("mission_current", data)
+        self.assertIn("mission_target", data)
+
+    def test_update_homepage_stats_admin(self):
+        response = self.client.patch(
+            f"{self.base_url}/admin/homepage/statistics/{self.homepage_stats.id}/",
+            {"future_engineers": 10_000_000, "programs": 250},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["future_engineers"], 10_000_000)
+        self.assertEqual(data["programs"], 250)
+
+    def test_delete_homepage_stats_admin(self):
+        response = self.client.delete(
+            f"{self.base_url}/admin/homepage/statistics/{self.homepage_stats.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # Verify gone
+        response = self.client.get(
+            f"{self.base_url}/admin/homepage/statistics/{self.homepage_stats.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update_homepage_stats_admin_percentage_reflects_change(self):
+        response = self.client.patch(
+            f"{self.base_url}/admin/homepage/statistics/{self.homepage_stats.id}/",
+            {"mission_current": 2_500_000, "mission_target": 5_000_000},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Verify public endpoint reflects the change
+        response = self.client.get(f"{self.base_url}/homepage/statistics/current/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertAlmostEqual(response.json()["mission"]["percentage"], 50.0, places=2)
 
 
 class AdminUnauthorizedTest(CMSApiTestCase):
@@ -794,6 +1056,77 @@ class AdminUnauthorizedTest(CMSApiTestCase):
             f"{self.base_url}/admin/gallery/{self.gallery_item.id}/"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_list_testimonials_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.get(f"{self.base_url}/admin/testimonials/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_create_testimonial_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.post(
+            f"{self.base_url}/admin/testimonials/",
+            {"name": "Hack", "role": "P", "quote": "Q"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_update_testimonial_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.patch(
+            f"{self.base_url}/admin/testimonials/{self.testimonial.id}/",
+            {"name": "Hacked"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_delete_testimonial_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.delete(
+            f"{self.base_url}/admin/testimonials/{self.testimonial.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_list_homepage_stats_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.get(f"{self.base_url}/admin/homepage/statistics/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_create_homepage_stats_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.post(
+            f"{self.base_url}/admin/homepage/statistics/",
+            {"future_engineers": 0},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_retrieve_homepage_stats_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.get(
+            f"{self.base_url}/admin/homepage/statistics/{self.homepage_stats.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_update_homepage_stats_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.patch(
+            f"{self.base_url}/admin/homepage/statistics/{self.homepage_stats.id}/",
+            {"future_engineers": 0},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_branch_manager_cannot_delete_homepage_stats_admin(self):
+        self.authenticate_as(self.branch_manager)
+        response = self.client.delete(
+            f"{self.base_url}/admin/homepage/statistics/{self.homepage_stats.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unauthenticated_cannot_list_testimonials_admin(self):
+        response = self.client.get(f"{self.base_url}/admin/testimonials/")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class ContactRequestFileUploadTest(CMSApiTestCase):

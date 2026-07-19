@@ -14,6 +14,7 @@ from apps.events.services.tournament_service import get_tournament_or_404
 
 class AdminTournamentStandingsView(APIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
 
     @extend_schema(
         tags=["Events - Admin - Rankings"],
@@ -51,6 +52,7 @@ class AdminTournamentStandingsView(APIView):
 )
 class AdminTournamentWinnerView(APIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
 
     def get(self, request, pk):
         tournament = get_tournament_or_404(pk)

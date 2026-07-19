@@ -54,6 +54,7 @@ class PublicWorkshopDetailView(generics.RetrieveAPIView):
 )
 class AdminWorkshopListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaffOrInstructor]
+    throttle_scope = "events_admin"
     serializer_class = WorkshopAdminSerializer
 
     def get_queryset(self):
@@ -81,6 +82,7 @@ class AdminWorkshopListCreateView(generics.ListCreateAPIView):
 )
 class AdminWorkshopRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaffOrInstructor]
+    throttle_scope = "events_admin"
     serializer_class = WorkshopAdminSerializer
     lookup_url_kwarg = "pk"
 

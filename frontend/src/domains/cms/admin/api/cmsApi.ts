@@ -8,6 +8,8 @@ import type {
   FAQ,
   GalleryItem as ModelGalleryItem,
   MapNodeModel,
+  Testimonial as ModelTestimonial,
+  HomepageStatistic as ModelHomepageStatistic,
 } from '../model';
 
 export type HeroBanner = ModelHeroBanner;
@@ -18,6 +20,8 @@ export type ContactRequest = ModelContactRequest;
 export type Faq = FAQ;
 export type GalleryItem = ModelGalleryItem;
 export type MapNode = MapNodeModel;
+export type Testimonial = ModelTestimonial;
+export type HomepageStatistic = ModelHomepageStatistic;
 
 const PREFIX = '/cms/admin';
 
@@ -84,6 +88,12 @@ function withUiAliases<T>(endpoint: string, item: T): T {
   if (endpoint === 'map-nodes') {
     record.imageUrl = record.image;
     record.isActive = record.is_active;
+  }
+  if (endpoint === 'testimonials') {
+    record.imageUrl = record.image;
+    record.videoUrl = record.video_url;
+    record.isActive = record.is_active;
+    record.priority = record.order ?? 0;
   }
   return record as T;
 }
@@ -180,6 +190,22 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
       category: 'category',
       is_active: ['isActive', 'is_active'],
     },
+    testimonials: {
+      name: 'name',
+      role: 'role',
+      quote: 'quote',
+      image: ['imageUrl', 'image'],
+      video_url: ['videoUrl', 'video_url'],
+      order: 'priority',
+      is_active: ['isActive', 'is_active'],
+    },
+    'homepage/statistics': {
+      future_engineers: 'future_engineers',
+      programs: 'programs',
+      competitions: 'competitions',
+      mission_current: 'mission_current',
+      mission_target: 'mission_target',
+    },
   };
 
   const fieldMap = map[endpoint] ?? {};
@@ -193,9 +219,19 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
     for (const k of keys) {
       if (has(k)) { val = source[k]; break; }
     }
-    // Skip image field if null/empty or existing URL (keeps backend value unchanged)
-    if (backendKey === 'image' && (!val || (typeof val === 'string' && val.startsWith('http')))) {
-      continue;
+    if (backendKey === 'image' || backendKey === 'video_url') {
+      // Testimonials store media as HTTPS URL fields — allow explicit clear via null.
+      if ((val === null || val === '') && endpoint === 'testimonials') {
+        result[backendKey] = null;
+        continue;
+      }
+      if (!val) continue;
+      if (backendKey === 'image') {
+        if (typeof val === 'string' && val.startsWith('http')) {
+          if (endpoint !== 'testimonials') continue;
+        }
+        if (typeof val === 'string' && val.startsWith('data:') && endpoint === 'testimonials') continue;
+      }
     }
     result[backendKey] = val ?? null;
   }
