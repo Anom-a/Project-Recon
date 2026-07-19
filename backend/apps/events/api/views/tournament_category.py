@@ -19,6 +19,7 @@ from apps.events.services.tournament_category_service import (
 )
 class AdminTournamentCategoryListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = TournamentCategorySerializer
 
     def get_queryset(self):
@@ -42,6 +43,7 @@ class AdminTournamentCategoryListCreateView(generics.ListCreateAPIView):
 )
 class AdminTournamentCategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = TournamentCategorySerializer
     lookup_url_kwarg = "pk"
 

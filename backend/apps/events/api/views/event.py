@@ -124,6 +124,7 @@ class PastEventListView(generics.ListAPIView):
 )
 class AdminEventListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = EventAdminSerializer
 
     def get_queryset(self):
@@ -151,6 +152,7 @@ class AdminEventListCreateView(generics.ListCreateAPIView):
 )
 class AdminEventRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
@@ -178,6 +180,7 @@ class AdminEventRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
 )
 class AdminEventPublishView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
@@ -193,6 +196,7 @@ class AdminEventPublishView(generics.GenericAPIView):
 )
 class AdminEventUnpublishView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
@@ -208,6 +212,7 @@ class AdminEventUnpublishView(generics.GenericAPIView):
 )
 class AdminEventActivateView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 
@@ -223,6 +228,7 @@ class AdminEventActivateView(generics.GenericAPIView):
 )
 class AdminEventDeactivateView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = EventAdminSerializer
     lookup_url_kwarg = "pk"
 

@@ -111,7 +111,7 @@ class IsEventStaffOrInstructor(BasePermission):
         if user_is_super_admin(user) or user_is_branch_manager(user):
             return True
         if user_is_instructor(user):
-            if request.method == 'POST':
+            if request.method not in SAFE_METHODS:
                 return False
             return True
         return False
@@ -122,7 +122,7 @@ class IsEventStaffOrInstructor(BasePermission):
         if user_is_branch_manager(request.user):
             return _user_can_access_branch_obj(request.user, obj)
         if user_is_instructor(request.user):
-            if request.method == 'DELETE':
+            if request.method not in SAFE_METHODS:
                 return False
             if hasattr(obj, "instructor"):
                 return obj.instructor == request.user
