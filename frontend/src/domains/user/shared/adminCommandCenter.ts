@@ -11,7 +11,7 @@ export type AdminSectionId =
   | 'tournaments' | 'tournament-teams' | 'matches' | 'workshops'
   | 'event-registrations' | 'certificates' | 'store'
   | 'transfers' | 'bank-accounts'
-  | 'announcements' | 'communications' | 'reports';
+  | 'announcements' | 'communications' | 'reports' | 'sponsors';
 
 export interface AdminHubStats {
   totalUsers: number;
