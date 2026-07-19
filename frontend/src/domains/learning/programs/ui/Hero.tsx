@@ -8,6 +8,12 @@ import { cmsPublicApi, type HeroBannerResponse } from '../../../cms/public/api/c
 
 const SLIDE_DURATION = 6000;
 
+export function formatStatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
+  return String(n);
+}
+
 const HERO_PARTICLES = Array.from({ length: 10 }, (_, i) => ({
   width: 2 + ((i * 7) % 4),
   left: (i * 28 + 11) % 100,
