@@ -5,7 +5,7 @@ import {
   Globe2, Send, Loader, CheckCircle2, X,
    ChevronRight,
 } from 'lucide-react';
-import Hero from '../domains/learning/programs/ui/Hero';
+import Hero, { formatStatCount } from '../domains/learning/programs/ui/Hero';
 import DemoSlider from '../domains/learning/programs/ui/DemoSlider';
 import Updates from '../domains/learning/programs/ui/Updates';
 import { UserProfile, ActiveTab, type ProgramDisplay } from '../shared/types';
@@ -32,12 +32,8 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
   const [programsLoading, setProgramsLoading] = useState(true);
   const [galleryItems, setGalleryItems] = useState<GalleryItemResponse[]>([]);
   const [previewItem, setPreviewItem] = useState<GalleryItemResponse | null>(null);
-  const [stats, setStats] = useState<HomepageStats>({
-    future_engineers: 0,
-    programs: 0,
-    competitions: 0,
-    mission: { current: 0, target: 5_000_000, percentage: 0 },
-  });
+  const [stats, setStats] = useState<HomepageStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   React.useEffect(() => {
     const abort = new AbortController();
@@ -51,9 +47,11 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
       .then(data => setFaqs(data.filter(f => f.is_active).sort((a, b) => (a.order ?? 999) - (b.order ?? 999))))
       .catch(err => { if (err.name !== 'AbortError') console.error(err); });
 
+    setStatsLoading(true);
     cmsPublicApi.getHomepageStats(signal)
       .then(data => setStats(data))
-      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+      .catch(err => { if (err.name !== 'AbortError') setStats(null); })
+      .finally(() => setStatsLoading(false));
 
     setProgramsLoading(true);
     getPrograms(signal)
@@ -107,6 +105,8 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         }}
         onJoinCommunity={() => onNavigate('registration')}
         onShopStore={() => onNavigate('store')}
+        homepageStats={stats}
+        statsLoading={statsLoading}
       />
 
       <motion.section
@@ -121,15 +121,22 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
-              { value: `${(stats.future_engineers / 1000000).toFixed(1)}M+`, label: 'Future Engineers', icon: Users },
-              { value: `${stats.programs}+`, label: 'Programs', icon: BookOpen },
-              { value: `${stats.competitions}+`, label: 'Competitions', icon: Trophy },
-              { value: `${stats.mission.percentage}%`, label: 'Mission Progress', icon: Globe },
+              { value: statsLoading && !stats ? '…' : formatStatCount(stats?.future_engineers ?? 0), label: 'Future Engineers', icon: Users, detail: null as string | null },
+              { value: statsLoading && !stats ? '…' : formatStatCount(stats?.programs ?? 0), label: 'Programs', icon: BookOpen, detail: null },
+              { value: statsLoading && !stats ? '…' : formatStatCount(stats?.competitions ?? 0), label: 'Competitions', icon: Trophy, detail: null },
+              {
+                value: statsLoading && !stats ? '…' : `${stats?.mission.percentage ?? 0}%`,
+                label: 'Mission Progress',
+                icon: Globe,
+                detail: statsLoading && !stats
+                  ? null
+                  : `${(stats?.mission.current ?? 0).toLocaleString()} / ${(stats?.mission.target ?? 0).toLocaleString()}`,
+              },
             ].map((stat, i) => {
               const StatIcon = stat.icon;
               return (
                 <motion.div
-                  key={i}
+                  key={stat.label}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -141,6 +148,9 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                   </div>
                   <p className="font-black text-3xl md:text-4xl text-white tracking-tight">{stat.value}</p>
                   <p className="text-sm text-white/70 font-medium mt-1">{stat.label}</p>
+                  {stat.detail && (
+                    <p className="text-[11px] text-white/40 font-mono mt-1">{stat.detail}</p>
+                  )}
                 </motion.div>
               );
             })}

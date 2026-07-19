@@ -93,6 +93,9 @@ export default function AnnouncementsManager() {
         type: 'ANNOUNCEMENT',
         slug,
       };
+      if (form.is_active && !editing) {
+        payload.published_at = new Date().toISOString();
+      }
 
       const hasDataUri = form.image.startsWith('data:');
       let body: FormData | typeof payload;
@@ -236,8 +239,12 @@ export default function AnnouncementsManager() {
                     <button onClick={() => setExpanded(open ? null : a.id)}
                       className="flex items-start gap-3 flex-1 min-w-0 text-left"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-blue/10 to-blue-100 border border-slate-200 flex items-center justify-center shrink-0 mt-0.5">
-                        <Megaphone className="w-4 h-4 text-brand-blue" />
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-blue/10 to-blue-100 border border-slate-200 flex items-center justify-center shrink-0 mt-0.5 overflow-hidden">
+                        {a.image ? (
+                          <img src={a.image} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Megaphone className="w-4 h-4 text-brand-blue" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">

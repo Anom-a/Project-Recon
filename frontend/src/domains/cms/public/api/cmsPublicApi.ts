@@ -66,8 +66,6 @@ export interface TeamMemberResponse {
   order?: number;
 }
 
-<<<<<<< HEAD
-=======
 export interface TestimonialResponse {
   id: string;
   name: string;
@@ -80,7 +78,6 @@ export interface TestimonialResponse {
   order?: number;
 }
 
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
 export interface GalleryItemResponse {
   id: string;
   title: string;
@@ -109,13 +106,9 @@ export interface HomepageStats {
 
 export const cmsPublicApi = {
   getPlatformStats: (signal?: AbortSignal) => http.get<PlatformStats>('/cms/stats/', { signal }),
-  getHomepageStats: (signal?: AbortSignal) => http.get<HomepageStats>('/public/homepage/statistics/', { signal }),
-<<<<<<< HEAD
-  getHeroBanners: (signal?: AbortSignal) => http.get<HeroBannerResponse[]>('/cms/hero-banners/', { signal }),
-=======
+  getHomepageStats: (signal?: AbortSignal) => http.get<HomepageStats>('/cms/homepage/statistics/current/', { signal }),
   getHeroBanners: async (signal?: AbortSignal) =>
     unwrapList(await http.get<HeroBannerResponse[] | PaginatedResponse<HeroBannerResponse>>('/cms/hero-banners/', { signal })),
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
   getNews: (params?: Record<string, string>, signal?: AbortSignal) => http.get<PaginatedResponse<NewsArticleResponse>>('/cms/news/', { params, signal }),
   getNewsDetail: (slug: string) => http.get<NewsArticleResponse>(`/cms/news/${slug}/`),
   getPartners: async (signal?: AbortSignal) =>
@@ -131,20 +124,11 @@ export const cmsPublicApi = {
     const row = await http.get<AboutUsResponse>(`/cms/about/${slug}/`);
     return { ...row, content: row.description, image: row.image ?? '' };
   },
-<<<<<<< HEAD
-  getGallery: async (signal?: AbortSignal) => {
-    const res = await http.get<GalleryItemResponse[] | { results: GalleryItemResponse[] }>('/cms/gallery/', { signal });
-    return Array.isArray(res) ? res : (res.results ?? []);
-  },
-  getGalleryDetail: (id: string) => http.get<GalleryItemResponse>(`/cms/gallery/${id}/`),
-  getMapNodes: () => http.get<MapNodeResponse[]>('/cms/map-nodes/'),
-=======
   getGallery: async (signal?: AbortSignal) =>
     unwrapList(await http.get<GalleryItemResponse[] | PaginatedResponse<GalleryItemResponse>>('/cms/gallery/', { signal })),
   getGalleryDetail: (id: string) => http.get<GalleryItemResponse>(`/cms/gallery/${id}/`),
   getMapNodes: async () =>
     unwrapList(await http.get<MapNodeResponse[] | PaginatedResponse<MapNodeResponse>>('/cms/map-nodes/')),
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
   /** No backend endpoint — returns empty list for compatibility */
   getTeamMembers: async () => [] as TeamMemberResponse[],
   getTestimonials: async (signal?: AbortSignal) => {

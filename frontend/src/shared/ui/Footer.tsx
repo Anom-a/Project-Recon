@@ -68,13 +68,6 @@ export default function Footer({ onNavigate }: FooterProps) {
           </ul>
         </div>
         <div>
-<<<<<<< HEAD
-          <h4 className="text-white font-bold text-sm mb-3 uppercase tracking-wider">Contact</h4>
-          <p className="text-sm">Bole, Addis Ababa</p>
-          <p className="text-sm">Ethiopia</p>
-          <p className="text-sm mt-2">info@ethiorobotics.com</p>
-          <a href="tel:+251911675401" className="inline-flex items-center gap-1.5 text-sm mt-1.5 hover:text-white transition-colors"><Phone className="w-3.5 h-3.5" /> 0911 675 401</a>
-=======
           <h4 className="text-white font-bold text-sm mb-3 uppercase tracking-wider">Locations</h4>
           <ul className="space-y-1.5 text-sm">
             <li>Bole Reality Plaza, 12th Floor</li>
@@ -88,7 +81,6 @@ export default function Footer({ onNavigate }: FooterProps) {
             <p className="text-sm">info@ethiorobotics.com</p>
             <a href="tel:+251911675401" className="inline-flex items-center gap-1.5 text-sm mt-1 hover:text-white transition-colors"><Phone className="w-3.5 h-3.5" /> 0911 675 401</a>
           </div>
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
         </div>
       </div>
       <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-white/10 text-center text-sm">

@@ -26,10 +26,7 @@ import OrderDetailPage from '../domains/store/orders/ui/OrderDetailPage';
 import PrivacyPage from '../pages/legal/PrivacyPage';
 import TermsPage from '../pages/legal/TermsPage';
 import HelpPage from '../pages/legal/HelpPage';
-<<<<<<< HEAD
-=======
 import HistoryPage from '../pages/HistoryPage';
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
 import CookieConsent from '../shared/ui/CookieConsent';
 
 import { useAuth } from '../shared/hooks/useAuth';

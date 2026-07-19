@@ -40,14 +40,11 @@ export default function EventRegistrationModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [step, setStep] = useState<'eligibility' | 'details' | 'confirm'>('eligibility');
-<<<<<<< HEAD
-=======
   const [regId, setRegId] = useState<string | null>(null);
   const [otp, setOtp] = useState('');
   const [otpSubmitting, setOtpSubmitting] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE'>('CASH');
   const [transactionReference, setTransactionReference] = useState('');
   const [bankName, setBankName] = useState('');
@@ -151,11 +148,7 @@ export default function EventRegistrationModal({
       setSuccess(true);
       onSuccess(event.id);
     } catch (err: unknown) {
-<<<<<<< HEAD
-      setError(formatApiError(err));
-=======
       setOtpError(formatApiError(err));
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
     } finally {
       setOtpSubmitting(false);
     }

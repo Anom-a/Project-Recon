@@ -12,7 +12,7 @@ import sliderImg6 from '@/assets/slider/photo_2026-06-15_18-52-11.jpg';
 import sliderImg7 from '@/assets/slider/photo_2026-06-15_18-52-21.jpg';
 import sliderImg8 from '@/assets/slider/photo_2026-06-15_18-52-25.jpg';
 
-import { cmsPublicApi, type HeroBannerResponse } from '../../../cms/public/api/cmsPublicApi';
+import { cmsPublicApi, type HeroBannerResponse, type HomepageStats } from '../../../cms/public/api/cmsPublicApi';
 
 const SLIDER_IMAGES = [
   sliderImg1, sliderImg2, sliderImg3, sliderImg4,
@@ -31,27 +31,72 @@ const HERO_PARTICLES = Array.from({ length: 10 }, (_, i) => ({
   color: i % 2 === 0 ? 'rgba(37,99,235,0.25)' : 'rgba(87,223,254,0.2)',
 }));
 
-const trustItems = ['Competitions', '120+ Labs', 'STEM Kits', 'Awards'];
+const trustItems = ['Competitions', 'STEM Labs', 'STEM Kits', 'Awards'];
 
-const stats = [
-  { value: '5M+', label: 'Future Engineers', accent: 'from-blue-300 to-blue-400' },
-  { value: '120+', label: 'Programs', accent: 'from-cyan-300 to-cyan-400' },
-  { value: '500+', label: 'Competitions', accent: 'from-indigo-300 to-indigo-400' },
+const STAT_ACCENTS = [
+  'from-blue-300 to-blue-400',
+  'from-cyan-300 to-cyan-400',
+  'from-indigo-300 to-indigo-400',
 ];
+
+export function formatStatCount(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `${m >= 10 || Number.isInteger(m) ? m.toFixed(0) : m.toFixed(1)}M+`;
+  }
+  if (n >= 1_000) {
+    const k = n / 1_000;
+    return `${k >= 10 || Number.isInteger(k) ? k.toFixed(0) : k.toFixed(1)}K+`;
+  }
+  return `${n}+`;
+}
+
+function formatInt(n: number): string {
+  return Number.isFinite(n) ? n.toLocaleString() : '0';
+}
 
 interface HeroProps {
   onDiscoverPrograms: () => void;
   onJoinCommunity: () => void;
   onShopStore?: () => void;
+  homepageStats?: HomepageStats | null;
+  statsLoading?: boolean;
 }
 
-export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore }: HeroProps) {
+export default function Hero({
+  onDiscoverPrograms,
+  onJoinCommunity,
+  onShopStore,
+  homepageStats = null,
+  statsLoading = false,
+}: HeroProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [banners, setBanners] = useState<HeroBannerResponse[]>([]);
   const [activeImages, setActiveImages] = useState<string[]>(SLIDER_IMAGES);
+  const [stats, setStats] = useState<HomepageStats | null>(homepageStats);
+  const [loadingStats, setLoadingStats] = useState(homepageStats == null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (homepageStats != null) {
+      setStats(homepageStats);
+      setLoadingStats(!!statsLoading);
+    }
+  }, [homepageStats, statsLoading]);
+
+  useEffect(() => {
+    if (homepageStats != null) return;
+    const abort = new AbortController();
+    setLoadingStats(true);
+    cmsPublicApi.getHomepageStats(abort.signal)
+      .then(data => setStats(data))
+      .catch(err => { if (err.name !== 'AbortError') setStats(null); })
+      .finally(() => setLoadingStats(false));
+    return () => abort.abort();
+  }, [homepageStats]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -70,6 +115,15 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
     }, SLIDE_DURATION);
     return () => clearInterval(timer);
   }, [activeImages.length]);
+
+  const displayStats = [
+    { value: loadingStats && !stats ? '…' : formatStatCount(stats?.future_engineers ?? 0), label: 'Future Engineers', accent: STAT_ACCENTS[0] },
+    { value: loadingStats && !stats ? '…' : formatStatCount(stats?.programs ?? 0), label: 'Programs', accent: STAT_ACCENTS[1] },
+    { value: loadingStats && !stats ? '…' : formatStatCount(stats?.competitions ?? 0), label: 'Competitions', accent: STAT_ACCENTS[2] },
+  ];
+  const missionPct = Math.min(100, Math.max(0, stats?.mission?.percentage ?? 0));
+  const missionCurrent = stats?.mission?.current ?? 0;
+  const missionTarget = stats?.mission?.target ?? 0;
 
   return (
     <section
@@ -290,7 +344,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
             </button>
           </motion.div>
 
-          {/* Stats + Progress (grouped into one compact block) */}
+          {/* Stats + Progress — same UI, values from CMS backend */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={mounted ? { opacity: 1, y: 0 } : {}}
@@ -298,14 +352,14 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
             className="w-full"
           >
             <div className="w-full bg-white/[0.04] backdrop-blur-sm rounded-xl border border-white/[0.06] p-4">
-              {/* Stats row */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                {stats.map((stat, i) => (
+              <div className="flex flex-wrap items-stretch gap-x-0 gap-y-3">
+                {displayStats.map((stat, i) => (
                   <motion.div
                     key={stat.label}
                     initial={{ opacity: 0, y: 12 }}
                     animate={mounted ? { opacity: 1, y: 0 } : {}}
                     transition={{ duration: 0.5, delay: 0.55 + i * 0.1 }}
+                    className={`pr-4 mr-4 ${i < displayStats.length - 1 ? 'border-r border-white/10' : ''}`}
                   >
                     <div className={`text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r ${stat.accent}`}>
                       {stat.value}
@@ -317,21 +371,25 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
                 ))}
               </div>
 
-              {/* Progress bar */}
               <div className="mt-3 pt-3 border-t border-white/[0.06]">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[9px] font-mono font-semibold text-white/30 uppercase tracking-[0.15em]">Mission Progress</span>
-                  <span className="text-[11px] font-semibold text-white/50 font-mono">1,240,500 / 5,000,000</span>
+                  <span className="text-[11px] font-semibold text-white/50 font-mono">
+                    {loadingStats && !stats ? '…' : `${formatInt(missionCurrent)} / ${formatInt(missionTarget)}`}
+                  </span>
                 </div>
                 <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <motion.div
+                    key={missionPct}
                     initial={{ width: 0 }}
-                    animate={mounted ? { width: '24.8%' } : {}}
-                    transition={{ duration: 1.5, delay: 0.8, ease: "easeOut" }}
+                    animate={mounted && !loadingStats ? { width: `${missionPct}%` } : { width: 0 }}
+                    transition={{ duration: 1.5, delay: 0.8, ease: 'easeOut' }}
                     className="h-full bg-gradient-to-r from-blue-400 via-blue-500 to-cyan-400 rounded-full"
                   />
                 </div>
-                <p className="text-[8px] text-white/20 font-medium text-right mt-0.5">24.8% of National Goal</p>
+                <p className="text-[8px] text-white/20 font-medium text-right mt-0.5">
+                  {loadingStats && !stats ? '…' : `${missionPct}% of National Goal`}
+                </p>
               </div>
             </div>
           </motion.div>

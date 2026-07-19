@@ -9,6 +9,7 @@ import type {
   GalleryItem as ModelGalleryItem,
   MapNodeModel,
   Testimonial as ModelTestimonial,
+  HomepageStatistic as ModelHomepageStatistic,
 } from '../model';
 
 export type HeroBanner = ModelHeroBanner;
@@ -20,6 +21,7 @@ export type Faq = FAQ;
 export type GalleryItem = ModelGalleryItem;
 export type MapNode = MapNodeModel;
 export type Testimonial = ModelTestimonial;
+export type HomepageStatistic = ModelHomepageStatistic;
 
 const PREFIX = '/cms/admin';
 
@@ -87,15 +89,12 @@ function withUiAliases<T>(endpoint: string, item: T): T {
     record.imageUrl = record.image;
     record.isActive = record.is_active;
   }
-<<<<<<< HEAD
-=======
   if (endpoint === 'testimonials') {
     record.imageUrl = record.image;
     record.videoUrl = record.video_url;
     record.isActive = record.is_active;
     record.priority = record.order ?? 0;
   }
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
   return record as T;
 }
 
@@ -200,6 +199,13 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
       order: 'priority',
       is_active: ['isActive', 'is_active'],
     },
+    'homepage/statistics': {
+      future_engineers: 'future_engineers',
+      programs: 'programs',
+      competitions: 'competitions',
+      mission_current: 'mission_current',
+      mission_target: 'mission_target',
+    },
   };
 
   const fieldMap = map[endpoint] ?? {};
@@ -213,9 +219,19 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
     for (const k of keys) {
       if (has(k)) { val = source[k]; break; }
     }
-    // Skip image field if null/empty or existing URL (keeps backend value unchanged)
-    if (backendKey === 'image' && (!val || (typeof val === 'string' && val.startsWith('http')))) {
-      continue;
+    if (backendKey === 'image' || backendKey === 'video_url') {
+      // Testimonials store media as HTTPS URL fields — allow explicit clear via null.
+      if ((val === null || val === '') && endpoint === 'testimonials') {
+        result[backendKey] = null;
+        continue;
+      }
+      if (!val) continue;
+      if (backendKey === 'image') {
+        if (typeof val === 'string' && val.startsWith('http')) {
+          if (endpoint !== 'testimonials') continue;
+        }
+        if (typeof val === 'string' && val.startsWith('data:') && endpoint === 'testimonials') continue;
+      }
     }
     result[backendKey] = val ?? null;
   }
