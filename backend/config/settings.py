@@ -270,6 +270,8 @@ elif STATIC_BACKEND == "s3":
     AWS_DEFAULT_ACL = "private"
     AWS_QUERYSTRING_AUTH = False
     AWS_S3_CUSTOM_DOMAIN = _static_custom_domain
+    AWS_S3_ADDRESSING_STYLE = "virtual" if ".amazonaws.com" in (_static_endpoint or "") else "path"
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
 
     _static_url_override = os.getenv("STATIC_URL")
     if _static_url_override:
@@ -401,6 +403,8 @@ elif MEDIA_BACKEND == "s3":
     AWS_DEFAULT_ACL = os.getenv("STORAGE_DEFAULT_ACL", "private")
     AWS_QUERYSTRING_AUTH = os.getenv("STORAGE_QUERYSTRING_AUTH", "true").lower() == "true"
     AWS_S3_CUSTOM_DOMAIN = _media_custom_domain
+    AWS_S3_ADDRESSING_STYLE = "virtual" if ".amazonaws.com" in (_media_endpoint or "") else "path"
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
 
     _media_url_override = os.getenv("MEDIA_URL")
     if _media_url_override:
