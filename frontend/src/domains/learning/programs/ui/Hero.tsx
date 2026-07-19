@@ -40,7 +40,19 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
     cmsPublicApi.getHeroBanners(abort.signal).then((data) => {
       if (data && data.length > 0) {
         setBanners(data);
-        setActiveImages(data.map(b => b.image).filter(Boolean) as string[]);
+        const images = data.map(b => b.image).filter(Boolean) as string[];
+        setActiveImages(images);
+        
+        // Dynamically inject a preload link for the first image to improve LCP
+        if (images[0] && !document.head.querySelector(`link[href="${images[0]}"]`)) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = images[0];
+          // React 19 / TS may need specific cast for fetchpriority but we can set it as attribute
+          link.setAttribute('fetchpriority', 'high');
+          document.head.appendChild(link);
+        }
       }
     }).catch(err => { if (err.name !== 'AbortError') console.error(err); });
     return () => abort.abort();
@@ -73,6 +85,8 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
               transition={{ duration: 1.4, ease: "easeInOut" }}
+              fetchPriority={currentSlide === 0 ? "high" : "auto"}
+              loading={currentSlide === 0 ? "eager" : "lazy"}
             />
           )}
         </AnimatePresence>

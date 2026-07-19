@@ -168,7 +168,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                 <React.Fragment key={groupIdx}>
                   {partners.length > 0 ? partners.map((partner, idx) => (
                     <div key={`${groupIdx}-${partner.id}`} className="flex items-center gap-16 animate-logo-float" style={{ animationDelay: `${(idx % 4) * 0.4}s` }}>
-                      {partner.image ? <img src={partner.image} alt={partner.title} className="h-10 md:h-14 object-contain brightness-90 hover:brightness-110 transition-all duration-500 hover:scale-110 hover:drop-shadow-[0_0_15px_rgba(37,51,141,0.5)]" /> : <span className="text-sm font-bold text-slate-400">{partner.title}</span>}
+                      {partner.image ? <img src={partner.image} alt={partner.title} loading="lazy" className="h-10 md:h-14 object-contain brightness-90 hover:brightness-110 transition-all duration-500 hover:scale-110 hover:drop-shadow-[0_0_15px_rgba(37,51,141,0.5)]" /> : <span className="text-sm font-bold text-slate-400">{partner.title}</span>}
                     </div>
                   )) : (
                     <div className="flex items-center gap-16 animate-logo-float"><span className="text-sm font-semibold text-slate-400">Loading partners...</span></div>
@@ -189,7 +189,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                 className={`flex items-center justify-center animate-logo-float ${idx === 6 ? 'col-span-2 sm:col-span-3' : ''}`}
                 style={{ animationDelay: `${(idx % 4) * 0.3}s` }}
               >
-                {partner.image ? <img src={partner.image} alt={partner.title} className="h-8 md:h-10 object-contain brightness-90 hover:brightness-110 transition-all duration-500 hover:scale-110 hover:drop-shadow-[0_0_12px_rgba(37,51,141,0.4)]" /> : <span className="text-sm font-bold text-slate-400">{partner.title}</span>}
+                {partner.image ? <img src={partner.image} alt={partner.title} loading="lazy" className="h-8 md:h-10 object-contain brightness-90 hover:brightness-110 transition-all duration-500 hover:scale-110 hover:drop-shadow-[0_0_12px_rgba(37,51,141,0.4)]" /> : <span className="text-sm font-bold text-slate-400">{partner.title}</span>}
               </motion.div>
             )) : (
               <span className="text-sm font-semibold text-slate-400 col-span-2 sm:col-span-3 text-center">Loading partners...</span>
@@ -275,7 +275,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
             >
               <div className="relative aspect-video w-full overflow-hidden cursor-pointer" onClick={() => onSetSelectedProgramSpec(prog)}>
                 {prog.image ? (
-                  <img src={prog.image} alt={prog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
+                  <img src={prog.image} alt={prog.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-brand-blue/20 via-brand-red/10 to-slate-100 flex items-center justify-center">
                     <BookOpen className="w-10 h-10 text-slate-400/40" />
@@ -482,12 +482,12 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                       title={previewItem.title}
                     />
                   ) : (
-                    <video controls className="w-full h-full" src={previewItem.video_url} />
+                    <video controls preload="none" className="w-full h-full" src={previewItem.video_url} />
                   )}
                 </div>
               ) : (
                 <div className="aspect-video bg-slate-100">
-                  <img src={previewItem.image!} alt={previewItem.title} className="w-full h-full object-contain" />
+                  <img src={previewItem.image!} alt={previewItem.title} loading="lazy" className="w-full h-full object-contain" />
                 </div>
               )}
               <div className="p-5">

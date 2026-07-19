@@ -17,6 +17,8 @@ export default function BrandLogo({ className = '', compact = false, logoUrl }: 
         alt="Brand logo"
         className={className}
         style={{ objectFit: 'contain' }}
+        fetchPriority="high"
+        loading="eager"
       />
     );
   }
