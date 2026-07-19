@@ -61,9 +61,9 @@ export const cmsNewsApi = {
   list: async (params?: Record<string, string>) =>
     unwrapList(await http.get<NewsArticleResponse[] | PaginatedResponse<NewsArticleResponse>>('/cms/admin/news/', { params })),
   get: (id: string) => http.get<NewsArticleResponse>(`/cms/admin/news/${id}/`),
-  create: (data: Partial<NewsArticleResponse>) =>
+  create: (data: Partial<NewsArticleResponse> | FormData) =>
     http.post<NewsArticleResponse>('/cms/admin/news/', data),
-  update: (id: string, data: Partial<NewsArticleResponse>) =>
+  update: (id: string, data: Partial<NewsArticleResponse> | FormData) =>
     http.patch<NewsArticleResponse>(`/cms/admin/news/${id}/`, data),
   delete: (id: string) => http.delete(`/cms/admin/news/${id}/`),
 };

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, X, XCircle, Megaphone, Calendar, EyeOff,
   CheckCircle, ChevronDown, Image, ExternalLink, Clock, FileText,
-  Plus, Edit3, Trash2, Save, Loader2, AlertTriangle,
+  Plus, Edit3, Trash2, Save, Loader2, AlertTriangle, Upload,
 } from 'lucide-react';
 import { cmsNewsApi } from '../../../../cms/shared/api/cmsApi';
 import type { NewsArticleResponse } from '../../../../cms/shared/api/cmsApi';
@@ -40,6 +40,15 @@ export default function AnnouncementsManager() {
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setForm(p => ({ ...p, image: reader.result as string }));
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => { load(); }, []);
 
@@ -47,13 +56,8 @@ export default function AnnouncementsManager() {
     setLoading(true); setError(null);
     try {
       const res = await cmsNewsApi.list();
-<<<<<<< HEAD
       setItems((res || []).filter((a: NewsArticleResponse) => a.type === 'ANNOUNCEMENT' || !a.type));
-    } catch (e) { setError(formatApiError(e)); }
-=======
-      setItems(res.filter((a: NewsArticleResponse) => a.type === 'ANNOUNCEMENT' || !a.type));
     } catch (e) { setItems([]); setError(formatApiError(e)); }
->>>>>>> abf6a0020717fc4cc7407f25a6f20a5486ad1ebd
     setLoading(false);
   };
 
@@ -77,16 +81,47 @@ export default function AnnouncementsManager() {
     }
     setSaving(true); setError(null);
     try {
-      const payload = {
-        ...form,
+      const slug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'announcement';
+      const payload: Record<string, unknown> = {
+        title: form.title,
+        summary: form.summary,
+        content: form.content,
+        video_url: form.video_url || null,
+        button_text: form.button_text || null,
+        button_url: form.button_url || null,
+        is_active: form.is_active,
         type: 'ANNOUNCEMENT',
-        slug: form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'announcement',
+        slug,
       };
+
+      const hasDataUri = form.image.startsWith('data:');
+      let body: FormData | typeof payload;
+
+      if (hasDataUri) {
+        const fd = new FormData();
+        for (const [k, v] of Object.entries(payload)) {
+          if (v === undefined || v === null) continue;
+          fd.append(k, typeof v === 'boolean' ? String(v) : String(v));
+        }
+        const res = await fetch(form.image);
+        const blob = await res.blob();
+        fd.append('image', blob, 'image.jpg');
+        body = fd;
+      } else {
+        // Only send image when it's a new/non-empty URL; omit on update to keep existing file
+        if (form.image && !form.image.startsWith('http')) {
+          payload.image = form.image;
+        } else if (form.image.startsWith('http') && !editing) {
+          // create with remote URL not supported by ImageField — skip
+        }
+        body = payload;
+      }
+
       if (editing) {
-        const updated = await cmsNewsApi.update(editing, payload);
+        const updated = await cmsNewsApi.update(editing, body);
         setItems(prev => prev.map(a => a.id === editing ? updated : a));
       } else {
-        const created = await cmsNewsApi.create(payload);
+        const created = await cmsNewsApi.create(body);
         setItems(prev => [created, ...prev]);
       }
       setShowForm(false);
@@ -304,9 +339,24 @@ export default function AnnouncementsManager() {
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 resize-none" />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 mb-1.5 block">Image URL</label>
-                    <input value={form.image} onChange={e => setForm(p => ({ ...p, image: e.target.value }))}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" />
+                    <label className="text-[11px] font-bold text-slate-600 mb-1.5 block">Image</label>
+                    <div className="flex items-center gap-2">
+                      <input value={form.image.startsWith('data:') ? '' : form.image}
+                        onChange={e => setForm(p => ({ ...p, image: e.target.value }))}
+                        placeholder="https://example.com/photo.jpg"
+                        className="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" />
+                      <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageUpload} className="hidden" />
+                      <button type="button" onClick={() => imageInputRef.current?.click()}
+                        className="p-2.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-brand-blue transition-colors" title="Upload image">
+                        <Upload className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {form.image && (
+                      <div className="mt-2 rounded-xl overflow-hidden border border-slate-200">
+                        <img src={form.image} alt="" className="w-full h-32 object-cover"
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
