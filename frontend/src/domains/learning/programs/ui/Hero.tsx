@@ -73,23 +73,20 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
     >
       {/* ── BACKGROUND ── */}
       <div className="absolute inset-0 z-0">
-        <AnimatePresence mode="popLayout">
-          {activeImages.length > 0 && activeImages[currentSlide] && (
-            <motion.img
-              key={currentSlide}
-              src={activeImages[currentSlide]}
-              alt={banners[currentSlide]?.title || "Ethio Robotics community and competition moments"}
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ objectPosition: 'center top' }}
-              initial={{ opacity: 0, scale: 1.08 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              transition={{ duration: 1.4, ease: "easeInOut" }}
-              fetchPriority={currentSlide === 0 ? "high" : "auto"}
-              loading={currentSlide === 0 ? "eager" : "lazy"}
-            />
-          )}
-        </AnimatePresence>
+        {activeImages.length > 0 && activeImages.map((src, idx) => (
+          <motion.img
+            key={src}
+            src={src}
+            alt={banners[idx]?.title || "Ethio Robotics community and competition moments"}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: 'center top' }}
+            initial={false}
+            animate={{ opacity: currentSlide === idx ? 1 : 0, scale: currentSlide === idx ? 1 : 1.05 }}
+            transition={{ duration: 1.4, ease: "easeInOut" }}
+            fetchPriority={idx === 0 ? "high" : "auto"}
+            loading={idx === 0 ? "eager" : "lazy"}
+          />
+        ))}
 
         {/* Desktop: left-to-right scrim — dark behind text column, fades right */}
         <div className="hidden lg:block absolute inset-0 z-[1] bg-gradient-to-r from-[#0B1220]/90 via-[#0B1220]/55 to-transparent" />

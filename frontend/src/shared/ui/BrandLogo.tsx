@@ -7,7 +7,7 @@ interface BrandLogoProps {
   logoUrl?: string;
 }
 
-export default function BrandLogo({ className = '', compact = false, logoUrl }: BrandLogoProps) {
+export default React.memo(function BrandLogo({ className = '', compact = false, logoUrl }: BrandLogoProps) {
   const shadowId = `brand-logo-shadow-${useId().replace(/:/g, '')}`;
 
   if (logoUrl) {
@@ -124,4 +124,4 @@ export default function BrandLogo({ className = '', compact = false, logoUrl }: 
       </g>
     </svg>
   );
-}
+});
