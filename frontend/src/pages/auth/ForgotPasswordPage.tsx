@@ -6,14 +6,6 @@ import {
 import BrandLogo from '@/shared/ui/BrandLogo';
 
 import slide1 from '@/assets/slider/faj.jpg';
-import slide2 from '@/assets/slider/photo_2026-06-15_14-40-10.jpg';
-import slide3 from '@/assets/slider/photo_2026-06-15_18-51-59.jpg';
-import slide4 from '@/assets/slider/photo_2026-06-15_18-52-03.jpg';
-import slide5 from '@/assets/slider/photo_2026-06-15_18-52-07.jpg';
-import slide6 from '@/assets/slider/photo_2026-06-15_18-52-11.jpg';
-import slide7 from '@/assets/slider/photo_2026-06-15_18-52-21.jpg';
-
-const SLIDER_IMAGES = [slide1, slide2, slide3, slide4, slide5, slide6, slide7];
 
 interface ForgotPasswordPageProps {
   onNavigateHome: () => void;
@@ -28,14 +20,7 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % SLIDER_IMAGES.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,8 +96,8 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
         <div className="absolute inset-0">
           <AnimatePresence mode="popLayout">
             <motion.img
-              key={currentSlide}
-              src={SLIDER_IMAGES[currentSlide]}
+              key="bg"
+              src={slide1}
               alt=""
               className="absolute inset-0 w-full h-full object-cover blur-[4px] scale-110"
               initial={{ opacity: 0, scale: 1.15 }}
@@ -129,20 +114,7 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
         <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-brand-red/20 rounded-full blur-[140px] pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-blue/10 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-          {SLIDER_IMAGES.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentSlide(idx)}
-              className={`rounded-full transition-all duration-500 ${
-                idx === currentSlide
-                  ? 'w-8 h-2 bg-white shadow-[0_0_12px_rgba(255,255,255,0.5)]'
-                  : 'w-2 h-2 bg-white/25 hover:bg-slate-1000'
-              }`}
-              aria-label={`Slide ${idx + 1}`}
-            />
-          ))}
-        </div>
+
 
         <div className="max-w-md w-full relative z-10" id="forgot-password-card-box">
           <motion.div

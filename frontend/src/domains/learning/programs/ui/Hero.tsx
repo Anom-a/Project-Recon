@@ -3,21 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Globe, ShoppingBag, Sparkles, CheckCircle2 } from 'lucide-react';
 
 import untitledLogo from '@/assets/logo.svg';
-import sliderImg1 from '@/assets/slider/faj.jpg';
-import sliderImg2 from '@/assets/slider/photo_2026-06-15_14-40-10.jpg';
-import sliderImg3 from '@/assets/slider/photo_2026-06-15_18-51-59.jpg';
-import sliderImg4 from '@/assets/slider/photo_2026-06-15_18-52-03.jpg';
-import sliderImg5 from '@/assets/slider/photo_2026-06-15_18-52-07.jpg';
-import sliderImg6 from '@/assets/slider/photo_2026-06-15_18-52-11.jpg';
-import sliderImg7 from '@/assets/slider/photo_2026-06-15_18-52-21.jpg';
-import sliderImg8 from '@/assets/slider/photo_2026-06-15_18-52-25.jpg';
 
 import { cmsPublicApi, type HeroBannerResponse } from '../../../cms/public/api/cmsPublicApi';
-
-const SLIDER_IMAGES = [
-  sliderImg1, sliderImg2, sliderImg3, sliderImg4,
-  sliderImg5, sliderImg6, sliderImg7, sliderImg8,
-];
 
 const SLIDE_DURATION = 6000;
 
@@ -49,7 +36,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [banners, setBanners] = useState<HeroBannerResponse[]>([]);
-  const [activeImages, setActiveImages] = useState<string[]>(SLIDER_IMAGES);
+  const [activeImages, setActiveImages] = useState<string[]>([]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -58,13 +45,14 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
     cmsPublicApi.getHeroBanners(abort.signal).then((data) => {
       if (data && data.length > 0) {
         setBanners(data);
-        setActiveImages(data.map((b, i) => b.image || SLIDER_IMAGES[i % SLIDER_IMAGES.length]));
+        setActiveImages(data.map(b => b.image).filter(Boolean) as string[]);
       }
     }).catch(err => { if (err.name !== 'AbortError') console.error(err); });
     return () => abort.abort();
   }, []);
 
   useEffect(() => {
+    if (activeImages.length === 0) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % activeImages.length);
     }, SLIDE_DURATION);
@@ -79,17 +67,19 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
       {/* ── BACKGROUND ── */}
       <div className="absolute inset-0 z-0">
         <AnimatePresence mode="popLayout">
-          <motion.img
-            key={currentSlide}
-            src={activeImages[currentSlide]}
-            alt={banners[currentSlide]?.title || "Ethio Robotics community and competition moments"}
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: 'center top' }}
-            initial={{ opacity: 0, scale: 1.08 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.05 }}
-            transition={{ duration: 1.4, ease: "easeInOut" }}
-          />
+          {activeImages.length > 0 && activeImages[currentSlide] && (
+            <motion.img
+              key={currentSlide}
+              src={activeImages[currentSlide]}
+              alt={banners[currentSlide]?.title || "Ethio Robotics community and competition moments"}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectPosition: 'center top' }}
+              initial={{ opacity: 0, scale: 1.08 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              transition={{ duration: 1.4, ease: "easeInOut" }}
+            />
+          )}
         </AnimatePresence>
 
         {/* Desktop: left-to-right scrim — dark behind text column, fades right */}
@@ -138,20 +128,22 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
       </div>
 
       {/* ── SLIDE DOTS ── */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-        {activeImages.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentSlide(idx)}
-            className={`rounded-full transition-all duration-500 ${
-              idx === currentSlide
-                ? 'w-10 h-1.5 bg-white shadow-[0_0_12px_rgba(255,255,255,0.5)]'
-                : 'w-1.5 h-1.5 bg-white/20 hover:bg-white/50'
-            }`}
-            aria-label={`Go to slide ${idx + 1}`}
-          />
-        ))}
-      </div>
+      {activeImages.length > 0 && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+          {activeImages.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentSlide(idx)}
+              className={`rounded-full transition-all duration-500 ${
+                idx === currentSlide
+                  ? 'w-10 h-1.5 bg-white shadow-[0_0_12px_rgba(255,255,255,0.5)]'
+                  : 'w-1.5 h-1.5 bg-white/20 hover:bg-white/50'
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* ── MAIN CONTENT ── */}
       {/*

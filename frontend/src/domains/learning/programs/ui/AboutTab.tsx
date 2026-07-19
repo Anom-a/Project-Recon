@@ -14,11 +14,6 @@ import {
   Play,
 } from 'lucide-react';
 
-import imgAddis from '@/assets/photo_2026-06-15_14-39-18.jpg';
-import imgUsa from '@/assets/0M6A6519.00_25_12_08.Still037.jpg';
-import imgCanada from '@/assets/photo_2026-06-15_14-39-23.jpg';
-import imgChina from '@/assets/photo_2026-06-15_14-39-40.jpg';
-
 import { cmsPublicApi, type AboutUsResponse, type CmsPartnerResponse, type MapNodeResponse, type TestimonialResponse } from '../../../cms/public/api/cmsPublicApi';
 
 interface MapNode {
@@ -513,12 +508,7 @@ export default function AboutTab() {
                     partner.image ? <img key={partner.id} src={partner.image} alt={partner.title} className="h-16 object-contain" /> : null
                   )
               ) : (
-                <>
-                  <img src="https://ethiorobotics.org/images/partners/minstry%20of%20inovation%20and%20technology.png" alt="Ministry of Innovation" className="h-16 object-contain" />
-                  <img src="https://ethiorobotics.org/images/partners/vex.webp" alt="VEX Robotics" className="h-16 object-contain" />
-                  <img src="https://ethiorobotics.org/images/partners/ethiopian_airlines.png" alt="Ethiopian Airlines" className="h-16 object-contain" />
-                  <img src="https://ethiorobotics.org/images/partners/aau.png" alt="Addis Ababa University" className="h-16 object-contain" />
-                </>
+                <div className="text-slate-400 text-sm font-medium">Partners will be loaded shortly.</div>
               )}
             </div>
           )}
@@ -532,10 +522,9 @@ export default function AboutTab() {
           <p className="text-slate-600 mt-4 max-w-2xl mx-auto">Moments of innovation and teamwork from our various competitions and workshops.</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <img src={imgAddis} alt="Addis Ababa" className="w-full h-48 object-cover rounded-xl shadow-sm hover:scale-[1.02] transition-transform" />
-          <img src={imgUsa} alt="USA Competition" className="w-full h-48 object-cover rounded-xl shadow-sm hover:scale-[1.02] transition-transform" />
-          <img src={imgCanada} alt="Canada Workshop" className="w-full h-48 object-cover rounded-xl shadow-sm hover:scale-[1.02] transition-transform" />
-          <img src={imgChina} alt="China Summit" className="w-full h-48 object-cover rounded-xl shadow-sm hover:scale-[1.02] transition-transform" />
+          <div className="col-span-2 md:col-span-4 text-center text-slate-400 py-8">
+            Gallery images are currently unavailable.
+          </div>
         </div>
       </section>
     </div>
