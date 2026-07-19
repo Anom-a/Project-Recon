@@ -30,6 +30,7 @@ from apps.events.services.registration_service import get_registration_or_404
 )
 class AdminCashPaymentView(generics.CreateAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
 
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
@@ -58,6 +59,7 @@ class AdminCashPaymentView(generics.CreateAPIView):
 )
 class AdminPaymentVerifyView(generics.CreateAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
 
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
@@ -85,6 +87,7 @@ class AdminPaymentVerifyView(generics.CreateAPIView):
 )
 class AdminPaymentRejectView(generics.CreateAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
 
     def create(self, request, *args, **kwargs):
         registration = get_registration_or_404(kwargs["pk"])
@@ -126,6 +129,7 @@ class AdminPaymentRejectView(generics.CreateAPIView):
 )
 class AdminPaymentListView(generics.ListAPIView):
     permission_classes = [IsEventRegistrationStaff]
+    throttle_scope = "events_admin"
     serializer_class = EventPaymentSerializer
 
     def get_queryset(self):

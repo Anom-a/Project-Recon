@@ -109,6 +109,7 @@ class PublicTournamentMatchListView(generics.ListAPIView):
 )
 class AdminTournamentListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = TournamentAdminSerializer
 
     def get_queryset(self):
@@ -136,6 +137,7 @@ class AdminTournamentListCreateView(generics.ListCreateAPIView):
 )
 class AdminTournamentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = TournamentAdminSerializer
     lookup_url_kwarg = "pk"
 
@@ -163,6 +165,7 @@ class AdminTournamentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPI
 )
 class AdminTournamentCloseView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = TournamentAdminSerializer
     lookup_url_kwarg = "pk"
 
@@ -178,6 +181,7 @@ class AdminTournamentCloseView(generics.GenericAPIView):
 )
 class AdminTournamentReopenView(generics.GenericAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = TournamentAdminSerializer
     lookup_url_kwarg = "pk"
 

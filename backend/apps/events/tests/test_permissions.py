@@ -256,4 +256,4 @@ class IsEventStaffOrInstructorTest(TestCase):
 
     def test_instructor_cannot_delete(self):
         request = self._make_request(self.instructor, "DELETE")
-        self.assertTrue(self.permission.has_permission(request, None))
+        self.assertFalse(self.permission.has_permission(request, None))
