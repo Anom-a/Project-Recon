@@ -105,6 +105,7 @@ class CMSApiTestCase(APITestCase):
             "title": "Inactive Gallery",
             "description": "Hidden",
             "is_active": False,
+            "video_url": "https://example.com/inactive-video",
         })
         # DRF caches SimpleRateThrottle.THROTTLE_RATES at import time,
         # so override_settings(REST_FRAMEWORK=...) has no effect on it.
@@ -143,8 +144,8 @@ class PublicEndpointTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/hero-banners/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [b["title"] for b in data]
+        self.assertIn("results", data)
+        titles = [b["title"] for b in data["results"]]
         self.assertIn("Hero Banner", titles)
         self.assertNotIn("Inactive Banner", titles)
 
@@ -169,9 +170,8 @@ class PublicEndpointTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/about/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        if data:
-            item = data[0]
+        if data["results"]:
+            item = data["results"][0]
             self.assertIn("image", item)
             self.assertIn("mission", item)
             self.assertIn("vision", item)
@@ -208,8 +208,8 @@ class PublicEndpointTest(CMSApiTestCase):
         self.assertEqual(data["email"], "jane@test.com")
         self.assertEqual(data["subject"], "Issue")
         self.assertEqual(data["description"], "Help!")
-        self.assertEqual(data["status"], "OPEN")
-        self.assertEqual(data["priority"], "MEDIUM")
+        self.assertNotIn("status", data)
+        self.assertNotIn("priority", data)
         self.assertIsNone(data.get("phone"))
 
     def test_create_contact_request_with_phone(self):
@@ -243,12 +243,51 @@ class PublicEndpointTest(CMSApiTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_duplicate_contact_request_rejected(self):
+        payload = {
+            "name": "Spammer",
+            "email": "spam@test.com",
+            "subject": "Same Issue",
+            "description": "Help!",
+        }
+        response = self.client.post(
+            f"{self.base_url}/contact-requests/", payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post(
+            f"{self.base_url}/contact-requests/", payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_duplicate_different_subject_allowed(self):
+        response = self.client.post(
+            f"{self.base_url}/contact-requests/",
+            {
+                "name": "User",
+                "email": "user@test.com",
+                "subject": "First Issue",
+                "description": "Help!",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post(
+            f"{self.base_url}/contact-requests/",
+            {
+                "name": "User",
+                "email": "user@test.com",
+                "subject": "Different Issue",
+                "description": "Help!",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def test_list_map_nodes_public(self):
         response = self.client.get(f"{self.base_url}/map-nodes/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [n["title"] for n in data]
+        titles = [n["title"] for n in data["results"]]
         self.assertIn("Test Map Node", titles)
         self.assertNotIn("Inactive Map Node", titles)
 
@@ -256,8 +295,7 @@ class PublicEndpointTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/gallery/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [g["title"] for g in data]
+        titles = [g["title"] for g in data["results"]]
         self.assertIn("Gallery Photo", titles)
         self.assertNotIn("Inactive Gallery", titles)
 
@@ -278,7 +316,7 @@ class PublicEndpointTest(CMSApiTestCase):
     def test_list_map_nodes_public_returns_all_fields(self):
         response = self.client.get(f"{self.base_url}/map-nodes/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        for node in response.json():
+        for node in response.json()["results"]:
             self.assertIn("id", node)
             self.assertIn("city", node)
             self.assertIn("country", node)
@@ -299,7 +337,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
     def test_list_hero_banners_admin(self):
         response = self.client.get(f"{self.base_url}/admin/hero-banners/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        titles = [b["title"] for b in response.json()]
+        titles = [b["title"] for b in response.json()["results"]]
         self.assertIn("Inactive Banner", titles)
 
     def test_create_hero_banner_admin(self):
@@ -419,8 +457,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/admin/contact-requests/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        self.assertGreaterEqual(len(data), 1)
+        self.assertGreaterEqual(len(data["results"]), 1)
 
     def test_retrieve_contact_request_admin(self):
         response = self.client.get(
@@ -473,8 +510,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/admin/map-nodes/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [n["title"] for n in data]
+        titles = [n["title"] for n in data["results"]]
         self.assertIn("Test Map Node", titles)
         self.assertIn("Inactive Map Node", titles)
 
@@ -544,8 +580,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
         response = self.client.get(f"{self.base_url}/admin/gallery/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertIsInstance(data, list)
-        titles = [g["title"] for g in data]
+        titles = [g["title"] for g in data["results"]]
         self.assertIn("Gallery Photo", titles)
         self.assertIn("Inactive Gallery", titles)
 
@@ -565,14 +600,27 @@ class AdminSuperAdminTest(CMSApiTestCase):
         self.assertEqual(data["description"], "Brand new")
         self.assertTrue(data["is_active"])
 
-    def test_create_gallery_admin_minimal(self):
+    def test_create_gallery_admin_no_media_rejected(self):
         response = self.client.post(
             f"{self.base_url}/admin/gallery/",
-            {"title": "Minimal"},
+            {"title": "No Media"},
             format="json",
         )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_gallery_admin_with_image_only(self):
+        temp_image = tempfile.NamedTemporaryFile(suffix=".png")
+        image = Image.new("RGB", (100, 100))
+        image.save(temp_image, format="PNG")
+        temp_image.seek(0)
+        response = self.client.post(
+            f"{self.base_url}/admin/gallery/",
+            {"title": "Image Only", "image": temp_image},
+            format="multipart",
+        )
+        temp_image.close()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.json()["title"], "Minimal")
+        self.assertEqual(response.json()["title"], "Image Only")
 
     def test_retrieve_gallery_admin(self):
         response = self.client.get(
@@ -609,6 +657,14 @@ class AdminSuperAdminTest(CMSApiTestCase):
         self.assertEqual(response.json()["title"], "Fully Updated")
         self.assertEqual(response.json()["description"], "New description")
 
+    def test_update_gallery_admin_clears_last_media(self):
+        response = self.client.patch(
+            f"{self.base_url}/admin/gallery/{self.gallery_item.id}/",
+            {"video_url": ""},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_delete_gallery_admin_hard_delete(self):
         response = self.client.delete(
             f"{self.base_url}/admin/gallery/{self.gallery_item.id}/"
@@ -637,7 +693,7 @@ class AdminSuperAdminTest(CMSApiTestCase):
     def test_delete_map_node_then_list_excludes_it_from_public(self):
         self.client.delete(f"{self.base_url}/admin/map-nodes/{self.map_node.id}/")
         response = self.client.get(f"{self.base_url}/map-nodes/")
-        titles = [n["title"] for n in response.json()]
+        titles = [n["title"] for n in response.json()["results"]]
         self.assertNotIn("Test Map Node", titles)
 
 

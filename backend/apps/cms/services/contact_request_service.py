@@ -1,8 +1,12 @@
+from datetime import timedelta
+
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
 from apps.cms.models import ContactRequest
 from apps.cms.constants import ContactStatus, ContactPriority
+from apps.shared.audit.services import log_action
 
 
 def get_contact_request_or_404(pk):
@@ -16,7 +20,22 @@ def list_contact_requests():
     return ContactRequest.objects.all()
 
 
-def create_contact_request(data: dict) -> ContactRequest:
+def _reject_duplicate(email, subject):
+    if not email or not subject:
+        return
+    cutoff = timezone.now() - timedelta(minutes=5)
+    exists = ContactRequest.objects.filter(
+        email=email, subject=subject, created_at__gte=cutoff
+    ).exists()
+    if exists:
+        raise ValidationError(
+            "A contact request with the same email and subject was "
+            "submitted recently. Please wait before submitting again."
+        )
+
+
+def create_contact_request(data: dict, actor=None) -> ContactRequest:
+    _reject_duplicate(data.get("email"), data.get("subject"))
     if not data.get("name", "").strip():
         raise ValidationError("Name is required.")
     if not data.get("email", "").strip():
@@ -26,7 +45,9 @@ def create_contact_request(data: dict) -> ContactRequest:
     if not data.get("description", "").strip():
         raise ValidationError("Description is required.")
     with transaction.atomic():
-        return ContactRequest.objects.create(**data)
+        request_obj = ContactRequest.objects.create(**data)
+        log_action(actor, "CREATE_CONTACT_REQUEST", "ContactRequest", request_obj.id)
+        return request_obj
 
 
 def update_contact_request(
@@ -42,9 +63,11 @@ def update_contact_request(
         for key, value in updates.items():
             setattr(request_obj, key, value)
         request_obj.save(update_fields=list(updates.keys()))
+    log_action(actor, "UPDATE_CONTACT_REQUEST", "ContactRequest", request_obj.id)
     return request_obj
 
 
 def delete_contact_request(request_obj: ContactRequest, actor=None) -> None:
     with transaction.atomic():
+        log_action(actor, "DELETE_CONTACT_REQUEST", "ContactRequest", request_obj.id)
         request_obj.delete()

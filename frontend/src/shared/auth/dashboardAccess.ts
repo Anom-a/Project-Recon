@@ -44,6 +44,7 @@ const ADMIN_SECTION_ACCESS: Record<AdminSectionId, (u: UserProfile) => boolean> 
   'event-registrations': canManageEvents,
   store: canManageStore,
   cms: canManageCms,
+  sponsors: canManageCms,
   branches: isSuperAdmin,
   audit: canViewAuditLogs,
   account: () => true,

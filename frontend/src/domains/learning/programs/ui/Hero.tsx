@@ -3,21 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Globe, ShoppingBag, Sparkles, CheckCircle2 } from 'lucide-react';
 
 import untitledLogo from '@/assets/logo.svg';
-import sliderImg1 from '@/assets/slider/faj.jpg';
-import sliderImg2 from '@/assets/slider/photo_2026-06-15_14-40-10.jpg';
-import sliderImg3 from '@/assets/slider/photo_2026-06-15_18-51-59.jpg';
-import sliderImg4 from '@/assets/slider/photo_2026-06-15_18-52-03.jpg';
-import sliderImg5 from '@/assets/slider/photo_2026-06-15_18-52-07.jpg';
-import sliderImg6 from '@/assets/slider/photo_2026-06-15_18-52-11.jpg';
-import sliderImg7 from '@/assets/slider/photo_2026-06-15_18-52-21.jpg';
-import sliderImg8 from '@/assets/slider/photo_2026-06-15_18-52-25.jpg';
 
 import { cmsPublicApi, type HeroBannerResponse } from '../../../cms/public/api/cmsPublicApi';
-
-const SLIDER_IMAGES = [
-  sliderImg1, sliderImg2, sliderImg3, sliderImg4,
-  sliderImg5, sliderImg6, sliderImg7, sliderImg8,
-];
 
 const SLIDE_DURATION = 6000;
 
@@ -33,11 +20,6 @@ const HERO_PARTICLES = Array.from({ length: 10 }, (_, i) => ({
 
 const trustItems = ['Competitions', '120+ Labs', 'STEM Kits', 'Awards'];
 
-const stats = [
-  { value: '5M+', label: 'Future Engineers', accent: 'from-blue-300 to-blue-400' },
-  { value: '120+', label: 'Programs', accent: 'from-cyan-300 to-cyan-400' },
-  { value: '500+', label: 'Competitions', accent: 'from-indigo-300 to-indigo-400' },
-];
 
 interface HeroProps {
   onDiscoverPrograms: () => void;
@@ -49,7 +31,7 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [banners, setBanners] = useState<HeroBannerResponse[]>([]);
-  const [activeImages, setActiveImages] = useState<string[]>(SLIDER_IMAGES);
+  const [activeImages, setActiveImages] = useState<string[]>([]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -58,13 +40,26 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
     cmsPublicApi.getHeroBanners(abort.signal).then((data) => {
       if (data && data.length > 0) {
         setBanners(data);
-        setActiveImages(data.map((b, i) => b.image || SLIDER_IMAGES[i % SLIDER_IMAGES.length]));
+        const images = data.map(b => b.image).filter(Boolean) as string[];
+        setActiveImages(images);
+        
+        // Dynamically inject a preload link for the first image to improve LCP
+        if (images[0] && !document.head.querySelector(`link[href="${images[0]}"]`)) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = images[0];
+          // React 19 / TS may need specific cast for fetchpriority but we can set it as attribute
+          link.setAttribute('fetchpriority', 'high');
+          document.head.appendChild(link);
+        }
       }
     }).catch(err => { if (err.name !== 'AbortError') console.error(err); });
     return () => abort.abort();
   }, []);
 
   useEffect(() => {
+    if (activeImages.length === 0) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % activeImages.length);
     }, SLIDE_DURATION);
@@ -78,19 +73,20 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
     >
       {/* ── BACKGROUND ── */}
       <div className="absolute inset-0 z-0">
-        <AnimatePresence mode="popLayout">
+        {activeImages.length > 0 && activeImages.map((src, idx) => (
           <motion.img
-            key={currentSlide}
-            src={activeImages[currentSlide]}
-            alt={banners[currentSlide]?.title || "Ethio Robotics community and competition moments"}
+            key={src}
+            src={src}
+            alt={banners[idx]?.title || "Ethio Robotics community and competition moments"}
             className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition: 'center top' }}
-            initial={{ opacity: 0, scale: 1.08 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.05 }}
+            initial={false}
+            animate={{ opacity: currentSlide === idx ? 1 : 0, scale: currentSlide === idx ? 1 : 1.05 }}
             transition={{ duration: 1.4, ease: "easeInOut" }}
+            fetchPriority={idx === 0 ? "high" : "auto"}
+            loading={idx === 0 ? "eager" : "lazy"}
           />
-        </AnimatePresence>
+        ))}
 
         {/* Desktop: left-to-right scrim — dark behind text column, fades right */}
         <div className="hidden lg:block absolute inset-0 z-[1] bg-gradient-to-r from-[#0B1220]/90 via-[#0B1220]/55 to-transparent" />
@@ -138,20 +134,22 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
       </div>
 
       {/* ── SLIDE DOTS ── */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-        {activeImages.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentSlide(idx)}
-            className={`rounded-full transition-all duration-500 ${
-              idx === currentSlide
-                ? 'w-10 h-1.5 bg-white shadow-[0_0_12px_rgba(255,255,255,0.5)]'
-                : 'w-1.5 h-1.5 bg-white/20 hover:bg-white/50'
-            }`}
-            aria-label={`Go to slide ${idx + 1}`}
-          />
-        ))}
-      </div>
+      {activeImages.length > 0 && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+          {activeImages.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentSlide(idx)}
+              className={`rounded-full transition-all duration-500 ${
+                idx === currentSlide
+                  ? 'w-10 h-1.5 bg-white shadow-[0_0_12px_rgba(255,255,255,0.5)]'
+                  : 'w-1.5 h-1.5 bg-white/20 hover:bg-white/50'
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* ── MAIN CONTENT ── */}
       {/*
@@ -298,27 +296,8 @@ export default function Hero({ onDiscoverPrograms, onJoinCommunity, onShopStore 
             className="w-full"
           >
             <div className="w-full bg-white/[0.04] backdrop-blur-sm rounded-xl border border-white/[0.06] p-4">
-              {/* Stats row */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                {stats.map((stat, i) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={mounted ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.5, delay: 0.55 + i * 0.1 }}
-                  >
-                    <div className={`text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r ${stat.accent}`}>
-                      {stat.value}
-                    </div>
-                    <div className="text-[10px] text-white/40 font-medium mt-0.5 uppercase tracking-widest">
-                      {stat.label}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
               {/* Progress bar */}
-              <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[9px] font-mono font-semibold text-white/30 uppercase tracking-[0.15em]">Mission Progress</span>
                   <span className="text-[11px] font-semibold text-white/50 font-mono">1,240,500 / 5,000,000</span>

@@ -35,6 +35,7 @@ from apps.events.services.tournament_service import get_tournament_or_404
 )
 class AdminMatchListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = MatchAdminSerializer
 
     def get_queryset(self):
@@ -63,6 +64,7 @@ class AdminMatchListCreateView(generics.ListCreateAPIView):
 )
 class AdminMatchRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = MatchAdminSerializer
     lookup_url_kwarg = "pk"
 
@@ -87,6 +89,7 @@ class AdminMatchRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
 
 class AdminMatchAssignTeamView(APIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
 
     @extend_schema(
         tags=["Events - Admin - Matches"],
@@ -124,6 +127,7 @@ class AdminMatchAssignTeamView(APIView):
 
 class AdminMatchRemoveTeamView(APIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
 
     @extend_schema(
         tags=["Events - Admin - Matches"],
@@ -158,6 +162,7 @@ class AdminMatchRemoveTeamView(APIView):
 
 class AdminMatchRecordScoresView(APIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
 
     @extend_schema(
         tags=["Events - Admin - Matches"],
@@ -195,6 +200,7 @@ class AdminMatchRecordScoresView(APIView):
 )
 class AdminMatchCompleteView(APIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
 
     def post(self, request, pk):
         match = get_match_or_404(pk)
@@ -208,6 +214,7 @@ class AdminMatchCompleteView(APIView):
 )
 class AdminTournamentMatchListView(generics.ListAPIView):
     permission_classes = [IsEventStaff]
+    throttle_scope = "events_admin"
     serializer_class = MatchAdminSerializer
 
     def get_queryset(self):

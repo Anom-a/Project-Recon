@@ -494,7 +494,7 @@ STORAGES = {
 # ── File Upload ──────────────────────────────────────────────────────────
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
-DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 FILE_UPLOAD_PERMISSIONS = 0o644
 
 
@@ -533,6 +533,8 @@ REST_FRAMEWORK = {
         "user_change_password": os.getenv("THROTTLE_CHANGE_PASSWORD", "5/hour"),
         "user_logout": os.getenv("THROTTLE_LOGOUT", "10/min"),
         "admin_user": os.getenv("THROTTLE_ADMIN", "30/min"),
+        "events_admin": os.getenv("THROTTLE_EVENTS_ADMIN", "100/min"),
+        "events_register": os.getenv("THROTTLE_EVENTS_REGISTER", "5/min"),
         "email_otp": os.getenv("THROTTLE_EMAIL_OTP", "3/min"),
     },
 }
