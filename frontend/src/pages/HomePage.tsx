@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, BookOpen, Globe, Trophy, ArrowUpRight,
   Globe2, Send, Loader, CheckCircle2, X,
-   ChevronRight,
+  ChevronRight, ChevronDown, Image,
 } from 'lucide-react';
 import Hero, { formatStatCount } from '../domains/learning/programs/ui/Hero';
 import DemoSlider from '../domains/learning/programs/ui/DemoSlider';
@@ -11,7 +11,6 @@ import Updates from '../domains/learning/programs/ui/Updates';
 import { UserProfile, ActiveTab, type ProgramDisplay } from '../shared/types';
 import { getPrograms } from '../domains/learning/programs/api/programApi';
 import { cmsPublicApi, type CmsPartnerResponse, type FaqResponse, type HomepageStats, type GalleryItemResponse } from '../domains/cms/public/api/cmsPublicApi';
-import { ChevronDown, Image } from 'lucide-react';
 
 interface HomePageProps {
   currentUser: UserProfile | null;
@@ -34,6 +33,8 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
   const [previewItem, setPreviewItem] = useState<GalleryItemResponse | null>(null);
   const [stats, setStats] = useState<HomepageStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [showAllPrograms, setShowAllPrograms] = useState(false);
+  const INITIAL_PROGRAM_COUNT = 3;
 
   React.useEffect(() => {
     const abort = new AbortController();
@@ -283,8 +284,9 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {programs.map((prog, idx) => (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {(showAllPrograms ? programs : programs.slice(0, INITIAL_PROGRAM_COUNT)).map((prog, idx) => (
             <motion.div
               key={prog.id}
               initial={{ opacity: 0, y: 35 }}
@@ -350,6 +352,18 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               </div>
             </motion.div>
             ))}
+          </div>
+          {programs.length > INITIAL_PROGRAM_COUNT && (
+            <div className="text-center mt-10">
+              <button
+                onClick={() => setShowAllPrograms(!showAllPrograms)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#25338d] hover:bg-[#111a5f] text-white font-sans font-semibold text-sm rounded-xl transition-all active:scale-[0.97]"
+              >
+                {showAllPrograms ? 'Show Less' : `View All Programs (${programs.length})`}
+                <ChevronRight className={`w-4 h-4 transition-transform ${showAllPrograms ? 'rotate-90' : ''}`} />
+              </button>
+            </div>
+          )}
           </div>
         )}
       </section>

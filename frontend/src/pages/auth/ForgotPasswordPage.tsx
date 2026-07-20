@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Mail, ArrowRight, ShieldCheck, Sparkles, Info, CheckCircle, Lock
+  Mail, ArrowRight, ShieldCheck, Sparkles, Info, CheckCircle, Lock, RefreshCw
 } from 'lucide-react';
 import BrandLogo from '@/shared/ui/BrandLogo';
 import { cmsPublicApi } from '@/domains/cms/public/api/cmsPublicApi';
@@ -20,6 +20,8 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [bgImage, setBgImage] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -79,6 +81,24 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
     }
   };
 
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      cooldownRef.current = setInterval(() => setResendCooldown(p => p - 1), 1000);
+      return () => clearInterval(cooldownRef.current);
+    }
+  }, [resendCooldown > 0]);
+
+  const handleResendOtp = async () => {
+    setError('');
+    const { forgotPasswordApi } = await import('@/domains/auth/login/api/loginApi');
+    try {
+      await forgotPasswordApi(email);
+      setResendCooldown(60);
+    } catch {
+      setError('Failed to resend OTP.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-brand-paper flex flex-col font-sans" id="forgot-password-viewport">
       <header className="relative z-30 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 md:px-12 py-2 sm:py-3 flex items-center justify-between min-h-[64px] sm:h-[72px]">
@@ -118,6 +138,7 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
                 animate={{ opacity: 1, scale: 1.1 }}
                 exit={{ opacity: 0, scale: 1.05 }}
                 transition={{ duration: 1.2, ease: "easeInOut" }}
+                onError={(event) => { event.currentTarget.style.display = 'none'; }}
               />
             )}
           </AnimatePresence>
@@ -251,6 +272,15 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
                             className="w-full pl-10 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/20 transition-all tracking-[0.2em]"
                           />
                         </div>
+                        <button
+                          type="button"
+                          onClick={handleResendOtp}
+                          disabled={resendCooldown > 0}
+                          className="text-xs font-bold text-brand-blue hover:text-brand-blue-dark transition-colors disabled:text-slate-300 disabled:cursor-not-allowed inline-flex items-center gap-1.5 mt-1"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${resendCooldown > 0 ? '' : 'group-hover:animate-spin'}`} />
+                          {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
+                        </button>
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] text-slate-400 uppercase font-black tracking-widest">New Password</label>

@@ -4,6 +4,7 @@ import {
   Plus, Edit2, Power, Search, X, LayoutGrid, Package,
   Eye, EyeOff,
 } from 'lucide-react';
+import { http } from '@/shared/api/http';
 import { storeAdminApi, type CategoryPayload } from '../api/storeAdminApi';
 import type { ProductCategory } from '@/domains/store/model/types';
 import { cn } from '@/shared/utils/cn';
@@ -90,7 +91,7 @@ export default function CategoryManager({ addToast }: Props) {
 
   const handleDelete = async (id: string) => {
     try {
-      await storeAdminApi.categories.delete(id);
+      await http.delete(`/store/admin/categories/${id}/`);
       addToast('Category deleted', 'success');
       setDeleteConfirm(null);
       fetchItems();

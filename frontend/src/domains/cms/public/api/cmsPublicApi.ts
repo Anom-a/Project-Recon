@@ -1,5 +1,6 @@
 import { http } from '../../../../shared/api/http';
 import { unwrapList, fetchAllPages, type PaginatedResponse } from '@/shared/api/pagination';
+import { resolveMediaUrl } from '@/shared/utils/media';
 import type { CmsPartnerResponse, NewsArticleResponse } from '../../shared/api/cmsApi';
 
 export type { CmsPartnerResponse, NewsArticleResponse, PaginatedResponse };
@@ -121,13 +122,15 @@ export const cmsPublicApi = {
       return rows[0];
     }
   },
-  getHeroBanners: async (signal?: AbortSignal) =>
-    fetchAllPages<HeroBannerResponse>((page) =>
+  getHeroBanners: async (signal?: AbortSignal) => {
+    const banners = await fetchAllPages<HeroBannerResponse>((page) =>
       http.get<PaginatedResponse<HeroBannerResponse> | HeroBannerResponse[]>(
         '/cms/hero-banners/',
         { signal, params: { page: String(page), page_size: '50' } },
       ),
-    ),
+    );
+    return banners.map(banner => ({ ...banner, image: resolveMediaUrl(banner.image) || '' }));
+  },
   getNews: (params?: Record<string, string>, signal?: AbortSignal) => http.get<PaginatedResponse<NewsArticleResponse>>('/cms/news/', { params, signal }),
   getNewsDetail: (slug: string) => http.get<NewsArticleResponse>(`/cms/news/${slug}/`),
   getPartners: async (signal?: AbortSignal) =>

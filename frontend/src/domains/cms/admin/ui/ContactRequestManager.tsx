@@ -15,7 +15,7 @@ const STATUS_TONES: Record<string, string> = {
 };
 
 function isStudentRegistration(item: ContactRequest): boolean {
-  return item.subject?.toLowerCase().startsWith('student registration request') || item.message?.toLowerCase().includes('selected courses:');
+  return (item.subject?.toLowerCase() ?? '').startsWith('student registration request') || (item.message?.toLowerCase() ?? '').includes('selected courses:');
 }
 
 function registrationStudentName(item: ContactRequest): string {

@@ -53,8 +53,9 @@ export default function Hero({
     const abort = new AbortController();
     cmsPublicApi.getHeroBanners(abort.signal).then((data) => {
       if (data && data.length > 0) {
-        setBanners(data);
-        const images = data.map(b => b.image).filter(Boolean) as string[];
+        const usableBanners = data.filter(b => Boolean(b.image));
+        setBanners(usableBanners);
+        const images = usableBanners.map(b => b.image);
         setActiveImages(images);
         
         // Dynamically inject a preload link for the first image to improve LCP
@@ -82,12 +83,12 @@ export default function Hero({
 
   return (
     <section
-      className="relative flex min-h-screen w-full flex-col overflow-x-hidden"
+      className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-[#0B1220]"
       id="hero-banner"
     >
       {/* ── BACKGROUND ── */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        {activeImages.length > 0 && activeImages.map((src, idx) => (
+        {activeImages.length > 0 ? activeImages.map((src, idx) => (
           <motion.img
             key={src}
             src={src}
@@ -99,8 +100,11 @@ export default function Hero({
             transition={{ duration: 1.4, ease: "easeInOut" }}
             fetchPriority={idx === 0 ? "high" : "auto"}
             loading={idx === 0 ? "eager" : "lazy"}
+            onError={(event) => { event.currentTarget.style.display = 'none'; }}
           />
-        ))}
+        )) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0B1220] via-[#162044] to-[#0B1220]" />
+        )}
 
         {/* Desktop: left-to-right scrim — dark behind text column, fades right */}
         <div className="hidden lg:block absolute inset-0 z-[1] bg-gradient-to-r from-[#0B1220]/90 via-[#0B1220]/55 to-transparent" />

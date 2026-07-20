@@ -8,7 +8,7 @@ export type BackendRole =
   | 'instructor'
   | 'student';
 
-export type AppRole = UserProfile['role'];
+export type AppRole = UserProfile['role'] | 'Parent' | 'EventManager';
 
 export interface UserAssignment {
   id?: string;

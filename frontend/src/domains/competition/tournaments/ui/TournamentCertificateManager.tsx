@@ -555,7 +555,7 @@ export default function TournamentCertificateManager({ tournamentId, tournament,
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between text-[10px] text-slate-400">
-                <span>Status: {previewTeam.awards[selectedAward] === 'issued' ? '✓ Issued' : previewTeam.awards[selectedAward] === 'pending' ? '○ Pending' : '○ Not assigned'}</span>
+                <span>Status: {previewTeam.awards[selectedAward!] === 'issued' ? '✓ Issued' : previewTeam.awards[selectedAward!] === 'pending' ? '○ Pending' : '○ Not assigned'}</span>
                 {previewStudent?.studentId ? (
                   <span className="text-emerald-600 font-medium flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Student linked

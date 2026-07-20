@@ -1,4 +1,5 @@
 export * from '../../domains/store/model/types';
+import type { SessionStatus, AttendanceStatus } from '../../domains/learning/model/types';
 
 export interface UpdatePost {
   id: string;
@@ -29,6 +30,8 @@ export interface UserProfile {
   profile_picture?: string;
   date_of_birth?: string;
   gender?: string;
+  status?: string;
+  is_email_verified?: boolean;
   role: 'Student' | 'Instructor' | 'Admin' | 'Manager' | 'Secretary';
   bio?: string;
   assignments?: UserAssignment[];

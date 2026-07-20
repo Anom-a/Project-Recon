@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   User, Mail, Phone, Calendar, Shield, Edit3, Save, X, Loader2, Camera,
@@ -195,18 +195,22 @@ export default function AdminAccount({ currentUser, onUserUpdate }: Props) {
                 <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
                   <Mail className="w-3.5 h-3.5 text-slate-400" /> {currentUser.email}
                 </span>
-                {currentUser.phone_number && (
-                  <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" /> {currentUser.phone_number}
-                  </span>
-                )}
-                {currentUser.date_of_birth && (
-                  <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> {new Date(currentUser.date_of_birth).toLocaleDateString()}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Active
+                <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" /> {currentUser.phone_number || 'Not provided'}
+                </span>
+                <span className={`flex items-center gap-1.5 text-xs font-semibold bg-slate-100 px-3 py-1.5 rounded-lg ${currentUser.gender ? 'text-slate-700' : 'text-slate-400'}`}>
+                  <User className="w-3.5 h-3.5 text-slate-400" /> {currentUser.gender || 'Gender not set'}
+                </span>
+                <span className={`flex items-center gap-1.5 text-xs font-semibold bg-slate-100 px-3 py-1.5 rounded-lg ${currentUser.date_of_birth ? 'text-slate-700' : 'text-slate-400'}`}>
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" /> {currentUser.date_of_birth ? new Date(currentUser.date_of_birth).toLocaleDateString() : 'No DOB'}
+                </span>
+                <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                  currentUser.status === 'Active'
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                }`}>
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${currentUser.status === 'Active' ? 'text-emerald-500' : 'text-amber-500'}`} />
+                  {currentUser.status || 'Active'}
                 </span>
               </div>
             </>
@@ -287,13 +291,45 @@ function ProfileInfo({ currentUser }: { currentUser: UserProfile }) {
         </div>
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Phone</p>
-          <p className="text-sm font-semibold text-slate-900">{currentUser.phone_number || '—'}</p>
+          <p className="text-sm font-semibold text-slate-900">{currentUser.phone_number || 'Not provided'}</p>
+        </div>
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Gender</p>
+          <p className="text-sm font-semibold text-slate-900">{currentUser.gender || 'Not selected'}</p>
+        </div>
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Date of Birth</p>
+          <p className="text-sm font-semibold text-slate-900">
+            {currentUser.date_of_birth ? new Date(currentUser.date_of_birth).toLocaleDateString() : 'Not available'}
+          </p>
+        </div>
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Account Status</p>
+          <p className="text-sm font-semibold text-slate-900">{currentUser.status || 'Active'}</p>
         </div>
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Role</p>
           <p className="text-sm font-semibold text-slate-900">{currentUser.role}</p>
         </div>
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Email Verified</p>
+          <p className="text-sm font-semibold text-slate-900">{currentUser.is_email_verified ? 'Yes' : 'No'}</p>
+        </div>
       </div>
+      {currentUser.assignments && currentUser.assignments.length > 0 && (
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Assignments</p>
+          <div className="space-y-1.5">
+            {currentUser.assignments.map(a => (
+              <div key={a.id} className="flex items-center gap-2 text-sm">
+                <span className="text-xs font-semibold text-slate-700 capitalize">{a.role.replace('_', ' ')}</span>
+                {a.branch_name && <span className="text-xs text-slate-500">at {a.branch_name}</span>}
+                {a.is_primary && <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Primary</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -405,6 +441,15 @@ function EmailVerificationForm({ currentUser, onVerify }: { currentUser: UserPro
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(currentUser.is_email_verified || false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  React.useEffect(() => {
+    if (resendCooldown > 0) {
+      cooldownRef.current = setInterval(() => setResendCooldown(p => p - 1), 1000);
+      return () => clearInterval(cooldownRef.current);
+    }
+  }, [resendCooldown > 0]);
 
   const handleRequest = async () => {
     setSubmitting(true);
@@ -429,6 +474,20 @@ function EmailVerificationForm({ currentUser, onVerify }: { currentUser: UserPro
       onVerify?.();
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.message || 'Invalid OTP');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      await securityApi.requestEmailVerification();
+      setResendCooldown(60);
+      setStep('sent');
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || e?.message || 'Failed to resend');
     } finally {
       setSubmitting(false);
     }
@@ -484,6 +543,15 @@ function EmailVerificationForm({ currentUser, onVerify }: { currentUser: UserPro
               Verify
             </button>
           </div>
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resendCooldown > 0}
+            className="mt-3 text-xs font-medium text-brand-blue hover:text-brand-blue-dark transition-colors disabled:text-slate-300 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3 h-3 ${resendCooldown > 0 ? '' : 'group-hover:animate-spin'}`} />
+            {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+          </button>
         </div>
       )}
     </div>

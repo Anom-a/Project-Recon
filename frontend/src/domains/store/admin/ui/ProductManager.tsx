@@ -10,6 +10,7 @@ import { branchesApi } from '@/domains/user/shared/api/adminApi';
 import type { Product, ProductCategory } from '@/domains/store/model/types';
 import { formatMoney } from '@/domains/store/utils/formatMoney';
 import { cn } from '@/shared/utils/cn';
+import { ToggleSwitch } from '@/shared/ui/ToggleSwitch';
 
 interface Props {
   addToast: (message: string, type: 'success' | 'error') => void;
@@ -43,7 +44,7 @@ export default function ProductManager({ addToast }: Props) {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [initialBranch, setInitialBranch] = useState('');
+  const [initialBranches, setInitialBranches] = useState<string[]>([]);
   const [initialQuantity, setInitialQuantity] = useState<number | ''>('');
   const [initialMinQuantity, setInitialMinQuantity] = useState<number | ''>('');
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
@@ -71,7 +72,7 @@ export default function ProductManager({ addToast }: Props) {
   const openCreate = () => {
     setForm(emptyForm());
     setEditing(null);
-    setInitialBranch('');
+    setInitialBranches([]);
     setInitialQuantity('');
     setInitialMinQuantity('');
     setSlugManuallyEdited(false);
@@ -126,15 +127,15 @@ export default function ProductManager({ addToast }: Props) {
         fetchItems();
       } else {
         const created = await storeAdminApi.products.create(payload);
-        if (initialBranch) {
-          try {
-            await storeAdminApi.inventory.create({
-              branch: initialBranch,
+        if (initialBranches.length > 0) {
+          await Promise.allSettled(initialBranches.map(branchId =>
+            storeAdminApi.inventory.create({
+              branch: branchId,
               product: created.id,
               quantity: Number(initialQuantity) || 0,
               minimum_quantity: Number(initialMinQuantity) || 0,
-            });
-          } catch { /* non-fatal */ }
+            })
+          ));
         }
         addToast('Product created successfully', 'success');
         setShowModal(false);
@@ -480,12 +481,7 @@ export default function ProductManager({ addToast }: Props) {
                         onChange={e => updateForm({ sku: e.target.value })}
                         className={inputClass} placeholder="e.g. RECON-001" />
                     </div>
-                    <div>
-                      <label className={labelClass}>Barcode</label>
-                      <input type="text" value={form.barcode}
-                        onChange={e => updateForm({ barcode: e.target.value })}
-                        className={inputClass} placeholder="Optional" />
-                    </div>
+
                     <div>
                       <label className={labelClass}>Price *</label>
                       <div className="relative">
@@ -529,9 +525,8 @@ export default function ProductManager({ addToast }: Props) {
                     <h5 className="text-xs font-bold uppercase tracking-wider text-brand-muted">Status</h5>
                   </div>
                   <label className="flex items-center gap-2.5 cursor-pointer p-3 border border-brand-border rounded-lg hover:bg-slate-50 transition-colors">
-                    <input type="checkbox" checked={form.is_active}
-                      onChange={e => updateForm({ is_active: e.target.checked })}
-                      className="rounded border-brand-border text-brand-blue focus:ring-brand-blue/20" />
+                    <ToggleSwitch checked={form.is_active}
+                      onChange={v => updateForm({ is_active: v })} />
                     <div>
                       <span className="text-sm font-medium text-brand-ink">Active</span>
                       <p className="text-xs text-brand-muted">Only active products appear in the storefront</p>
@@ -548,28 +543,40 @@ export default function ProductManager({ addToast }: Props) {
                       </div>
                       <h5 className="text-xs font-bold uppercase tracking-wider text-brand-muted">Initial Stock <span className="font-normal normal-case text-brand-muted/60">(optional)</span></h5>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div>
-                        <label className={labelClass}>Branch</label>
-                        <select value={initialBranch} onChange={e => setInitialBranch(e.target.value)}
-                          className={inputClass}>
-                          <option value="">Select branch</option>
-                          {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className={labelClass}>Quantity</label>
-                        <input type="number" min="0" value={initialQuantity}
-                          onChange={e => setInitialQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                          className={inputClass} placeholder="0" />
-                      </div>
-                      <div>
-                        <label className={labelClass}>Min. Quantity</label>
-                        <input type="number" min="0" value={initialMinQuantity}
-                          onChange={e => setInitialMinQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                          className={inputClass} placeholder="0" />
+                    <div className="space-y-2 mb-4">
+                      <p className="text-xs text-brand-muted font-medium">Select branches to stock this product:</p>
+                      <div className="flex flex-wrap gap-3">
+                        {branches.map(b => (
+                          <label key={b.id} className="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" checked={initialBranches.includes(b.id)}
+                              onChange={e => {
+                                setInitialBranches(e.target.checked
+                                  ? [...initialBranches, b.id]
+                                  : initialBranches.filter(id => id !== b.id)
+                                );
+                              }}
+                              className="rounded border-brand-border text-brand-blue focus:ring-brand-blue/20" />
+                            <span className="text-sm text-brand-ink">{b.name}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
+                    {initialBranches.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className={labelClass}>Quantity <span className="text-brand-muted/60 font-normal">(each branch)</span></label>
+                          <input type="number" min="0" value={initialQuantity}
+                            onChange={e => setInitialQuantity(e.target.value ? parseInt(e.target.value) : '')}
+                            className={inputClass} placeholder="0" />
+                        </div>
+                        <div>
+                          <label className={labelClass}>Min. Quantity <span className="text-brand-muted/60 font-normal">(each branch)</span></label>
+                          <input type="number" min="0" value={initialMinQuantity}
+                            onChange={e => setInitialMinQuantity(e.target.value ? parseInt(e.target.value) : '')}
+                            className={inputClass} placeholder="0" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

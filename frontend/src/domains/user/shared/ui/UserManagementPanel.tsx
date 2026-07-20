@@ -59,6 +59,7 @@ export default function UserManagementPanel({ title = 'User Management', current
   const [formData, setFormData] = useState({ email: '', first_name: '', last_name: '', password: '', branch_id: '', role: 'instructor', phone_number: '', gender: '', date_of_birth: '' });
   const [addUserRole, setAddUserRole] = useState<'staff' | 'branch_manager'>('staff');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [bulkProcessing, setBulkProcessing] = useState(false);
 
   const toggleAll = () => {
     const filterIds = filtered.map(u => u.id);
@@ -116,6 +117,32 @@ export default function UserManagementPanel({ title = 'User Management', current
   const handleArchive = async (u: AdminUserResponse) => {
     try { await archiveUserApi(u.id); setConfirmArchive(null); await load(); }
     catch (e) { setError(formatApiError(e)); }
+  };
+
+  const handleBulkActivate = async () => {
+    setBulkProcessing(true);
+    try {
+      const ids = Array.from(selectedUserIds);
+      for (const id of ids) {
+        await toggleUserStatusApi(id, 'Pending');
+      }
+      setSelectedUserIds(new Set());
+      await load();
+    } catch (e) { setError(formatApiError(e)); }
+    finally { setBulkProcessing(false); }
+  };
+
+  const handleBulkArchive = async () => {
+    setBulkProcessing(true);
+    try {
+      const ids = Array.from(selectedUserIds);
+      for (const id of ids) {
+        await archiveUserApi(id);
+      }
+      setSelectedUserIds(new Set());
+      await load();
+    } catch (e) { setError(formatApiError(e)); }
+    finally { setBulkProcessing(false); }
   };
 
   const handleCreate = async () => {
@@ -228,8 +255,8 @@ export default function UserManagementPanel({ title = 'User Management', current
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
           <span className="text-sm font-semibold text-blue-800">{selectedUserIds.size} users selected</span>
           <div className="flex gap-2">
-            <button className="px-3 py-1.5 text-xs font-bold bg-white text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 shadow-sm">Approve Pending</button>
-            <button className="px-3 py-1.5 text-xs font-bold bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm">Archive</button>
+            <button onClick={handleBulkActivate} disabled={bulkProcessing} className="px-3 py-1.5 text-xs font-bold bg-white text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 shadow-sm disabled:opacity-50">Approve Pending</button>
+            <button onClick={handleBulkArchive} disabled={bulkProcessing} className="px-3 py-1.5 text-xs font-bold bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm disabled:opacity-50">Archive</button>
           </div>
         </div>
       )}
@@ -579,10 +606,10 @@ export default function UserManagementPanel({ title = 'User Management', current
               </div>
               <div className="p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">First Name</label><input value={editingUser.first_name} onChange={e => setEditingUser(p => ({ ...p, first_name: e.target.value }))} placeholder="e.g. Yonas" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" /></div>
-                  <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Last Name</label><input value={editingUser.last_name} onChange={e => setEditingUser(p => ({ ...p, last_name: e.target.value }))} placeholder="e.g. Tadesse" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" /></div>
+                  <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">First Name</label><input value={editingUser.first_name} onChange={e => setEditingUser(p => p ? { ...p, first_name: e.target.value } : p)} placeholder="e.g. Yonas" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" /></div>
+                  <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Last Name</label><input value={editingUser.last_name} onChange={e => setEditingUser(p => p ? { ...p, last_name: e.target.value } : p)} placeholder="e.g. Tadesse" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" /></div>
                 </div>
-                <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Email</label><input value={editingUser.email} onChange={e => setEditingUser(p => ({ ...p, email: e.target.value }))} placeholder="e.g. yonas.tadesse@email.com" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" /></div>
+                <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Email</label><input value={editingUser.email} onChange={e => setEditingUser(p => p ? { ...p, email: e.target.value } : p)} placeholder="e.g. yonas.tadesse@email.com" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" /></div>
                 <div className="grid grid-cols-2 gap-2">
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Phone</label><input value={editingUser.phone_number || ''} onChange={e => setEditingUser(p => p ? { ...p, phone_number: e.target.value } : p)} placeholder="e.g. +251-911-000000" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" /></div>
                   <div><label className="text-[11px] font-bold text-slate-600 mb-1 block">Gender</label>

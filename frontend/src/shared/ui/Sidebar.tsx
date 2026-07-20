@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
 import { LogOut, X, Menu, PanelLeftClose, PanelLeft, Search } from 'lucide-react';
 import BrandLogo from './BrandLogo';
@@ -89,7 +89,16 @@ export function Sidebar({
 }: SidebarProps) {
   const branding = useBranding();
   const [navQuery, setNavQuery] = useState('');
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
   const showNavSearch = items.length > 8;
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)');
+    const handleChange = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+    setIsMobile(media.matches);
+    media.addEventListener('change', handleChange);
+    return () => media.removeEventListener('change', handleChange);
+  }, []);
 
   const filteredItems = useMemo(() => {
     const q = navQuery.trim().toLowerCase();
@@ -107,6 +116,13 @@ export function Sidebar({
   const topGroups = sortGroupEntries(Object.entries(grouped).filter(([g]) => g !== 'system'));
   const bottomGroups = sortGroupEntries(Object.entries(grouped).filter(([g]) => g === 'system'));
   const mobileBarItems = useMemo(() => buildMobileBarItems(items, activeSection), [items, activeSection]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [drawerOpen]);
 
   const handleNav = (id: string) => {
     onSectionChange(id);
@@ -161,14 +177,6 @@ export function Sidebar({
 
   return (
     <>
-      <button
-        onClick={() => onDrawerToggle?.(true)}
-        className="sidebar-toggle fixed top-3 left-3 z-40 p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex items-center justify-center min-w-[44px] min-h-[44px]"
-        aria-label="Open navigation menu"
-      >
-        <Menu className="w-5 h-5 text-slate-700" />
-      </button>
-
       <AnimatePresence>
         {drawerOpen && (
           <motion.div
@@ -183,7 +191,11 @@ export function Sidebar({
         )}
       </AnimatePresence>
 
-      <aside className={`sidebar${collapsed ? ' collapsed' : ''}${drawerOpen ? ' open' : ''}`}>
+      <aside
+        className={`sidebar${collapsed ? ' collapsed' : ''}${drawerOpen ? ' open' : ''}`}
+        aria-label={`${title} navigation`}
+        aria-hidden={isMobile && !drawerOpen ? true : undefined}
+      >
         <div className="sidebar-header">
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between gap-2'}`}>
             {!collapsed && (
@@ -287,7 +299,7 @@ export function Sidebar({
             return (
               <button
                 key={item.id}
-                onClick={() => onSectionChange(item.id)}
+                onClick={() => handleNav(item.id)}
                 className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[48px] min-h-[48px] justify-center touch-target ${
                   isActive ? 'text-brand-blue' : 'text-slate-400'
                 }`}

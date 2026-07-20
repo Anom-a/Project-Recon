@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Handshake, Plus, Edit2, Trash2, X, GripVertical, Search, ExternalLink, Upload, Eye, EyeOff } from 'lucide-react';
+import { ToggleSwitch } from '@/shared/ui/ToggleSwitch';
 import { api, Partner } from '../api/cmsApi';
 import type { Toast } from './CmsDashboard';
 
@@ -39,7 +40,7 @@ export default function CmsPartnerManager({ addToast }: Props) {
     if (!search) return items;
     const q = search.toLowerCase();
     return items.filter(item =>
-      item.name.toLowerCase().includes(q) ||
+      (item.name ?? '').toLowerCase().includes(q) ||
       item.description?.toLowerCase().includes(q) ||
       item.websiteUrl?.toLowerCase().includes(q)
     );
@@ -78,7 +79,7 @@ export default function CmsPartnerManager({ addToast }: Props) {
     setSaving(false);
   };
 
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm('Remove this partner?')) return;
     try { await api.delete('partners', id); addToast('Partner removed', 'success'); load(); }
     catch { addToast('Delete failed', 'error'); }
@@ -190,10 +191,7 @@ export default function CmsPartnerManager({ addToast }: Props) {
                 <input type="number" value={editing.priority ?? 0} onChange={e => setEditing({ ...editing, priority: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
               </div>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" checked={editing.isActive ?? true} onChange={e => setEditing({ ...editing, isActive: e.target.checked })} className="rounded" />
-                Active
-              </label>
+              <ToggleSwitch checked={editing.isActive ?? true} onChange={v => setEditing({ ...editing, isActive: v })} label="Active" />
             </div>
             <div className="flex gap-2 justify-end p-4 border-t border-slate-200">
               <button onClick={closeForm} className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100">Cancel</button>

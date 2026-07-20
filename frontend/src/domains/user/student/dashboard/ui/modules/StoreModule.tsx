@@ -209,6 +209,7 @@ function CartPanel({ branchId, branchName, currentUser }: { branchId: string; br
 
   const handleCheckout = async () => {
     if (!branchId) { setError('No branch assignment found.'); return; }
+    if (!cart) { setError('Cart is empty.'); return; }
     if (paymentMethod !== 'CASH' && !transactionRef.trim()) {
       setError('Transaction reference is required for this payment method.');
       return;

@@ -5,6 +5,7 @@ import {
   CheckCircle, ChevronDown, Image, ExternalLink, Clock, FileText,
   Plus, Edit3, Trash2, Save, Loader2, AlertTriangle, Upload,
 } from 'lucide-react';
+import { ToggleSwitch } from '@/shared/ui/ToggleSwitch';
 import { cmsNewsApi } from '../../../../cms/shared/api/cmsApi';
 import type { NewsArticleResponse } from '../../../../cms/shared/api/cmsApi';
 import { formatApiError } from '@/shared/utils/formatApiError';
@@ -341,11 +342,7 @@ export default function AnnouncementsManager() {
                     <input value={form.button_url} onChange={e => setForm(p => ({ ...p, button_url: e.target.value }))}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" />
                   </div>
-                  <label className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl cursor-pointer">
-                    <input type="checkbox" checked={form.is_active} onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
-                      className="w-4 h-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" />
-                    <div><p className="text-sm font-medium text-slate-700">Published</p><p className="text-[10px] text-slate-400">Visible to students immediately</p></div>
-                  </label>
+                  <ToggleSwitch checked={form.is_active} onChange={v => setForm(p => ({ ...p, is_active: v }))} label="Active" />
                 </div>
                 <div className="flex items-center justify-end gap-2 p-5 border-t border-slate-100">
                   <button onClick={() => setShowForm(false)}

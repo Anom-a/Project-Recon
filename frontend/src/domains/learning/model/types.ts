@@ -198,7 +198,7 @@ export interface EnrollmentPayment {
   transfer_reference?: string;
   attachment?: string;
   payment_date?: string;
-  status: PaymentStatus;
+  status: PaymentStatus | VerificationStatus;
   verified_by?: string;
   verified_at?: string;
   verification_notes?: string;
@@ -307,4 +307,5 @@ export interface StudentCertificate {
   issued_at: string;
   created_at: string;
   updated_at: string;
+  pdf?: string;
 }

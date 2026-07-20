@@ -4,6 +4,7 @@ import {
   Plus, Edit3, Trash2, Search, X, Handshake, Globe, CheckCircle, XCircle,
   Loader2, ExternalLink, Lock
 } from 'lucide-react';
+import { ToggleSwitch } from '@/shared/ui/ToggleSwitch';
 import { cmsPartnersApi, CmsPartnerResponse } from '../../../../cms/shared/api/cmsApi';
 import { cmsPublicApi } from '../../../../cms/public/api/cmsPublicApi';
 import type { UserProfile } from '@/shared/types';
@@ -262,11 +263,7 @@ export default function SponsorManagement({ currentUser }: Props) {
                     <input type="url" value={form.website_url || ''} onChange={e => setForm({ ...form, website_url: e.target.value })}
                       className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-sky-400" placeholder="https://example.com" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={form.is_active ?? true} onChange={e => setForm({ ...form, is_active: e.target.checked })}
-                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" id="sponsor-active" />
-                    <label htmlFor="sponsor-active" className="text-sm text-slate-700">Active</label>
-                  </div>
+                  <ToggleSwitch checked={form.is_active ?? true} onChange={v => setForm({ ...form, is_active: v })} label="Active" />
                 </div>
                 <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100">
                   <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>

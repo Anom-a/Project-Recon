@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Image, Video, Plus, Edit2, Trash2, X, Search, Upload, Eye, EyeOff, Play, ExternalLink } from 'lucide-react';
+import { ToggleSwitch } from '@/shared/ui/ToggleSwitch';
 import { api, GalleryItem } from '../api/cmsApi';
 
 interface Props { addToast: (msg: string, type: 'success' | 'error') => void }
@@ -284,10 +285,7 @@ export default function GalleryManager({ addToast }: Props) {
                 </select>
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" checked={editing.isActive ?? true} onChange={e => setEditing({ ...editing, isActive: e.target.checked })} className="rounded" />
-                Active
-              </label>
+              <ToggleSwitch checked={editing.isActive ?? true} onChange={v => setEditing({ ...editing, isActive: v })} label="Active" />
             </div>
             <div className="flex gap-2 justify-end p-4 border-t border-slate-200 sticky bottom-0 bg-white">
               <button onClick={closeForm} className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100">Cancel</button>

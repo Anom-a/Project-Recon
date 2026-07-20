@@ -54,7 +54,7 @@ export function ProductDetailView({
         setError(null);
         const data = await getProduct(productId);
         if (cancelled) return;
-        setProduct(data);
+        setProduct(data ?? null);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load product');
       } finally {

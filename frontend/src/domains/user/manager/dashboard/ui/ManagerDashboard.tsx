@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Image, FileText, Handshake, ShoppingBag, MessageSquare, DollarSign,
+  FileText, Handshake, ShoppingBag, MessageSquare, DollarSign,
   Calendar, Bell, UserPlus, BarChart3, Users, Zap, Award,
-  Clock, CheckCircle, CheckCircle2, Activity, Trophy, Building, Download,
+  Clock, Activity, Trophy, Building, Download,
   BookOpen, RefreshCw, Monitor, Target, AlertCircle, X,
-  User, Loader2, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard, ClipboardCheck, Receipt, LayoutDashboard, ArrowRightLeft
+  User, GraduationCap, TrendingUp, UserCheck, ClipboardList, CreditCard, ClipboardCheck, LayoutDashboard, ArrowRightLeft
 } from 'lucide-react';
 import { UserProfile, Enrollment, EnrollmentPayment, StudentProfile, Program, AcademicClass } from '@/shared/types';
 import { AppLayout } from '@/shared/ui/AppLayout';

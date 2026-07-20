@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Lock, Eye, EyeOff, Mail,
-  Sparkles, Info
+  Sparkles, Info, RefreshCw
 } from 'lucide-react';
 import { UserProfile } from '@/shared/types';
 import BrandLogo from '@/shared/ui/BrandLogo';
@@ -37,6 +37,8 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [bgImage, setBgImage] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -119,6 +121,35 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'OTP verification failed.');
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      cooldownRef.current = setInterval(() => setResendCooldown(p => p - 1), 1000);
+      return () => clearInterval(cooldownRef.current);
+    }
+  }, [resendCooldown > 0]);
+
+  const handleResendEmailVerify = async () => {
+    setErrorMsg('');
+    const { requestEmailVerificationApi } = await import('../api/loginApi');
+    try {
+      await requestEmailVerificationApi(email);
+      setResendCooldown(60);
+    } catch {
+      setErrorMsg('Failed to resend verification code.');
+    }
+  };
+
+  const handleResendForgotPassword = async () => {
+    setResetError('');
+    const { forgotPasswordApi } = await import('../api/loginApi');
+    try {
+      await forgotPasswordApi(resetEmail);
+      setResendCooldown(60);
+    } catch {
+      setResetError('Failed to resend OTP.');
     }
   };
 
@@ -362,20 +393,31 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
                   </button>
                 </motion.div>
 
-                {/* Back to login toggle (if verify) */}
+                {/* Resend + Back to login toggle (if verify) */}
                 {viewMode === 'email-verify' && (
-                   <motion.div variants={staggerItem} className="text-center pt-2">
+                   <motion.div variants={staggerItem} className="text-center pt-2 space-y-2">
                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode('login');
-                          setEmailOtp('');
-                          setErrorMsg('');
-                        }}
-                        className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+                       type="button"
+                       onClick={handleResendEmailVerify}
+                       disabled={resendCooldown > 0}
+                       className="text-sm font-medium text-brand-blue hover:text-brand-blue-dark transition-colors disabled:text-slate-300 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
                      >
-                        Want to use a different account? Back to Login
+                       <RefreshCw className={`w-3.5 h-3.5 ${resendCooldown > 0 ? '' : 'group-hover:animate-spin'}`} />
+                       {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
                      </button>
+                     <div>
+                       <button
+                          type="button"
+                          onClick={() => {
+                            setViewMode('login');
+                            setEmailOtp('');
+                            setErrorMsg('');
+                          }}
+                          className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+                       >
+                          Want to use a different account? Back to Login
+                       </button>
+                     </div>
                    </motion.div>
                 )}
               </motion.div>
@@ -395,14 +437,9 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
             initial={{ opacity: 0, scale: 1.05 }}
             animate={{ opacity: 0.4, scale: 1 }}
             transition={{ duration: 1.2 }}
+            onError={(event) => { event.currentTarget.style.display = 'none'; }}
           />
-        ) : (
-          <img
-            src="/images/placeholder-hero.png"
-            alt="Background placeholder"
-            className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay"
-          />
-        )}
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/90 via-slate-900/80 to-slate-900/90" />
         
         <div className="relative z-10 w-full max-w-lg">
@@ -507,6 +544,15 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
                         onChange={(e) => setResetNewPassword(e.target.value)}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10 transition-all"
                       />
+                      <button
+                        type="button"
+                        onClick={handleResendForgotPassword}
+                        disabled={resendCooldown > 0}
+                        className="text-xs font-medium text-brand-blue hover:text-brand-blue-dark transition-colors disabled:text-slate-300 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${resendCooldown > 0 ? '' : 'group-hover:animate-spin'}`} />
+                        {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
+                      </button>
                     </div>
                   )}
 

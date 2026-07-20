@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FileText, Plus, Edit2, Trash2, X, Search, Calendar, Upload, Eye, EyeOff } from 'lucide-react';
+import { ToggleSwitch } from '@/shared/ui/ToggleSwitch';
 import { api, News } from '../api/cmsApi';
 import type { Toast } from './CmsDashboard';
 
@@ -207,10 +208,7 @@ export default function NewsManager({ addToast }: Props) {
               <Field label="Tags (comma-separated)" value={editing.tags ?? ''} onChange={v => { setEditing({ ...editing, tags: v }); clearError('tags'); }} error={formErrors.tags} placeholder="e.g. robotics, competition, vex" />
               <Field label="Published Date" type="date" value={editing.publishedAt?.slice(0, 10) ?? ''} onChange={v => { setEditing({ ...editing, publishedAt: v }); clearError('publishedAt'); }} error={formErrors.publishedAt} />
               <Textarea label="Content" value={editing.content ?? ''} onChange={v => { setEditing({ ...editing, content: v }); clearError('content'); }} error={formErrors.content} required placeholder="e.g. Write the full article content here..." />
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" checked={editing.isActive ?? true} onChange={e => setEditing({ ...editing, isActive: e.target.checked })} className="rounded" />
-                Active
-              </label>
+              <ToggleSwitch checked={editing.isActive ?? true} onChange={v => setEditing({ ...editing, isActive: v })} label="Active" />
             </div>
             <div className="flex gap-2 justify-end p-4 border-t border-slate-200">
               <button onClick={closeForm} className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100">Cancel</button>

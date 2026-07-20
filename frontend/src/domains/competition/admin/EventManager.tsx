@@ -96,7 +96,7 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -224,7 +224,7 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
         for (const [k, v] of Object.entries(payload)) {
           if (v !== null && v !== undefined) fd.append(k, String(v));
         }
-        fd.append('banner', form.banner);
+        fd.append('banner', form.banner!);
         if (editingId) {
           await eventsApi.adminUpdateEvent(editingId, fd);
         } else {

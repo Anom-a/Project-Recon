@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { CheckCircle2, Search, Clock, ChevronDown, Loader2, RotateCcw, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import type { ProgressStatus } from '@/shared/types';
 import { fetchStudentProgressApi, updateStudentProgressApi, fetchMilestonesApi, recordStudentProgressApi } from '@/domains/learning/academics/api/academicApi';
 
 import { StudentProfile, Enrollment, StudentProgress, LearningMilestone } from '@/shared/types';
@@ -55,7 +56,7 @@ export default function ProgressSubmissions({ students, enrollments }: Props) {
       setProgressMap(prev => {
         const next = { ...prev };
         Object.keys(next).forEach(key => {
-          next[key] = next[key].map(p => p.id === progressId ? { ...p, status: newStatus } : p);
+          next[key] = next[key].map(p => p.id === progressId ? { ...p, status: newStatus as ProgressStatus } : p);
         });
         return next;
       });

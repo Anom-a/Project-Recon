@@ -180,6 +180,8 @@ export async function loginApi(credentials: LoginCredentials): Promise<AuthRespo
         profile_picture: userData.profile_picture || '',
         date_of_birth: userData.date_of_birth || '',
         gender: userData.gender || '',
+        status: userData.status || 'Active',
+        is_email_verified: userData.is_email_verified || false,
         role,
         assignments: userData.assignments.map(a => ({
           id: a.id,
@@ -331,6 +333,10 @@ export async function verifyEmailOtpApi(email: string, otp: string): Promise<Aut
         id: userData.id,
         email: userData.email,
         name: userData.full_name || `${userData.first_name} ${userData.last_name}`.trim() || userData.email.split('@')[0],
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        status: userData.status || 'Active',
+        is_email_verified: userData.is_email_verified || false,
         role,
         assignments: userData.assignments.map(a => ({
           id: a.id,

@@ -79,6 +79,18 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+html,
+body,
+#root {
+  min-width: 320px;
+  max-width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+}
+
 .glass-panel {
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(16px);
@@ -763,8 +775,14 @@
 
 .main-area {
   flex: 1;
+  min-width: 0;
   padding: 16px;
   padding-bottom: 80px; /* mobile bottom bar clearance */
+}
+
+.main-area > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (min-width: 640px) {
@@ -779,16 +797,10 @@
   .main-area { padding: 24px 32px 36px; }
 }
 
-/* ─── TOGGLE BUTTON ─── */
-.sidebar-toggle {
-  display: flex;
-}
+/* Toggle button hidden on desktop — hamburger in TopNavbar handles it */
+.sidebar-toggle { display: none; }
 
 @media (min-width: 1024px) {
-  .sidebar-toggle { display: none; }
-}
-
-@media (min-width: 768px) {
   .sidebar-close-btn { display: none; }
 }
 
@@ -1037,6 +1049,12 @@
 
   .responsive-table table {
     min-width: 600px;
+  }
+
+  .responsive-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
 }
 

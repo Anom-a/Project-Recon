@@ -105,7 +105,7 @@ export default function CmsDashboard({ currentUser }: Props) {
           'homepage-stats': homepageStats.length,
         });
       } catch {
-        setCounts(prev => Object.fromEntries(Object.entries(prev).map(([k]) => [k, 0])) as SectionCounts);
+        setCounts(prev => Object.fromEntries(Object.entries(prev).map(([k]) => [k, 0])) as unknown as SectionCounts);
       }
     })();
   }, []);

@@ -105,6 +105,7 @@ export function AppLayout({ sidebar, topNavbar, onLogout, children }: AppLayoutP
           userName={sidebar.userName}
           userRole={sidebar.userRole}
           onLogout={onLogout}
+          onMenuToggle={() => handleDrawerToggle(true)}
         />
 
         <main className="main-area">

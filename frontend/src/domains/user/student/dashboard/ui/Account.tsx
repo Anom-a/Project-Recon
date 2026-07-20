@@ -231,23 +231,22 @@ export default function Account({ currentUser, onUserUpdate }: Props) {
                 <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
                   <Mail className="w-3.5 h-3.5 text-slate-400" /> {currentUser.email}
                 </span>
-                {currentUser.phone_number && (
-                  <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" /> {currentUser.phone_number}
-                  </span>
-                )}
-                {currentUser.date_of_birth && (
-                  <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> {new Date(currentUser.date_of_birth).toLocaleDateString()}
-                  </span>
-                )}
-                {currentUser.gender && (
-                  <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
-                    <User className="w-3.5 h-3.5 text-slate-400" /> {currentUser.gender}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Active
+                <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-100 px-3 py-1.5 rounded-lg">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" /> {currentUser.phone_number || 'Not provided'}
+                </span>
+                <span className={`flex items-center gap-1.5 text-xs font-semibold bg-slate-100 px-3 py-1.5 rounded-lg ${currentUser.date_of_birth ? 'text-slate-700' : 'text-slate-400'}`}>
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" /> {currentUser.date_of_birth ? new Date(currentUser.date_of_birth).toLocaleDateString() : 'No DOB'}
+                </span>
+                <span className={`flex items-center gap-1.5 text-xs font-semibold bg-slate-100 px-3 py-1.5 rounded-lg ${currentUser.gender ? 'text-slate-700' : 'text-slate-400'}`}>
+                  <User className="w-3.5 h-3.5 text-slate-400" /> {currentUser.gender || 'Gender not set'}
+                </span>
+                <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                  currentUser.status === 'Active'
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                }`}>
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${currentUser.status === 'Active' ? 'text-emerald-500' : 'text-amber-500'}`} />
+                  {currentUser.status || 'Active'}
                 </span>
               </div>
             </>

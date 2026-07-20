@@ -431,9 +431,7 @@ export default function WalkInRegistration({ currentUser }: Props) {
   );
 }
 
-function inputClass() {
-  return 'w-full px-3 py-2.5 min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20';
-}
+const inputClass = 'w-full px-3 py-2.5 min-h-[42px] bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20';
 
 function Field({ label, required, children, className = '' }: { label: string; required?: boolean; children: React.ReactNode; className?: string }) {
   return (

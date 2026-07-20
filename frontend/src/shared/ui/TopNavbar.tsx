@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown, LogOut } from 'lucide-react';
+import { Search, ChevronDown, LogOut, Menu } from 'lucide-react';
 
 interface TopNavbarProps {
   title: string;
@@ -10,6 +10,7 @@ interface TopNavbarProps {
   userName?: string;
   userRole?: string;
   onLogout?: () => void;
+  onMenuToggle?: () => void;
 }
 
 export function TopNavbar({
@@ -21,6 +22,7 @@ export function TopNavbar({
   userName,
   userRole,
   onLogout,
+  onMenuToggle,
 }: TopNavbarProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -46,8 +48,17 @@ export function TopNavbar({
   return (
     <header className="sticky top-0 z-20 shrink-0 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
       <div className="flex min-h-14 sm:min-h-16 items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
-        {/* Left — page title */}
-        <div className="min-w-0 flex-1">
+        {/* Left — sidebar toggle + page title */}
+        <div className="min-w-0 flex-1 flex items-center gap-2">
+          {onMenuToggle && (
+            <button
+              onClick={onMenuToggle}
+              className="lg:hidden p-1.5 -ml-1 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
           {subtitle && (
             <span className="text-[9px] sm:text-[10px] font-bold text-brand-blue uppercase tracking-widest">{subtitle}</span>
           )}
@@ -66,7 +77,7 @@ export function TopNavbar({
           )}
 
           {actions && (
-            <div className="hidden items-center gap-1 sm:flex">
+            <div className="flex max-w-[44vw] items-center gap-1 overflow-x-auto sm:max-w-none">
               {actions}
             </div>
           )}

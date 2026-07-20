@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   STUDENT_SETTINGS: 'student_settings',
   NOTIFICATION_READ_IDS: 'app_notification_read_ids',
   NOTIFICATION_DISMISSED_IDS: 'app_notification_dismissed_ids',
+  STORE_CART_BRANCH: 'store_cart_branch',
 } as const;
 
 const MAX_NOTIFICATION_IDS = 500;

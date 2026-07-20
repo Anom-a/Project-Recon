@@ -33,7 +33,7 @@ export function getManagerCommandCenter(
   section: ManagerSectionId,
   stats: ManagerHubStats,
 ): CommandCenterConfig | null {
-  if (section === 'account' || section === 'store') return null;
+  if (section === 'account') return null;
 
   const { students, activeEnrollments, pendingPayments, paidPayments, programs, loading } = stats;
 

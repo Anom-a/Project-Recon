@@ -8,8 +8,6 @@ import StudentRegistration from '../domains/auth/register/ui/StudentRegistration
 import VexSimulator from '../domains/learning/simulator/ui/VexSimulator';
 
 import EventCommandCenter from '../domains/competition/events/ui/EventCommandCenter';
-
-import AnimatedParticles from '../shared/ui/AnimatedParticles';
 import CartDrawer from '../domains/store/cart/ui/CartDrawer';
 import ProgramDetailModal from '../domains/learning/programs/ui/ProgramDetailModal';
 import Footer from '../shared/ui/Footer';

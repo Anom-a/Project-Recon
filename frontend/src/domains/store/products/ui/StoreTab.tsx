@@ -390,7 +390,7 @@ export default function StoreTab({ openCart }: StoreTabProps) {
             {/* Errors */}
             {(error || cartError || cartErrorMessage) && (
               <ErrorBanner
-                message={error || cartError || cartErrorMessage}
+                message={error ?? cartError ?? cartErrorMessage ?? ''}
                 title={error ? 'Failed to load products' : 'Cart error'}
                 onRetry={error ? loadProducts : undefined}
                 onDismiss={!error ? () => { clearCartError(); setCartErrorMessage(null); } : undefined}

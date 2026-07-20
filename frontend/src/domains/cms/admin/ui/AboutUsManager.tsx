@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Building, Plus, Edit2, Trash2, X, Search, Upload, Eye, EyeOff } from 'lucide-react';
+import { ToggleSwitch } from '@/shared/ui/ToggleSwitch';
 import { api, AboutUs } from '../api/cmsApi';
 import type { Toast } from './CmsDashboard';
 
@@ -75,7 +76,7 @@ export default function AboutUsManager({ addToast }: Props) {
     setSaving(false);
   };
 
-  const remove = async (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm('Delete this about section?')) return;
     try { await api.delete('about', id); addToast('Deleted', 'success'); load(); }
     catch { addToast('Delete failed', 'error'); }
@@ -165,10 +166,7 @@ export default function AboutUsManager({ addToast }: Props) {
               <Textarea label="Content" value={editing.content ?? ''} onChange={v => { setEditing({ ...editing, content: v }); clearError('content'); }} error={formErrors.content} required placeholder="e.g. We are dedicated to empowering the next generation of innovators..." />
               <Textarea label="Mission" value={editing.mission ?? ''} onChange={v => { setEditing({ ...editing, mission: v }); clearError('mission'); }} error={formErrors.mission} placeholder="e.g. To inspire and equip students with STEM skills..." />
               <Textarea label="Vision" value={editing.vision ?? ''} onChange={v => { setEditing({ ...editing, vision: v }); clearError('vision'); }} error={formErrors.vision} placeholder="e.g. A world where every student has access to quality STEM education..." />
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" checked={editing.isActive ?? true} onChange={e => setEditing({ ...editing, isActive: e.target.checked })} className="rounded" />
-                Active
-              </label>
+              <ToggleSwitch checked={editing.isActive ?? true} onChange={v => setEditing({ ...editing, isActive: v })} label="Active" />
             </div>
             <div className="flex gap-2 justify-end p-4 border-t border-slate-200">
               <button onClick={closeForm} className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
