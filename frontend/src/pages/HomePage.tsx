@@ -114,12 +114,21 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
-        className="relative overflow-hidden bg-slate-950 py-12"
+        className="relative overflow-hidden bg-slate-950 py-10 sm:py-12"
+        id="homepage-statistics"
+        aria-labelledby="homepage-statistics-title"
       >
         <div className="absolute inset-0 opacity-[0.18] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-brand-blue via-brand-red to-brand-blue" />
-        <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 relative z-10">
+          <div className="mx-auto mb-5 max-w-2xl text-center sm:mb-6">
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-blue-300/70">Our impact</p>
+            <h2 id="homepage-statistics-title" className="mt-1 font-display text-xl font-bold tracking-tight text-white sm:text-2xl">
+              Robotics in numbers
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-6">
             {[
               { value: statsLoading && !stats ? '…' : formatStatCount(stats?.future_engineers ?? 0), label: 'Future Engineers', icon: Users, detail: null as string | null },
               { value: statsLoading && !stats ? '…' : formatStatCount(stats?.programs ?? 0), label: 'Programs', icon: BookOpen, detail: null },
@@ -140,21 +149,22 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                    transition={{ delay: Math.min(i * 0.1, 0.6) }}
-                  className="text-center"
+                  transition={{ delay: Math.min(i * 0.1, 0.6) }}
+                  className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.05] px-2 py-4 text-center shadow-[0_10px_30px_rgba(0,0,0,0.12)] sm:px-4 sm:py-5"
                 >
-                  <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl ring-1 ring-white/15 flex items-center justify-center mx-auto mb-3">
+                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15">
                     <StatIcon className="w-5 h-5 text-white" />
                   </div>
-                  <p className="font-black text-3xl md:text-4xl text-white tracking-tight">{stat.value}</p>
-                  <p className="text-sm text-white/70 font-medium mt-1">{stat.label}</p>
+                  <p className="break-words font-black text-2xl tracking-tight text-white sm:text-3xl md:text-4xl">{stat.value}</p>
+                  <p className="mt-1 text-xs font-medium leading-5 text-white/70 sm:text-sm">{stat.label}</p>
                   {stat.detail && (
-                    <p className="text-[11px] text-white/40 font-mono mt-1">{stat.detail}</p>
+                    <p className="mt-1 break-words font-mono text-[10px] text-white/45 sm:text-[11px]">{stat.detail}</p>
                   )}
                 </motion.div>
               );
             })}
           </div>
+
         </div>
       </motion.section>
 
@@ -537,7 +547,7 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
               Subscribe to our bi-weekly newsletter digest to receive community updates, coding challenges, upcoming tournament schedules, and direct educational guide downloads.
             </p>
 
-            <form onSubmit={handleNewsletterSubmit} className="flex gap-2 max-w-md mt-2">
+            <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-2 max-w-md mt-2">
               <input
                 type="email"
                 required
@@ -545,12 +555,12 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
                 value={newsletterEmail}
                 onChange={(e) => setNewsletterEmail(e.target.value)}
                 disabled={newsletterStatus === 'subscribed'}
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#ed1c24] disabled:opacity-50"
+                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#ed1c24] disabled:opacity-50 min-h-[44px]"
               />
               <button
                 type="submit"
                 disabled={newsletterStatus === 'submitting' || newsletterStatus === 'subscribed'}
-                className="bg-[#25338d] hover:bg-[#111a5f] text-white font-sans font-semibold text-sm px-5 py-3 rounded-xl active:scale-95 transition-all flex items-center gap-1.5"
+                className="bg-[#25338d] hover:bg-[#111a5f] text-white font-sans font-semibold text-sm px-5 py-3 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5 min-h-[44px]"
               >
                 {newsletterStatus === 'submitting' && <Loader className="w-4 h-4 animate-spin" />}
                 {newsletterStatus === 'subscribed' && <CheckCircle2 className="w-4 h-4 text-white" />}
@@ -573,18 +583,18 @@ export default function HomePage({ currentUser, onEnrollInProgram, onNavigate, o
             <p className="font-sans text-slate-400 text-xs mb-5">Have a question about tournament rulebooks or school bulk supplies? Let us help.</p>
 
             <form onSubmit={handleContactSubmit} className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input type="text" required placeholder="Your Name" value={contactMessage.name}
                   onChange={(e) => setContactMessage({ ...contactMessage, name: e.target.value })}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#ed1c24]" />
+                  className="bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#ed1c24] min-h-[44px]" />
                 <input type="email" required placeholder="Email" value={contactMessage.email}
                   onChange={(e) => setContactMessage({ ...contactMessage, email: e.target.value })}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#ed1c24]" />
+                  className="bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#ed1c24] min-h-[44px]" />
               </div>
               <textarea required rows={3} placeholder="Tell us what you need help with..." value={contactMessage.body}
                 onChange={(e) => setContactMessage({ ...contactMessage, body: e.target.value })}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#ed1c24] resize-none" />
-              <button type="submit" disabled={contactStatus === 'submitting'} className="bg-[#25338d] hover:bg-[#111a5f] text-white font-sans font-semibold text-xs py-2.5 px-4 rounded-lg flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all self-end disabled:opacity-50">
+                className="bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#ed1c24] resize-none min-h-[80px]" />
+              <button type="submit" disabled={contactStatus === 'submitting'} className="bg-[#25338d] hover:bg-[#111a5f] text-white font-sans font-semibold text-xs py-3 px-4 rounded-lg flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all self-start sm:self-end disabled:opacity-50 min-h-[44px] min-w-[120px]">
                 {contactStatus === 'submitting' ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 <span>Send Message</span>
               </button>

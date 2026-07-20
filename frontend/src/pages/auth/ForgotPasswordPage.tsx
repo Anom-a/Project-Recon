@@ -81,7 +81,7 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
 
   return (
     <div className="min-h-screen bg-brand-paper flex flex-col font-sans" id="forgot-password-viewport">
-      <header className="relative z-30 bg-white/95 backdrop-blur-md border-b border-slate-100 px-6 md:px-12 py-3 flex items-center justify-between h-[72px]">
+      <header className="relative z-30 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 md:px-12 py-2 sm:py-3 flex items-center justify-between min-h-[64px] sm:h-[72px]">
         <a
           href="#home"
           onClick={(e) => { e.preventDefault(); onNavigateHome(); }}

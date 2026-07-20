@@ -45,23 +45,23 @@ export function TopNavbar({
 
   return (
     <header className="sticky top-0 z-20 shrink-0 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
-      <div className="flex min-h-16 items-center justify-between gap-3 px-4 lg:px-6">
+      <div className="flex min-h-14 sm:min-h-16 items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
         {/* Left — page title */}
         <div className="min-w-0 flex-1">
           {subtitle && (
-            <span className="text-[10px] font-bold text-brand-blue uppercase tracking-widest">{subtitle}</span>
+            <span className="text-[9px] sm:text-[10px] font-bold text-brand-blue uppercase tracking-widest">{subtitle}</span>
           )}
-          <h1 className="font-semibold text-lg text-slate-950 truncate leading-tight">{title}</h1>
+          <h1 className="font-semibold text-base sm:text-lg text-slate-950 truncate leading-tight">{title}</h1>
         </div>
 
         {/* Right — user */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {onSearch && (
             <SearchInput
               value={searchValue}
               onChange={onSearch}
               placeholder="Search workspace"
-              className="hidden w-64 lg:block"
+              className="hidden lg:block"
             />
           )}
 
@@ -75,8 +75,11 @@ export function TopNavbar({
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white pl-1 pr-2.5 py-1 shadow-sm transition-colors hover:bg-slate-50"
+              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white pl-1 pr-2.5 py-1 shadow-sm transition-colors hover:bg-slate-50 min-h-[36px]"
               id="topnav-user-btn"
+              aria-label="User menu"
+              aria-haspopup="true"
+              aria-expanded={profileOpen}
             >
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-blue to-brand-blue-dark flex items-center justify-center text-white font-bold text-[10px] shrink-0 shadow-sm">
                 {initials}
@@ -96,7 +99,8 @@ export function TopNavbar({
                 {onLogout && (
                   <button
                     onClick={() => { setProfileOpen(false); onLogout(); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:text-brand-red hover:bg-red-50/50 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:text-brand-red hover:bg-red-50/50 transition-colors min-h-[44px]"
+                    role="menuitem"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign out
@@ -113,14 +117,14 @@ export function TopNavbar({
 
 export function SearchInput({ value, onChange, placeholder = 'Search...', className = '' }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
   return (
-    <div className={`relative w-full ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
       <input
-        type="text"
+        type="search"
         placeholder={placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-slate-300 transition-colors"
+        className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-slate-300 transition-colors min-h-[40px]"
       />
     </div>
   );

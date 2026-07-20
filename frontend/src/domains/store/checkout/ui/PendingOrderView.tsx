@@ -206,10 +206,10 @@ export default function PendingOrderView({ orderId, onBack }: Props) {
             <div className="space-y-3 mb-4">
               <div>
                 <label className="text-[11px] font-bold text-brand-muted uppercase tracking-wide mb-1 block">Payment method</label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {PAYMENT_METHODS.map(m => (
                     <button key={m.value} onClick={() => setEvMethod(m.value)}
-                      className={cn('px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors',
+                      className={cn('px-4 py-2.5 sm:px-3 sm:py-1.5 text-xs font-semibold rounded-lg border transition-colors',
                         evMethod === m.value ? 'bg-brand-blue text-white border-brand-blue' : 'bg-white text-brand-muted border-brand-border hover:border-brand-blue/30',
                       )}>
                       {m.label}
@@ -222,12 +222,12 @@ export default function PendingOrderView({ orderId, onBack }: Props) {
                   <div>
                     <label className="text-[11px] font-bold text-brand-muted uppercase tracking-wide mb-1 block">Bank / provider</label>
                     <input value={evBank} onChange={e => setEvBank(e.target.value)}
-                      className="form-input w-full" placeholder="e.g. Commercial Bank of Ethiopia" />
+                      className="form-input w-full min-h-[44px]" placeholder="e.g. Commercial Bank of Ethiopia" />
                   </div>
                   <div>
                     <label className="text-[11px] font-bold text-brand-muted uppercase tracking-wide mb-1 block">Transaction reference</label>
                     <input value={evRef} onChange={e => setEvRef(e.target.value)}
-                      className="form-input w-full" placeholder="Transfer / receipt reference" required />
+                      className="form-input w-full min-h-[44px]" placeholder="Transfer / receipt reference" required />
                   </div>
                 </>
               )}

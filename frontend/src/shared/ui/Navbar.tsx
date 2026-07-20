@@ -182,7 +182,7 @@ export default function Navbar({
         {/* Brand accent bar: blue-red-blue like the logo gear */}
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-brand-blue via-brand-red to-brand-blue" />
 
-        <div className="flex items-center justify-between px-5 md:px-10 py-2.5 max-w-7xl mx-auto h-[68px]">
+        <div className="flex items-center justify-between px-3 sm:px-5 md:px-10 py-2 max-w-7xl mx-auto h-[64px] sm:h-[68px]">
           
           <a 
             href="#home"
@@ -260,7 +260,7 @@ export default function Navbar({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.96 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
-                      className={`absolute top-full ${getMegaPanelAlignment(item.mega)} mt-1 w-[min(540px,calc(100vw-2rem))] overflow-hidden`}
+                      className={`absolute top-full ${getMegaPanelAlignment(item.mega)} mt-1 w-[min(540px,calc(100vw-1rem))] sm:w-[min(540px,calc(100vw-2rem))] overflow-hidden`}
                       role="menu"
                       onMouseEnter={() => { if (megaTimeout.current) clearTimeout(megaTimeout.current); }}
                       onMouseLeave={() => setOpenMega(null)}

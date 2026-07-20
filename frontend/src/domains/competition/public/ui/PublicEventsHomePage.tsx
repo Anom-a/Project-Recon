@@ -224,9 +224,36 @@ export default function PublicEventsHomePage({
   }, [featured.length, live.length, upcoming.length, recent.length]);
 
   return (
-    <div className="space-y-10">
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white">
+    <div className="space-y-6 sm:space-y-10 overflow-x-hidden">
+      {/* ─── Sticky header (mobile) ─── */}
+      <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+        <div className="flex items-center gap-2 px-3 py-2.5">
+          <span className="flex items-center gap-1.5 text-slate-900 font-black text-sm shrink-0">
+            <Sparkles className="w-4 h-4 text-brand-red" />
+            Events
+          </span>
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') onSearch(query.trim()); }}
+              placeholder="Search events…"
+              className="w-full pl-9 pr-3 h-9 rounded-xl bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 border border-slate-200 focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 transition-all"
+              aria-label="Search events"
+            />
+          </div>
+          <button
+            onClick={() => onSearch(query.trim())}
+            className="shrink-0 h-9 px-3 bg-gradient-to-r from-brand-red to-brand-red-dark text-white rounded-xl font-black text-[10px] uppercase tracking-widest inline-flex items-center gap-1"
+          >
+            Go
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Hero (desktop) ─── */}
+      <div className="hidden lg:block relative overflow-hidden rounded-3xl border border-slate-200 bg-white">
         <div className="absolute inset-0 opacity-[0.08]" style={{
           backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.35) 1px, transparent 0)',
           backgroundSize: '38px 38px',
@@ -249,46 +276,14 @@ export default function PublicEventsHomePage({
               </div>
 
               <h1 className="mt-4 font-display font-semibold tracking-tight text-slate-900" style={{ fontSize: 'clamp(28px, 4.5vw, 52px)' }}>
-                Find what’s happening — tournaments, workshops, and community events.
+                Find what's happening — tournaments, workshops, and community events.
               </h1>
               <p className="mt-3 text-sm md:text-base text-slate-600 leading-relaxed">
-                Explore upcoming events, join in seconds, and follow live matches when available. Built to match the existing backend exactly — with modern UX.
+                Explore upcoming events, join in seconds, and follow live matches when available.
               </p>
-
-              {/* Search */}
-              <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') onSearch(query.trim());
-                    }}
-                    placeholder="Search events by title, location, or type…"
-                    className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 transition-all"
-                    aria-label="Search public events"
-                  />
-                </div>
-                <button
-                  onClick={() => onSearch(query.trim())}
-                  className="bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-5 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-brand-red/20 hover:shadow-xl active:scale-[0.99] transition-all inline-flex items-center justify-center gap-2"
-                >
-                  Search
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={onExplore}
-                  className="bg-slate-900 text-white px-5 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 active:scale-[0.99] transition-all inline-flex items-center justify-center gap-2"
-                >
-                  Explore all
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 lg:w-[360px]">
+            <div className="grid grid-cols-2 gap-3 lg:w-[360px]">
               {stats.map((s) => (
                 <div key={s.label} className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-4">
                   <div className="w-9 h-9 rounded-xl bg-brand-red/5 flex items-center justify-center mb-2">
@@ -303,12 +298,29 @@ export default function PublicEventsHomePage({
         </div>
       </div>
 
+      {/* ─── Mobile hero strip (compact) ─── */}
+      <div className="lg:hidden bg-white border-b border-slate-200 px-3 py-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white px-2 py-1 rounded-full">
+            <Sparkles className="w-2.5 h-2.5" />
+            Public Events
+          </span>
+          <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-slate-500">
+            <Users className="w-2.5 h-2.5" />
+            Discover
+          </span>
+        </div>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Explore upcoming events, join in seconds, and follow live matches when available.
+        </p>
+      </div>
+
       {state === 'loading' && <HomeSkeleton />}
 
       {state === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-3xl p-10 text-center">
           <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <p className="text-base font-bold text-red-700">Couldn’t load public events</p>
+          <p className="text-base font-bold text-red-700">Couldn't load public events</p>
           <p className="text-xs text-red-600/80 mt-1">{error}</p>
           <button
             onClick={() => load()}
@@ -321,22 +333,22 @@ export default function PublicEventsHomePage({
       )}
 
       {state === 'ready' && (
-        <>
+        <div className="px-3 sm:px-0 space-y-6 sm:space-y-10">
           {/* Featured carousel */}
           {featured.length > 0 && (
-            <section className="space-y-4">
+            <section className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="font-black text-base md:text-lg text-slate-900 tracking-tight">Featured events</h2>
-                  <p className="text-xs text-slate-500">Hand-picked from what’s currently available.</p>
+                  <h2 className="font-black text-sm sm:text-base md:text-lg text-slate-900 tracking-tight">Featured events</h2>
+                  <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Hand-picked from what's currently available.</p>
                 </div>
-                <button onClick={onExplore} className="text-xs font-black uppercase tracking-wider text-brand-red hover:text-brand-red-dark">
+                <button onClick={onExplore} className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-brand-red hover:text-brand-red-dark shrink-0">
                   View all
                 </button>
               </div>
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+              <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-3 px-3 sm:-mx-1 sm:px-1 snap-x snap-mandatory scrollbar-hide">
                 {featured.map(e => (
-                  <div key={e.id} className="min-w-[320px] max-w-[320px] snap-start">
+                  <div key={e.id} className="min-w-[280px] sm:min-w-[320px] max-w-[280px] sm:max-w-[320px] snap-start">
                     <EventCard e={e} onOpen={() => onOpenEvent(e.id)} />
                   </div>
                 ))}
@@ -345,23 +357,23 @@ export default function PublicEventsHomePage({
           )}
 
           {/* Upcoming */}
-          <section id="events" className="space-y-4">
+          <section id="events" className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-brand-red" />
-                <h2 className="font-black text-base md:text-lg text-slate-900 tracking-tight">Upcoming</h2>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-brand-red" />
+                <h2 className="font-black text-sm sm:text-base md:text-lg text-slate-900 tracking-tight">Upcoming</h2>
               </div>
-              <button onClick={onExplore} className="text-xs font-black uppercase tracking-wider text-slate-600 hover:text-slate-900">
+              <button onClick={onExplore} className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-600 hover:text-slate-900">
                 Browse
               </button>
             </div>
             {upcoming.length === 0 ? (
-              <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-12 text-center">
+              <div className="bg-white border border-dashed border-slate-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
                 <p className="text-sm font-bold text-slate-600">No upcoming events yet</p>
-                <p className="text-xs text-slate-400 mt-1">When events are scheduled, they’ll appear here.</p>
+                <p className="text-xs text-slate-400 mt-1">When events are scheduled, they'll appear here.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
                 {upcoming.map(e => (
                   <EventCard key={e.id} e={e} onOpen={() => onOpenEvent(e.id)} />
                 ))}
@@ -370,24 +382,24 @@ export default function PublicEventsHomePage({
           </section>
 
           {/* Live */}
-          <section id="live-matches" className="space-y-4">
+          <section id="live-matches" className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-red-500" />
-                <h2 className="font-black text-base md:text-lg text-slate-900 tracking-tight">Live now</h2>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                <h2 className="font-black text-sm sm:text-base md:text-lg text-slate-900 tracking-tight">Live now</h2>
               </div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500">
                 {live.length} live
               </div>
             </div>
             {live.length === 0 ? (
-              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl border border-slate-700/60 p-10 text-center">
-                <Video className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl sm:rounded-3xl border border-slate-700/60 p-8 sm:p-10 text-center">
+                <Video className="w-8 h-8 sm:w-10 sm:h-10 text-slate-500 mx-auto mb-3" />
                 <p className="text-sm font-black text-slate-200">No live events right now</p>
                 <p className="text-xs text-slate-400 mt-1">Live streams and match updates appear here when available.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
                 {live.map(e => (
                   <EventCard key={e.id} e={e} onOpen={() => onOpenEvent(e.id)} />
                 ))}
@@ -396,22 +408,22 @@ export default function PublicEventsHomePage({
           </section>
 
           {/* Recent */}
-          <section className="space-y-4">
+          <section className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-600" />
-                <h2 className="font-black text-base md:text-lg text-slate-900 tracking-tight">Recent</h2>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+                <h2 className="font-black text-sm sm:text-base md:text-lg text-slate-900 tracking-tight">Recent</h2>
               </div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 hidden sm:block">
                 Updated {formatDateTime(new Date().toISOString())}
               </div>
             </div>
             {recent.length === 0 ? (
-              <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-12 text-center">
+              <div className="bg-white border border-dashed border-slate-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
                 <p className="text-sm font-bold text-slate-600">No recent events to show</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
                 {recent.map(e => (
                   <EventCard key={e.id} e={e} onOpen={() => onOpenEvent(e.id)} />
                 ))}
@@ -420,17 +432,17 @@ export default function PublicEventsHomePage({
           </section>
 
           {/* Venues */}
-          <section id="venues" className="space-y-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-brand-red" />
-              <h2 className="font-black text-base text-slate-900 uppercase tracking-wider">Our Venues</h2>
+          <section id="venues" className="space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-brand-red" />
+              <h2 className="font-black text-sm sm:text-base text-slate-900 uppercase tracking-wider">Our Venues</h2>
             </div>
             {mapNodes.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {mapNodes.map(node => (
-                  <div key={node.id} className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-shadow">
-                    <div className="w-10 h-10 rounded-xl bg-brand-red/10 flex items-center justify-center mb-3">
-                      <MapPin className="w-5 h-5 text-brand-red" />
+                  <div key={node.id} className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition-shadow">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-red/10 flex items-center justify-center mb-3">
+                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-brand-red" />
                     </div>
                     <p className="text-sm font-bold text-slate-900">{node.title}</p>
                     <p className="text-xs text-slate-500">{node.city}, {node.country}</p>
@@ -448,7 +460,7 @@ export default function PublicEventsHomePage({
               </div>
             )}
           </section>
-        </>
+        </div>
       )}
     </div>
   );

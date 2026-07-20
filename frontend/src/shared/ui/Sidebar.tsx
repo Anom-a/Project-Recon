@@ -163,7 +163,7 @@ export function Sidebar({
     <>
       <button
         onClick={() => onDrawerToggle?.(true)}
-        className="sidebar-toggle fixed top-3 left-3 z-40 p-2 rounded-xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex items-center justify-center"
+        className="sidebar-toggle fixed top-3 left-3 z-40 p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex items-center justify-center min-w-[44px] min-h-[44px]"
         aria-label="Open navigation menu"
       >
         <Menu className="w-5 h-5 text-slate-700" />
@@ -276,7 +276,8 @@ export function Sidebar({
       </aside>
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/60 safe-area-bottom md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/60 md:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         aria-label="Quick navigation"
       >
         <div className="flex items-center justify-around px-1 py-1 max-w-lg mx-auto">
@@ -287,14 +288,14 @@ export function Sidebar({
               <button
                 key={item.id}
                 onClick={() => onSectionChange(item.id)}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[44px] min-h-[44px] justify-center ${
+                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[48px] min-h-[48px] justify-center touch-target ${
                   isActive ? 'text-brand-blue' : 'text-slate-400'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={item.label}
               >
                 <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} aria-hidden />
-                <span className={`text-[9px] leading-tight max-w-[56px] truncate ${isActive ? 'font-bold' : 'font-medium'}`}>
+                <span className={`text-[9px] leading-tight max-w-[64px] truncate ${isActive ? 'font-bold' : 'font-medium'}`}>
                   {shortLabel}
                 </span>
               </button>
@@ -302,7 +303,7 @@ export function Sidebar({
           })}
           <button
             onClick={() => onDrawerToggle?.(true)}
-            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-slate-400 min-w-[44px] min-h-[44px] justify-center"
+            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-slate-400 min-w-[48px] min-h-[48px] justify-center touch-target"
             aria-label="Open full navigation menu"
           >
             <Menu className="w-5 h-5" aria-hidden />

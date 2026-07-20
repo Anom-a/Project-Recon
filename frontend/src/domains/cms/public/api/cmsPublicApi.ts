@@ -1,5 +1,5 @@
 import { http } from '../../../../shared/api/http';
-import { unwrapList, type PaginatedResponse } from '@/shared/api/pagination';
+import { unwrapList, fetchAllPages, type PaginatedResponse } from '@/shared/api/pagination';
 import type { CmsPartnerResponse, NewsArticleResponse } from '../../shared/api/cmsApi';
 
 export type { CmsPartnerResponse, NewsArticleResponse, PaginatedResponse };
@@ -106,10 +106,28 @@ export interface HomepageStats {
 
 export const cmsPublicApi = {
   getPlatformStats: (signal?: AbortSignal) => http.get<PlatformStats>('/cms/stats/', { signal }),
-  getHomepageStats: (signal?: AbortSignal) =>
-    http.get<HomepageStats>('/cms/homepage/statistics/current/', { signal }),
+  getHomepageStats: async (signal?: AbortSignal) => {
+    try {
+      return await http.get<HomepageStats>('/cms/homepage/statistics/current/', { signal });
+    } catch {
+      // Fallback if /current/ fails (e.g. legacy multi-row collision): use newest from list
+      const rows = unwrapList(
+        await http.get<HomepageStats[] | PaginatedResponse<HomepageStats>>('/cms/homepage/statistics/', {
+          signal,
+          params: { page_size: '1' },
+        }),
+      );
+      if (!rows[0]) throw new Error('Homepage statistics unavailable');
+      return rows[0];
+    }
+  },
   getHeroBanners: async (signal?: AbortSignal) =>
-    unwrapList(await http.get<HeroBannerResponse[] | PaginatedResponse<HeroBannerResponse>>('/cms/hero-banners/', { signal })),
+    fetchAllPages<HeroBannerResponse>((page) =>
+      http.get<PaginatedResponse<HeroBannerResponse> | HeroBannerResponse[]>(
+        '/cms/hero-banners/',
+        { signal, params: { page: String(page), page_size: '50' } },
+      ),
+    ),
   getNews: (params?: Record<string, string>, signal?: AbortSignal) => http.get<PaginatedResponse<NewsArticleResponse>>('/cms/news/', { params, signal }),
   getNewsDetail: (slug: string) => http.get<NewsArticleResponse>(`/cms/news/${slug}/`),
   getPartners: async (signal?: AbortSignal) =>
@@ -134,7 +152,13 @@ export const cmsPublicApi = {
   getTeamMembers: async () => [] as TeamMemberResponse[],
   getTestimonials: async (signal?: AbortSignal) => {
     try {
-      return unwrapList(await http.get<TestimonialResponse[] | PaginatedResponse<TestimonialResponse>>('/cms/testimonials/', { signal }));
+      return await fetchAllPages<TestimonialResponse>(
+        (page) =>
+          http.get<PaginatedResponse<TestimonialResponse> | TestimonialResponse[]>(
+            '/cms/testimonials/',
+            { signal, params: { page: String(page), page_size: '100' } },
+          ),
+      );
     } catch {
       return [] as TestimonialResponse[];
     }

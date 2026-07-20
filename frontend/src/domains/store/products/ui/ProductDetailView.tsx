@@ -183,7 +183,7 @@ export function ProductDetailView({
                         type="button"
                         onClick={() => setActiveImageIdx((i) => Math.max(0, i - 1))}
                         disabled={activeImageIdx <= 0}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 border border-brand-border shadow-sm flex items-center justify-center text-brand-muted hover:text-brand-ink hover:bg-white opacity-0 group-hover:opacity-100 transition-all disabled:opacity-0"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-white/90 border border-brand-border shadow-sm flex items-center justify-center text-brand-muted hover:text-brand-ink hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 transition-all disabled:opacity-30 sm:disabled:opacity-0 active:scale-95"
                         aria-label="Previous image"
                       >
                         <ChevronLeft className="w-4 h-4" />
@@ -192,7 +192,7 @@ export function ProductDetailView({
                         type="button"
                         onClick={() => setActiveImageIdx((i) => Math.min(images.length - 1, i + 1))}
                         disabled={activeImageIdx >= images.length - 1}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 border border-brand-border shadow-sm flex items-center justify-center text-brand-muted hover:text-brand-ink hover:bg-white opacity-0 group-hover:opacity-100 transition-all disabled:opacity-0"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-white/90 border border-brand-border shadow-sm flex items-center justify-center text-brand-muted hover:text-brand-ink hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 transition-all disabled:opacity-30 sm:disabled:opacity-0 active:scale-95"
                         aria-label="Next image"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -256,7 +256,7 @@ export function ProductDetailView({
             </div>
 
             {/* Specs Grid */}
-            <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
+            <dl className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="rounded-xl border border-brand-border bg-white px-3 py-2.5">
                 <dt className="text-[11px] uppercase tracking-wide text-brand-muted flex items-center gap-1">
                   <Hash className="w-3 h-3" /> SKU
@@ -332,7 +332,7 @@ export function ProductDetailView({
             </div>
 
             {/* Add to Cart Actions */}
-            <div className="mt-6 flex flex-wrap items-center gap-3 sticky bottom-4 lg:static bg-brand-paper/95 lg:bg-transparent py-3 lg:py-0 backdrop-blur-md lg:backdrop-blur-none rounded-xl lg:rounded-none">
+            <div className="mt-6 flex flex-wrap items-center gap-2 sm:gap-3 sticky bottom-4 lg:static bg-brand-paper/95 lg:bg-transparent py-3 lg:py-0 backdrop-blur-md lg:backdrop-blur-none rounded-xl lg:rounded-none -mx-3 sm:mx-0 px-3 sm:px-0">
               <div className="flex items-center border border-brand-border rounded-xl bg-white overflow-hidden">
                 <button
                   type="button"

@@ -80,7 +80,7 @@ export function StoreCategoryView({
             <select
               value={sort}
               onChange={(e) => onSortChange(e.target.value as CatalogSort)}
-              className="h-9 px-3 rounded-lg border border-brand-border bg-white text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue/10 focus:border-brand-blue"
+              className="min-h-[44px] sm:h-9 px-3 rounded-lg border border-brand-border bg-white text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue/10 focus:border-brand-blue"
             >
               <option value="newest">Newest</option>
               <option value="name-asc">Name A–Z</option>

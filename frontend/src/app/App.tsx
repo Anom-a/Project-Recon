@@ -127,7 +127,7 @@ function AppInner() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-paper text-brand-ink flex flex-col font-sans relative overflow-x-hidden" id="applet-viewport">
+    <div className="min-h-screen min-h-dvh bg-brand-paper text-brand-ink flex flex-col font-sans relative overflow-x-hidden" id="applet-viewport">
 
       {activeTab !== 'dashboard' && (
         <Navbar

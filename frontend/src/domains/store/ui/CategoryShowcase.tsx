@@ -11,7 +11,7 @@ interface CategoryShowcaseProps {
 export function CategoryShowcase({ categories, loading, onSelect }: CategoryShowcaseProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-28 rounded-[var(--radius-card)] bg-brand-surface border border-brand-border animate-pulse" />
         ))}
@@ -22,7 +22,7 @@ export function CategoryShowcase({ categories, loading, onSelect }: CategoryShow
   if (categories.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3">
       {categories.map((cat) => {
         const Icon = getCategoryIcon(cat.name);
         return (

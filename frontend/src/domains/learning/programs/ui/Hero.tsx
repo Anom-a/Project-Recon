@@ -82,11 +82,11 @@ export default function Hero({
 
   return (
     <section
-      className="relative flex min-h-screen w-full flex-col overflow-hidden"
+      className="relative flex min-h-screen w-full flex-col overflow-x-hidden"
       id="hero-banner"
     >
       {/* ── BACKGROUND ── */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 overflow-hidden">
         {activeImages.length > 0 && activeImages.map((src, idx) => (
           <motion.img
             key={src}
@@ -170,8 +170,8 @@ export default function Hero({
         Mobile: content anchored to bottom so the upper photo stays visible.
         Desktop: content vertically centered with a left-aligned column.
       */}
-      <div className="relative z-10 flex w-full flex-1 flex-col justify-end lg:justify-center px-6 lg:px-16 pb-24 pt-12 lg:py-24">
-        <div className="w-full max-w-xl text-left flex flex-col gap-7">
+      <div className="relative z-10 flex w-full flex-1 flex-col justify-end lg:justify-center px-4 sm:px-6 lg:px-16 pb-20 pt-8 lg:py-24">
+        <div className="w-full max-w-xl text-left flex flex-col gap-5 lg:gap-7">
 
           {/* Badge */}
           <motion.div
@@ -311,9 +311,9 @@ export default function Hero({
           >
             <div className="w-full bg-white/[0.04] backdrop-blur-sm rounded-xl border border-white/[0.06] p-4">
               <div>
-                <div className="flex justify-between items-center mb-1">
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-center mb-1">
                   <span className="text-[9px] font-mono font-semibold text-white/30 uppercase tracking-[0.15em]">Mission Progress</span>
-                  <span className="text-[11px] font-semibold text-white/50 font-mono">
+                  <span className="text-[11px] font-semibold text-white/50 font-mono tabular-nums break-all sm:text-right">
                     {statsLoading && !homepageStats
                       ? '…'
                       : `${(homepageStats?.mission.current ?? 0).toLocaleString()} / ${(homepageStats?.mission.target ?? 0).toLocaleString()}`}
@@ -321,9 +321,10 @@ export default function Hero({
                 </div>
                 <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <motion.div
+                    key={homepageStats?.mission.percentage ?? 'loading'}
                     initial={{ width: 0 }}
-                    animate={mounted ? { width: `${Math.min(100, homepageStats?.mission.percentage ?? 0)}%` } : {}}
-                    transition={{ duration: 1.5, delay: 0.8, ease: 'easeOut' }}
+                    animate={{ width: `${Math.min(100, homepageStats?.mission.percentage ?? 0)}%` }}
+                    transition={{ duration: 1.2, ease: 'easeOut' }}
                     className="h-full bg-gradient-to-r from-blue-400 via-blue-500 to-cyan-400 rounded-full"
                   />
                 </div>

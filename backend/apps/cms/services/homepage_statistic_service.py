@@ -14,8 +14,14 @@ _DEFAULTS = {
 
 
 def get_stats() -> HomepageStatistic:
-    """Return the single HomepageStatistic record, creating it with defaults if none exists."""
-    obj, _ = HomepageStatistic.objects.get_or_create(defaults=_DEFAULTS)
+    """Return the current homepage stats row (newest), creating defaults if none exist.
+
+    Admin can create multiple rows; public always reads the latest. Avoids
+    MultipleObjectsReturned from bare get_or_create() when >1 row exists.
+    """
+    obj = HomepageStatistic.objects.order_by("-created_at").first()
+    if obj is None:
+        obj = HomepageStatistic.objects.create(**_DEFAULTS)
     return obj
 
 

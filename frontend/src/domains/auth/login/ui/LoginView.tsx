@@ -182,9 +182,9 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
     <div className="min-h-screen flex flex-col lg:flex-row font-sans bg-white" id="dedicated-auth-viewport">
       
       {/* Left side: Login form */}
-      <div className="w-full lg:w-1/2 flex flex-col min-h-screen relative z-10">
+      <div className="w-full lg:w-1/2 flex flex-col min-h-screen min-h-dvh relative z-10">
         {/* Header */}
-        <header className="px-6 py-6 md:px-12 md:py-8 flex items-center justify-between">
+        <header className="px-4 sm:px-6 py-4 sm:py-6 md:px-12 md:py-8 flex items-center justify-between">
           <a
             href="#home"
             onClick={(e) => { e.preventDefault(); onNavigateHome(); }}
@@ -203,14 +203,14 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
         </header>
 
         {/* Form Container */}
-        <div className="flex-grow flex items-center justify-center px-6 sm:px-12 py-10">
+        <div className="flex-grow flex items-center justify-center px-4 sm:px-12 py-8 sm:py-10">
           <div className="w-full max-w-md">
             {/* Title */}
-            <div className="mb-10">
+            <div className="mb-8 sm:mb-10">
               <motion.h1 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-3xl md:text-4xl font-bold text-slate-900 mb-3 tracking-tight"
+                className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 tracking-tight"
               >
                 {viewMode === 'login' ? 'Sign in' : 'Verify Email'}
               </motion.h1>
@@ -435,7 +435,7 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
       {/* Forgot Password Dialog */}
       <AnimatePresence>
         {isForgotPasswordOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -447,7 +447,7 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white max-w-sm w-full rounded-2xl p-6 shadow-2xl border border-slate-200 z-10"
+              className="relative bg-white max-w-sm w-full rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl border border-slate-200 z-10 mx-0 sm:mx-4"
               id="dialog-forgot-password-box"
             >
               <h3 className="font-bold text-slate-900 text-lg mb-1 flex items-center gap-2">

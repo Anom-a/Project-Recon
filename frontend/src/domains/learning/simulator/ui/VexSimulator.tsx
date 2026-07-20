@@ -517,7 +517,7 @@ export default function VexSimulator() {
 
   return (
     <div className="min-h-[calc(100vh-76px)] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -587,18 +587,18 @@ export default function VexSimulator() {
                 </div>
               </div>
               <div className="flex items-center justify-center gap-2">
-                <button onClick={() => manualMove('turnLeft', 15)} className="bg-slate-700/50 hover:bg-slate-600 text-slate-300 p-2.5 rounded-lg active:scale-90 transition-all border border-slate-600/30" title="Turn Left 15°">
+                <button onClick={() => manualMove('turnLeft', 15)} className="bg-slate-700/50 hover:bg-slate-600 text-slate-300 min-h-[44px] min-w-[44px] p-2.5 rounded-lg active:scale-90 transition-all border border-slate-600/30 flex items-center justify-center" title="Turn Left 15°">
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="flex flex-col gap-2">
-                  <button onClick={() => manualMove('forward', 30)} className="bg-[#25338d]/30 hover:bg-[#25338d]/50 text-white p-2.5 rounded-lg active:scale-90 transition-all border border-[#25338d]/30" title="Forward 30mm">
+                  <button onClick={() => manualMove('forward', 30)} className="bg-[#25338d]/30 hover:bg-[#25338d]/50 text-white min-h-[44px] min-w-[44px] p-2.5 rounded-lg active:scale-90 transition-all border border-[#25338d]/30 flex items-center justify-center" title="Forward 30mm">
                     <ArrowUp className="w-5 h-5" />
                   </button>
-                  <button onClick={() => manualMove('backward', 30)} className="bg-[#25338d]/30 hover:bg-[#25338d]/50 text-white p-2.5 rounded-lg active:scale-90 transition-all border border-[#25338d]/30" title="Backward 30mm">
+                  <button onClick={() => manualMove('backward', 30)} className="bg-[#25338d]/30 hover:bg-[#25338d]/50 text-white min-h-[44px] min-w-[44px] p-2.5 rounded-lg active:scale-90 transition-all border border-[#25338d]/30 flex items-center justify-center" title="Backward 30mm">
                     <ArrowDown className="w-5 h-5" />
                   </button>
                 </div>
-                <button onClick={() => manualMove('turnRight', 15)} className="bg-slate-700/50 hover:bg-slate-600 text-slate-300 p-2.5 rounded-lg active:scale-90 transition-all border border-slate-600/30" title="Turn Right 15°">
+                <button onClick={() => manualMove('turnRight', 15)} className="bg-slate-700/50 hover:bg-slate-600 text-slate-300 min-h-[44px] min-w-[44px] p-2.5 rounded-lg active:scale-90 transition-all border border-slate-600/30 flex items-center justify-center" title="Turn Right 15°">
                   <ArrowRightIcon className="w-5 h-5" />
                 </button>
                 <div className="ml-4 flex gap-2">

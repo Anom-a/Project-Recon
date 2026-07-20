@@ -13,16 +13,16 @@ const variants: Record<string, string> = {
 };
 
 const sizes: Record<string, string> = {
-  sm: 'px-3 py-1.5 text-xs rounded-lg',
-  md: 'px-4 py-2 text-sm rounded-xl',
-  lg: 'px-6 py-3 text-sm rounded-xl',
+  sm: 'px-3 py-1.5 text-xs rounded-lg min-h-[36px]',
+  md: 'px-4 py-2 text-sm rounded-xl min-h-[44px]',
+  lg: 'px-6 py-3 text-sm rounded-xl min-h-[48px]',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', className = '', children, ...props }, ref) => (
     <button
       ref={ref}
-      className={`font-sans font-semibold transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`font-sans font-semibold transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
       {children}

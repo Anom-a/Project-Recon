@@ -38,7 +38,7 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        'group flex flex-col bg-white rounded-[var(--radius-card)] border border-brand-border/80 overflow-hidden transition-all duration-200',
+        'group flex flex-col bg-white rounded-[var(--radius-card)] border border-brand-border/80 overflow-hidden transition-all duration-200 h-full',
         'hover:shadow-premium-md hover:border-brand-blue/20 hover:-translate-y-1',
         featured && 'ring-1 ring-brand-blue/10',
         outOfStock && 'opacity-75',
@@ -48,7 +48,7 @@ export function ProductCard({
       <button
         type="button"
         onClick={() => onView?.(product)}
-        className="relative aspect-[4/3] bg-brand-surface overflow-hidden text-left"
+        className="relative aspect-[4/3] sm:aspect-[4/3] bg-brand-surface overflow-hidden text-left w-full"
         aria-label={`View ${product.name}`}
       >
         {(() => {
@@ -59,7 +59,7 @@ export function ProductCard({
               src={imgSrc}
               alt={imgAlt}
               loading="lazy"
-              className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-700 ease-out"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
             />
           ) : null;
         })()}
@@ -129,7 +129,7 @@ export function ProductCard({
               <button
                 type="button"
                 onClick={() => onView(product)}
-                className="h-9 w-9 rounded-lg text-brand-muted hover:text-brand-blue hover:bg-brand-blue/5 border border-transparent hover:border-brand-blue/20 transition-all flex items-center justify-center"
+                className="min-h-[44px] w-9 sm:min-h-[36px] sm:h-9 rounded-lg text-brand-muted hover:text-brand-blue hover:bg-brand-blue/5 border border-transparent hover:border-brand-blue/20 transition-all flex items-center justify-center"
                 aria-label={`View ${product.name}`}
               >
                 <Eye className="w-4 h-4" />
@@ -141,7 +141,7 @@ export function ProductCard({
                 onClick={() => onAdd(product)}
                 disabled={adding || outOfStock}
                 className={cn(
-                  'h-9 px-3 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5',
+                  'min-h-[44px] sm:h-9 px-3 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5',
                   added
                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     : 'bg-brand-blue text-white hover:bg-brand-blue-dark shadow-sm shadow-brand-blue/15',

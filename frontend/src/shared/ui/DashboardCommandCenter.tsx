@@ -65,7 +65,7 @@ export default function DashboardCommandCenter({ title, subtitle, signals, loadi
       {loading ? (
         <SignalSkeleton className="mt-3" />
       ) : (
-        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4 2xl:grid-cols-6">
           {signals.length === 0 ? (
             <div className="col-span-full py-6 text-center text-xs text-slate-400">
               <ShieldCheck className="w-5 h-5 text-slate-300 mx-auto mb-1" aria-hidden />

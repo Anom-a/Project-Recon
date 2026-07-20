@@ -120,13 +120,13 @@ export default function CertificateVerifyPage({ onNavigateHome }: CertificateVer
                     onChange={e => setNumber(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleVerify(); }}
                     placeholder="e.g. CERT-2025-0001"
-                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 transition-all"
+                    className="w-full pl-11 pr-4 min-h-[48px] sm:min-h-[44px] bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 transition-all"
                   />
                 </div>
                 <button
                   onClick={() => handleVerify()}
                   disabled={loading || !number.trim()}
-                  className="bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-brand-red/20 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all inline-flex items-center gap-2"
+                  className="bg-gradient-to-r from-brand-red to-brand-red-dark text-white px-6 min-h-[48px] sm:min-h-[44px] rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-brand-red/20 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all inline-flex items-center gap-2"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
                   {loading ? 'Verifying...' : 'Verify'}

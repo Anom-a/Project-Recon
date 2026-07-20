@@ -22,7 +22,7 @@ export default function CompetitionPage({ currentUser, onNavigateLogin }: Compet
         <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-brand-red/[0.03] blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-brand-blue/[0.03] blur-3xl pointer-events-none" />
 
-        <div className="w-full max-w-[1800px] mx-auto relative z-10 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        <div className="w-full max-w-[1800px] mx-auto relative z-10 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           <PublicEventsRouter currentUser={currentUser} onNavigateLogin={onNavigateLogin} />
         </div>
       </div>

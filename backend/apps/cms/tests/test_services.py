@@ -584,6 +584,20 @@ class HomepageStatisticServiceTest(TestCase):
         self.assertEqual(first.id, second.id)
         self.assertEqual(HomepageStatistic.objects.count(), 1)
 
+    def test_get_stats_returns_newest_when_multiple_exist(self):
+        older = HomepageStatistic.objects.create(
+            future_engineers=1, programs=1, competitions=1,
+            mission_current=1, mission_target=100,
+        )
+        newer = HomepageStatistic.objects.create(
+            future_engineers=2, programs=2, competitions=2,
+            mission_current=50, mission_target=100,
+        )
+        self.assertEqual(HomepageStatistic.objects.count(), 2)
+        current = get_stats()
+        self.assertEqual(current.id, newer.id)
+        self.assertNotEqual(current.id, older.id)
+
     def test_update_stats(self):
         stats = get_stats()
         updated = update_stats({"future_engineers": 10_000_000})

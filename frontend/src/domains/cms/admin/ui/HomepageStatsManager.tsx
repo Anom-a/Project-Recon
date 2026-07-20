@@ -44,8 +44,11 @@ export default function HomepageStatsManager({ addToast }: Props) {
   const save = async () => {
     setSaving(true);
     try {
-      if (form.id) {
-        await api.update('homepage/statistics', form.id, form);
+      // Prefer updating the newest existing row so we never spawn duplicates
+      // that break /homepage/statistics/current/ (MultipleObjectsReturned).
+      const existingId = form.id ?? items[0]?.id;
+      if (existingId) {
+        await api.update('homepage/statistics', existingId, form);
         addToast('Homepage stats updated', 'success');
       } else {
         await api.create('homepage/statistics', form);
@@ -117,7 +120,7 @@ export default function HomepageStatsManager({ addToast }: Props) {
               <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
               </div>
-              <p className="text-[10px] text-white/30 text-right mt-1">{pct}% of National Goal</p>
+              <p className="text-[10px] text-white/30 text-right mt-1">{pct}% of National Goal Achieved</p>
             </div>
           </div>
 
@@ -133,7 +136,11 @@ export default function HomepageStatsManager({ addToast }: Props) {
 
       <div className="flex items-center justify-between gap-2 p-4 border-t border-slate-200">
         <div className="text-xs text-slate-400">
-          {items.length > 1 ? `${items.length} records — newest is used as current` : form.id ? 'Editing current record' : 'No record yet — create one'}
+          {items.length > 1
+            ? `${items.length} records found — editing newest (public uses this one)`
+            : form.id
+              ? 'Editing current record'
+              : 'No record yet — create one'}
         </div>
         <div className="flex gap-2">
           {form.id && (

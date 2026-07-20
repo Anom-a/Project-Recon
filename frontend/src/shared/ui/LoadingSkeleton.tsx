@@ -37,7 +37,7 @@ export function GridSkeleton({ count = 3, className = '' }: { count?: number; cl
 
 export function SignalSkeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`grid grid-cols-2 gap-2 lg:grid-cols-4 animate-pulse ${className}`} aria-hidden>
+    <div className={`grid grid-cols-2 gap-2 lg:grid-cols-4 2xl:grid-cols-6 animate-pulse ${className}`} aria-hidden>
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="rounded-xl border border-slate-200/70 bg-white p-3">
           <div className="mb-2 h-8 w-8 rounded-lg bg-slate-200" />

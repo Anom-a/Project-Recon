@@ -320,7 +320,7 @@ export default function PublicEventDetailsPage({
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-        <div className="absolute inset-x-0 bottom-0 p-5 md:p-8">
+        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 md:p-8">
           <div className="flex items-end justify-between gap-4 flex-wrap">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-2">

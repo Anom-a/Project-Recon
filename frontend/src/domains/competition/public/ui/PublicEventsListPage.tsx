@@ -35,8 +35,8 @@ function EventRow({ e, onOpen }: { e: eventsApi.BackendEvent; onOpen: () => void
       onClick={onOpen}
       className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 hover:shadow-premium-sm hover:border-brand-red/20 transition-all"
     >
-      <div className="flex gap-4 items-start">
-        <div className="w-28 h-20 rounded-xl bg-slate-100 overflow-hidden shrink-0">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start">
+        <div className="w-full sm:w-28 h-28 sm:h-20 rounded-xl bg-slate-100 overflow-hidden shrink-0">
           {e.banner ? (
             <img
               src={e.banner}
@@ -210,7 +210,7 @@ export default function PublicEventsListPage({
         <div className="flex items-center gap-2">
           <button
             onClick={() => load()}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-black uppercase tracking-wider text-slate-700 hover:border-slate-300"
+            className="inline-flex items-center gap-2 px-4 min-h-[44px] sm:min-h-[40px] rounded-xl bg-white border border-slate-200 text-xs font-black uppercase tracking-wider text-slate-700 hover:border-slate-300"
           >
             <RotateCcw className="w-4 h-4" />
             Refresh
@@ -219,25 +219,25 @@ export default function PublicEventsListPage({
       </div>
 
       {/* Filters */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-4 md:p-5 space-y-4">
-        <div className="flex items-center gap-2">
+      <div className="bg-white border border-slate-200 rounded-3xl p-3 sm:p-4 md:p-5 space-y-4">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-4 h-4 text-brand-red" />
           <p className="text-xs font-black uppercase tracking-widest text-slate-700">Filters</p>
-          <div className="flex-1" />
-          <button onClick={clearFilters} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 inline-flex items-center gap-1">
+          <div className="flex-1 min-w-0" />
+          <button onClick={clearFilters} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 inline-flex items-center gap-1 min-h-[36px]">
             <X className="w-3.5 h-3.5" />
             Clear
           </button>
           <button
             onClick={() => load()}
-            className="text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white px-3 py-2 rounded-xl hover:bg-slate-800"
+            className="text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white px-3 min-h-[36px] rounded-xl hover:bg-slate-800"
           >
             Apply
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
-          <div className="xl:col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
+          <div className="sm:col-span-2 xl:col-span-2">
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -245,7 +245,7 @@ export default function PublicEventsListPage({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Title, location, type…"
-                className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red"
+                className="w-full pl-10 pr-3 min-h-[44px] rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red"
               />
             </div>
           </div>
@@ -254,7 +254,7 @@ export default function PublicEventsListPage({
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Type</label>
             <div className="relative">
               <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <select value={eventType} onChange={(e) => setEventType(e.target.value)} className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
+              <select value={eventType} onChange={(e) => setEventType(e.target.value)} className="w-full pl-10 pr-3 min-h-[44px] rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
                 <option value="all">All</option>
                 <option value="TOURNAMENT">Tournament</option>
                 <option value="WORKSHOP">Workshop</option>
@@ -265,7 +265,7 @@ export default function PublicEventsListPage({
 
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Branch</label>
-            <select value={branch} onChange={(e) => setBranch(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
+            <select value={branch} onChange={(e) => setBranch(e.target.value)} className="w-full px-3 min-h-[44px] rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
               <option value="all">All</option>
               {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
@@ -273,7 +273,7 @@ export default function PublicEventsListPage({
 
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Location</label>
-            <select value={location} onChange={(e) => setLocation(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
+            <select value={location} onChange={(e) => setLocation(e.target.value)} className="w-full px-3 min-h-[44px] rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
               <option value="all">All</option>
               {locationOptions.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
@@ -281,7 +281,7 @@ export default function PublicEventsListPage({
 
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 min-h-[44px] rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
               <option value="all">All</option>
               {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -289,19 +289,19 @@ export default function PublicEventsListPage({
 
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Date from</label>
-            <input value={startDate} onChange={(e) => setStartDate(e.target.value)} type="date" className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red" />
+            <input value={startDate} onChange={(e) => setStartDate(e.target.value)} type="date" className="w-full px-3 min-h-[44px] rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red" />
           </div>
 
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Date to</label>
-            <input value={endDate} onChange={(e) => setEndDate(e.target.value)} type="date" className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red" />
+            <input value={endDate} onChange={(e) => setEndDate(e.target.value)} type="date" className="w-full px-3 min-h-[44px] rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red" />
           </div>
 
-          <div className="xl:col-span-2">
+          <div className="sm:col-span-2 xl:col-span-2">
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Sort</label>
             <div className="relative">
               <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <select value={sort} onChange={(e) => setSort(e.target.value as SortId)} className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
+              <select value={sort} onChange={(e) => setSort(e.target.value as SortId)} className="w-full pl-10 pr-3 min-h-[44px] rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-brand-red">
                 <option value="start_asc">Start date (soonest)</option>
                 <option value="start_desc">Start date (latest)</option>
                 <option value="created_desc">Newest</option>

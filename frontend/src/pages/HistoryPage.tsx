@@ -129,7 +129,7 @@ export default function HistoryPage({ onNavigate }: Props) {
                     idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
                   }`}
                 >
-                  <div className={`md:w-1/2 pl-16 md:pl-0 ${idx % 2 === 0 ? 'md:pr-12 md:text-right' : 'md:pl-12'}`}>
+                  <div className={`md:w-1/2 pl-12 sm:pl-16 md:pl-0 ${idx % 2 === 0 ? 'md:pr-12 md:text-right' : 'md:pl-12'}`}>
                     <div
                       className={`rounded-2xl border p-5 transition-all duration-300 ${
                         isActive

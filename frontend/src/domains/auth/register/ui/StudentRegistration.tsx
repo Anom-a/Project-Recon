@@ -372,17 +372,17 @@ export default function StudentRegistration() {
         </header>
 
         {/* Progress stepper */}
-        <nav aria-label="Enrollment progress" className="mb-8 lg:mb-10">
-          <ol className="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3">
+        <nav aria-label="Enrollment progress" className="mb-6 sm:mb-8 lg:mb-10 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <ol className="flex items-center justify-center lg:justify-start gap-1 sm:gap-3 min-w-max sm:min-w-0">
             {['Program', 'Course', 'Class Type', 'Branch', 'Details'].map((label, idx) => {
               const n = idx + 1;
               const done = progressStep > n;
               const current = progressStep === n;
               return (
-                <li key={label} className="flex items-center gap-2 sm:gap-3">
-                  <div className="flex items-center gap-2">
+                <li key={label} className="flex items-center gap-1 sm:gap-3">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <span
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-colors ${
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-black transition-colors shrink-0 ${
                         done ? 'bg-emerald-500 text-white'
                           : current ? 'bg-brand-blue text-white'
                             : 'bg-white border-2 border-slate-200 text-slate-400'
@@ -391,11 +391,11 @@ export default function StudentRegistration() {
                     >
                       {n}
                     </span>
-                    <span className={`text-[11px] font-bold uppercase tracking-wider hidden sm:inline ${current || done ? 'text-slate-800' : 'text-slate-400'}`}>
+                    <span className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-wider hidden sm:inline ${current || done ? 'text-slate-800' : 'text-slate-400'}`}>
                       {label}
                     </span>
                   </div>
-                  {n < 5 && <span className="w-4 sm:w-8 h-px bg-slate-200" aria-hidden />}
+                  {n < 5 && <span className="w-2 sm:w-8 h-px bg-slate-200 shrink-0" aria-hidden />}
                 </li>
               );
             })}
@@ -662,7 +662,7 @@ export default function StudentRegistration() {
 
                 <div>
                   <h4 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 mb-4">Payment</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-5">
                     {PAYMENT_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
@@ -675,22 +675,22 @@ export default function StudentRegistration() {
                           setFieldErrors((prev) => {
                             const next = { ...prev };
                             delete next.payment;
-                            return next;
+                            return prev;
                           });
                         }}
                         aria-pressed={paymentMethod === opt.value}
-                        className={`min-h-[88px] flex flex-col items-center justify-center gap-2 py-3 px-2 rounded-xl border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 ${
+                        className={`min-h-[80px] sm:min-h-[88px] flex flex-col items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-1.5 sm:px-2 rounded-xl border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 ${
                           paymentMethod === opt.value
                             ? 'border-brand-blue bg-brand-blue/[0.04] text-brand-blue'
                             : 'border-slate-200 text-slate-500 hover:border-slate-300'
                         }`}
                       >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${
                           paymentMethod === opt.value ? 'bg-brand-blue/10' : 'bg-slate-100'
                         }`}>
                           {opt.icon}
                         </div>
-                        <span className="text-[11px] font-black uppercase tracking-wider text-center leading-tight">{opt.label}</span>
+                        <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-center leading-tight">{opt.label}</span>
                       </button>
                     ))}
                   </div>

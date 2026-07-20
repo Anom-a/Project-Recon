@@ -62,6 +62,7 @@ export function AppLayout({ sidebar, topNavbar, onLogout, children }: AppLayoutP
   const handleSectionChange = useCallback((id: string) => {
     sidebar.onSectionChange(id);
     if (!isDesktop) setDrawerOpen(false);
+    else if (window.innerWidth < 1024) setDrawerOpen(false);
   }, [isDesktop, sidebar.onSectionChange]);
 
   useEffect(() => {
@@ -71,6 +72,10 @@ export function AppLayout({ sidebar, topNavbar, onLogout, children }: AppLayoutP
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, []);
+
+  useEffect(() => {
+    if (isDesktop) setDrawerOpen(false);
+  }, [isDesktop]);
 
   return (
     <div className="app-layout bg-brand-surface">

@@ -208,32 +208,61 @@ export default function StoreTab({ openCart }: StoreTabProps) {
   }
 
   return (
-    <div className="min-h-screen bg-brand-paper">
-      {/* Hero */}
+    <div className="min-h-screen bg-brand-paper overflow-x-hidden">
+      {/* ─── Sticky header (mobile) ─── */}
+      <div className="lg:hidden sticky top-0 z-30 bg-gradient-to-r from-brand-blue via-brand-blue-dark to-[#0a1028] shadow-lg shadow-black/10">
+        <div className="flex items-center gap-2 px-3 py-2.5">
+          <span className="flex items-center gap-1.5 text-white font-bold text-sm shrink-0">
+            <Store className="w-4 h-4 text-brand-cyan" />
+            Store
+          </span>
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products…"
+              className="w-full pl-9 pr-3 h-9 rounded-xl bg-white/15 text-white text-sm placeholder:text-white/50 border border-white/10 focus:outline-none focus:bg-white/20 focus:border-white/30 transition-all"
+              aria-label="Search products"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={openCart}
+            className="relative shrink-0 w-9 h-9 flex items-center justify-center text-white"
+            aria-label="Open cart"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {cartItemCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-brand-blue-bright text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center leading-none border-2 border-brand-blue-dark">
+                {cartItemCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Hero / promo banner ─── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-blue via-brand-blue-dark to-[#0a1028] text-white">
-        {/* Decorative orbs */}
         <div className="absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_20%_20%,rgba(87,223,254,0.3),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(37,99,235,0.35),transparent_40%)]" />
 
-        {/* Desktop: left-to-right scrim */}
         <div className="hidden lg:block absolute inset-0 z-[1] bg-gradient-to-r from-[#0a1028]/90 via-[#0a1028]/50 to-transparent" />
-        {/* Desktop: bottom scrim */}
         <div className="hidden lg:block absolute inset-x-0 bottom-0 h-[35%] z-[1] bg-gradient-to-t from-[#0a1028]/85 to-transparent" />
-        {/* Mobile: single bottom scrim */}
         <div className="block lg:hidden absolute inset-x-0 bottom-0 h-[70%] z-[1] bg-gradient-to-t from-[#0a1028]/90 to-transparent" />
 
-        <div className="relative z-10 flex w-full flex-1 flex-col justify-end lg:justify-center max-w-7xl mx-auto px-4 sm:px-6 pb-12 pt-8 lg:py-16">
-          <div className="w-full max-w-xl text-left flex flex-col gap-4">
-            <p className="eyebrow text-brand-cyan flex items-center gap-2">
-              <Store className="w-3.5 h-3.5" />
+        <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 pb-8 sm:pb-12 pt-3 sm:pt-8 lg:py-16">
+          <div className="max-w-xl text-left flex flex-col gap-2 sm:gap-4">
+            <p className="eyebrow text-brand-cyan flex items-center gap-2 text-xs sm:text-sm">
+              <Store className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               Ethio Robotics Store
             </p>
-            <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.15]">
+            <h1 className="font-display text-lg sm:text-4xl lg:text-5xl font-bold tracking-tight leading-snug sm:leading-[1.15]">
               Parts, kits, and gear for your next build
             </h1>
-            <p className="text-sm sm:text-base text-white/70 leading-relaxed">
+            <p className="text-xs sm:text-base text-white/70 leading-relaxed hidden sm:block">
               Browse products, check branch stock, and pick up your order after payment.
             </p>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
+            <div className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
               <Button
                 variant="secondary"
                 onClick={openCart}
@@ -257,8 +286,30 @@ export default function StoreTab({ openCart }: StoreTabProps) {
         </div>
       </section>
 
-      {/* Mobile cart FAB */}
-      <div className="lg:hidden fixed bottom-6 right-6 z-40">
+      {/* ─── Mobile category chips (scrollable, snap) ─── */}
+      <div className="lg:hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-3 px-3 py-2 bg-white border-b border-brand-border/60">
+        <CategoryChips
+          categories={categories}
+          selectedId={selectedCategory}
+          loading={categoriesLoading}
+          onSelect={handleCategoryChip}
+        />
+      </div>
+
+      {/* ─── Category Showcase (desktop only) ─── */}
+      {!selectedCategory && !debouncedSearch && categories.length > 0 && (
+        <section className="hidden lg:block max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4">
+          <SectionHeader
+            eyebrow="Departments"
+            title="Browse by Category"
+            description={`${categories.length} product categories`}
+          />
+          <CategoryShowcase categories={categories} loading={categoriesLoading} onSelect={handleCategoryChip} />
+        </section>
+      )}
+
+      {/* ─── Mobile cart FAB ─── */}
+      <div className="lg:hidden fixed bottom-6 right-6 z-40 bottom-safe">
         <button
           type="button"
           onClick={openCart}
@@ -274,64 +325,54 @@ export default function StoreTab({ openCart }: StoreTabProps) {
         </button>
       </div>
 
-      {/* Category Showcase */}
-      {!selectedCategory && !debouncedSearch && categories.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4">
-          <SectionHeader
-            eyebrow="Departments"
-            title="Browse by Category"
-            description={`${categories.length} product categories`}
-          />
-          <CategoryShowcase categories={categories} loading={categoriesLoading} onSelect={handleCategoryChip} />
-        </section>
-      )}
-
-      {/* Catalog */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      {/* ─── Catalog ─── */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 sm:pb-8">
         <div className="flex gap-8">
-          <div className="flex-1 min-w-0 space-y-6">
-            <SectionHeader
-              eyebrow="Catalog"
-              title="Products"
-              description={!productsLoading ? `${pageData.total} product${pageData.total !== 1 ? 's' : ''}` : undefined}
-            />
-
-            {/* Search + Sort */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <SearchInput
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search products, SKU…"
-                className="sm:w-72 w-full"
-              />
-              <label className="text-sm text-brand-muted flex items-center gap-2 whitespace-nowrap">
-                Sort by
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as CatalogSort)}
-                  className="h-9 px-3 rounded-lg border border-brand-border bg-white text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue/10 focus:border-brand-blue"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="name-asc">Name A–Z</option>
-                  <option value="name-desc">Name Z–A</option>
-                  <option value="price-asc">Price: low to high</option>
-                  <option value="price-desc">Price: high to low</option>
-                </select>
-              </label>
-            </div>
-
-            {/* Category Chips */}
-            <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
-              <CategoryChips
-                categories={categories}
-                selectedId={selectedCategory}
-                loading={categoriesLoading}
-                onSelect={handleCategoryChip}
+          <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
+            {/* Section header + sort (desktop) */}
+            <div className="hidden sm:block">
+              <SectionHeader
+                eyebrow="Catalog"
+                title="Products"
+                description={!productsLoading ? `${pageData.total} product${pageData.total !== 1 ? 's' : ''}` : undefined}
               />
             </div>
 
-            {/* Result count + clear filters */}
-            <div className="flex items-center justify-between">
+            {/* Search + Sort (desktop) + Sort (mobile) */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
+              <div className="hidden sm:block flex-1 w-full sm:w-auto">
+                <SearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search products, SKU…"
+                  className="sm:w-72 w-full"
+                />
+              </div>
+              <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+                <p className="text-xs text-brand-muted sm:hidden">
+                  <span className="font-medium text-brand-ink">{pageData.total}</span> product{pageData.total !== 1 ? 's' : ''}
+                </p>
+                <label className="text-xs sm:text-sm text-brand-muted flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+                  Sort
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as CatalogSort)}
+                    className="min-h-[36px] sm:min-h-[44px] sm:h-9 px-2 sm:px-3 rounded-lg border border-brand-border bg-white text-xs sm:text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue/10 focus:border-brand-blue"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="name-asc">Name A–Z</option>
+                    <option value="name-desc">Name Z–A</option>
+                    <option value="price-asc">Price: low to high</option>
+                    <option value="price-desc">Price: high to low</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {/* Desktop category chips */}
+
+            {/* Result count + clear filters (desktop) */}
+            <div className="hidden sm:flex items-center justify-between">
               <p className="text-sm text-brand-muted">
                 Showing <span className="font-medium text-brand-ink">{pageData.total}</span> product{pageData.total !== 1 ? 's' : ''}
               </p>
@@ -397,7 +438,7 @@ export default function StoreTab({ openCart }: StoreTabProps) {
                           key={p}
                           type="button"
                           onClick={() => setPage(p)}
-                          className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
+                          className={`w-10 h-10 sm:w-8 sm:h-8 rounded-lg text-xs font-semibold transition-all ${
                             p === pageData.page
                               ? 'bg-brand-blue text-white'
                               : 'text-brand-muted hover:text-brand-ink hover:bg-brand-surface'

@@ -130,7 +130,7 @@ export default function AboutTab() {
       {/* Blueprint background grid overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-6 md:px-12 relative flex flex-col lg:flex-row items-center gap-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-12 relative flex flex-col lg:flex-row items-center gap-10">
         
         {/* Left Side: Map Container */}
         <div className="w-full lg:w-[65%] flex flex-col gap-4">
@@ -368,7 +368,7 @@ export default function AboutTab() {
 
 
       {/* Testimonials */}
-      <section id="about-testimonials" className="max-w-7xl mx-auto px-6 md:px-12 py-20 border-t border-slate-200">
+      <section id="about-testimonials" className="max-w-7xl mx-auto px-3 sm:px-6 md:px-12 py-20 border-t border-slate-200">
         <div className="text-center mb-16">
           <h2 className="font-display font-bold text-slate-900 tracking-tight text-3xl md:text-4xl">Testimonials</h2>
           <p className="text-slate-600 mt-4 max-w-2xl mx-auto">
@@ -466,7 +466,7 @@ export default function AboutTab() {
 
       {/* Partners Section */}
       <section id="about-partners" className="bg-slate-50 py-20 border-t border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-12">
           <div className="text-center mb-16">
             <h2 className="font-display font-bold text-slate-900 tracking-tight text-3xl md:text-4xl">Our Partners</h2>
             <p className="text-slate-600 mt-4 max-w-2xl mx-auto">Collaborating with industry leaders to bring world-class STEM education to Ethiopia.</p>
@@ -490,7 +490,7 @@ export default function AboutTab() {
       </section>
 
       {/* Gallery Section */}
-      <section id="about-gallery" className="max-w-7xl mx-auto px-6 md:px-12 py-20 border-t border-slate-200">
+      <section id="about-gallery" className="max-w-7xl mx-auto px-3 sm:px-6 md:px-12 py-20 border-t border-slate-200">
         <div className="text-center mb-16">
           <h2 className="font-display font-bold text-slate-900 tracking-tight text-3xl md:text-4xl">Gallery</h2>
           <p className="text-slate-600 mt-4 max-w-2xl mx-auto">Moments of innovation and teamwork from our various competitions and workshops.</p>
