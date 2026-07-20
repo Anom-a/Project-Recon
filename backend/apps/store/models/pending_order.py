@@ -26,6 +26,7 @@ class PendingOrder(models.Model):
     guest_email = models.EmailField(max_length=255, blank=True, default="")
     guest_phone = models.CharField(max_length=20, blank=True, default="")
     expires_at = models.DateTimeField()
+    access_token = models.UUIDField(default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

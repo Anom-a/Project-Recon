@@ -536,6 +536,10 @@ REST_FRAMEWORK = {
         "events_admin": os.getenv("THROTTLE_EVENTS_ADMIN", "100/min"),
         "events_register": os.getenv("THROTTLE_EVENTS_REGISTER", "5/min"),
         "email_otp": os.getenv("THROTTLE_EMAIL_OTP", "3/min"),
+        "store_public": os.getenv("THROTTLE_STORE_PUBLIC", "60/min"),
+        "store_cart": os.getenv("THROTTLE_STORE_CART", "20/min"),
+        "store_checkout": os.getenv("THROTTLE_STORE_CHECKOUT", "10/min"),
+        "store_admin": os.getenv("THROTTLE_STORE_ADMIN", "120/min"),
     },
 }
 

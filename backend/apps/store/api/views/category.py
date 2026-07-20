@@ -22,6 +22,7 @@ from apps.store.services.category_service import (
 class PublicCategoryListView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = CategorySerializer
+    throttle_scope = "store_public"
 
     @extend_schema(tags=["Store - Categories"])
     def get_queryset(self):
@@ -32,6 +33,7 @@ class PublicCategoryDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = CategorySerializer
     lookup_url_kwarg = "pk"
+    throttle_scope = "store_public"
 
     @extend_schema(tags=["Store - Categories"])
     def get_object(self):
@@ -41,6 +43,7 @@ class PublicCategoryDetailView(generics.RetrieveAPIView):
 class AdminCategoryListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsStoreStaff]
     serializer_class = CategoryAdminSerializer
+    throttle_scope = "store_admin"
 
     @extend_schema(tags=["Store - Admin - Categories"])
     def get_queryset(self):
@@ -60,6 +63,7 @@ class AdminCategoryRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsStoreStaff]
     serializer_class = CategoryAdminSerializer
     lookup_url_kwarg = "pk"
+    throttle_scope = "store_admin"
 
     @extend_schema(tags=["Store - Admin - Categories"])
     def get_object(self):
@@ -84,6 +88,7 @@ class AdminCategoryActivateView(generics.GenericAPIView):
     permission_classes = [IsStoreStaff]
     serializer_class = CategoryAdminSerializer
     lookup_url_kwarg = "pk"
+    throttle_scope = "store_admin"
 
     def post(self, request, *args, **kwargs):
         category = get_category_or_404(self.kwargs["pk"])
@@ -99,6 +104,7 @@ class AdminCategoryDeactivateView(generics.GenericAPIView):
     permission_classes = [IsStoreStaff]
     serializer_class = CategoryAdminSerializer
     lookup_url_kwarg = "pk"
+    throttle_scope = "store_admin"
 
     def post(self, request, *args, **kwargs):
         category = get_category_or_404(self.kwargs["pk"])

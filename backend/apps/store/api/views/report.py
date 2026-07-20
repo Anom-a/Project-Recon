@@ -2,7 +2,8 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.store.api.permissions import IsStoreStaff
+from apps.store.api.auth_helpers import filter_by_branch
+from apps.store.api.permissions import IsStoreStaffOrManager
 from apps.store.services.report_service import (
     branch_sales_report,
     inventory_report,
@@ -22,7 +23,8 @@ BRANCH_SALES_CSV = "branch-sales-report.csv"
 
 
 class AdminProductStatisticsView(generics.GenericAPIView):
-    permission_classes = [IsStoreStaff]
+    permission_classes = [IsStoreStaffOrManager]
+    throttle_scope = "store_admin"
 
     def get(self, request, *args, **kwargs):
         data = product_statistics()
@@ -40,7 +42,8 @@ class AdminProductStatisticsView(generics.GenericAPIView):
 
 
 class AdminInventoryReportView(generics.GenericAPIView):
-    permission_classes = [IsStoreStaff]
+    permission_classes = [IsStoreStaffOrManager]
+    throttle_scope = "store_admin"
 
     def get(self, request, *args, **kwargs):
         branch_id = request.query_params.get("branch_id")
@@ -51,17 +54,20 @@ class AdminInventoryReportView(generics.GenericAPIView):
 
 
 class AdminLowStockReportView(generics.GenericAPIView):
-    permission_classes = [IsStoreStaff]
+    permission_classes = [IsStoreStaffOrManager]
+    throttle_scope = "store_admin"
 
     def get(self, request, *args, **kwargs):
         data = low_stock_report()
+        qs = filter_by_branch(request.user, [])
         if request.query_params.get("export") == "csv":
             return to_csv_response(data, LOW_STOCK_CSV)
         return Response(data)
 
 
 class AdminSalesReportView(generics.GenericAPIView):
-    permission_classes = [IsStoreStaff]
+    permission_classes = [IsStoreStaffOrManager]
+    throttle_scope = "store_admin"
 
     def get(self, request, *args, **kwargs):
         start_date = request.query_params.get("start_date")
@@ -80,7 +86,8 @@ class AdminSalesReportView(generics.GenericAPIView):
 
 
 class AdminOrderReportView(generics.GenericAPIView):
-    permission_classes = [IsStoreStaff]
+    permission_classes = [IsStoreStaffOrManager]
+    throttle_scope = "store_admin"
 
     def get(self, request, *args, **kwargs):
         status = request.query_params.get("status")
@@ -101,7 +108,8 @@ class AdminOrderReportView(generics.GenericAPIView):
 
 
 class AdminBranchSalesReportView(generics.GenericAPIView):
-    permission_classes = [IsStoreStaff]
+    permission_classes = [IsStoreStaffOrManager]
+    throttle_scope = "store_admin"
 
     def get(self, request, *args, **kwargs):
         branch_id = request.query_params.get("branch_id")
