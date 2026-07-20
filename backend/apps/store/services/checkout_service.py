@@ -67,7 +67,7 @@ def checkout(cart, branch_input, actor=None, guest_info: dict = None, payment_da
                 f"Available: {available}, requested: {qty}."
             )
 
-        subtotal += float(product.price) * qty
+        subtotal += product.price * qty
 
     total = subtotal
     expires_at = timezone.now() + timedelta(minutes=30)
@@ -93,7 +93,7 @@ def checkout(cart, branch_input, actor=None, guest_info: dict = None, payment_da
                 product=cart_item.product,
                 quantity=cart_item.quantity,
                 unit_price=cart_item.product.price,
-                subtotal=float(cart_item.product.price) * cart_item.quantity,
+                subtotal=cart_item.product.price * cart_item.quantity,
             )
 
         if payment_data:
