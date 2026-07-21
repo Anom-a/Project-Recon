@@ -41,7 +41,7 @@ export default function DemoSlider({ slides, onCta }: DemoSliderProps) {
               key={idx}
               className="w-full flex-shrink-0 bg-slate-900 relative"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-[#2563EB]/40 to-purple-600/40 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#2563EB]/40 to-indigo-800/20 pointer-events-none" />
               <div className="flex flex-col md:flex-row items-stretch relative z-10">
                 {/* Text Content */}
                 <div className="w-full md:w-1/2 p-10 md:p-14 flex flex-col justify-center">

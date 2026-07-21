@@ -13,6 +13,7 @@ import ProgramDetailModal from '../domains/learning/programs/ui/ProgramDetailMod
 import Footer from '../shared/ui/Footer';
 
 import HomePage from '../pages/HomePage';
+import NewsPage from '../pages/NewsPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import StorePage from '../pages/store/StorePage';
 import CompetitionPage from '../pages/competition/CompetitionPage';
@@ -155,6 +156,12 @@ function AppInner() {
           {activeTab === 'about' && (
             <motion.div key="about-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
               <AboutTab />
+            </motion.div>
+          )}
+
+          {activeTab === 'news' && (
+            <motion.div key="news-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+              <NewsPage />
             </motion.div>
           )}
 
