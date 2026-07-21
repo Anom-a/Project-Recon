@@ -542,6 +542,13 @@ REST_FRAMEWORK = {
         "store_admin": os.getenv("THROTTLE_STORE_ADMIN", "120/min"),
         "shared_bank": os.getenv("THROTTLE_SHARED_BANK", "30/min"),
         "shared_audit": os.getenv("THROTTLE_SHARED_AUDIT", "30/min"),
+        "academic_admin": os.getenv("THROTTLE_ACADEMIC_ADMIN", "120/min"),
+        "academic_staff": os.getenv("THROTTLE_ACADEMIC_STAFF", "60/min"),
+        "academic_attendance": os.getenv("THROTTLE_ACADEMIC_ATTENDANCE", "30/min"),
+        "academic_report": os.getenv("THROTTLE_ACADEMIC_REPORT", "20/min"),
+        "academic_enroll": os.getenv("THROTTLE_ACADEMIC_ENROLL", "10/min"),
+        "academic_public": os.getenv("THROTTLE_ACADEMIC_PUBLIC", "60/min"),
+        "academic_material": os.getenv("THROTTLE_ACADEMIC_MATERIAL", "20/min"),
     },
 }
 

@@ -36,6 +36,7 @@ from apps.academic.services.attendance_service import (
 )
 class SessionListCreateView(generics.ListCreateAPIView):
     permission_classes = [CanManageAttendance]
+    throttle_scope = "academic_attendance"
 
     def get_serializer_class(self):
         if self.request.method == "GET":
@@ -71,6 +72,7 @@ class SessionDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [CanManageAttendance]
     lookup_field = "pk"
     serializer_class = AttendanceSessionSerializer
+    throttle_scope = "academic_attendance"
 
     def get_object(self):
         return get_session_or_404(self.kwargs["pk"])
@@ -96,6 +98,7 @@ class SessionDetailView(generics.RetrieveUpdateAPIView):
 class SessionRecordBulkView(generics.GenericAPIView):
     permission_classes = [CanManageAttendance]
     serializer_class = AttendanceRecordBulkSerializer
+    throttle_scope = "academic_attendance"
 
     def post(self, request, pk):
         session = get_session_or_404(pk)
@@ -125,6 +128,7 @@ class SessionRecordBulkView(generics.GenericAPIView):
 class RecordDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [CanManageAttendance]
     serializer_class = AttendanceRecordSerializer
+    throttle_scope = "academic_attendance"
 
     def get_object(self):
         return get_object_or_404(
@@ -156,6 +160,7 @@ class RecordDetailView(generics.RetrieveUpdateAPIView):
 class EnrollmentAttendanceHistoryView(generics.GenericAPIView):
     permission_classes = [CanManageAttendance]
     serializer_class = AttendanceRecordSerializer
+    throttle_scope = "academic_attendance"
 
     def get(self, request, enrollment_pk):
         enrollment = get_object_or_404(Enrollment, pk=enrollment_pk)
@@ -170,6 +175,7 @@ class EnrollmentAttendanceHistoryView(generics.GenericAPIView):
 class EnrollmentAttendanceSummaryView(generics.GenericAPIView):
     permission_classes = [CanManageAttendance]
     serializer_class = AttendanceSummarySerializer
+    throttle_scope = "academic_attendance"
 
     def get(self, request, enrollment_pk):
         enrollment = get_object_or_404(Enrollment, pk=enrollment_pk)

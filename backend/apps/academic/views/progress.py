@@ -40,6 +40,7 @@ from apps.academic.services.progress_service import (
 )
 class MilestoneListCreateView(generics.ListCreateAPIView):
     permission_classes = [CanManageProgress]
+    throttle_scope = "academic_admin"
 
     def get_serializer_class(self):
         if self.request.method == "GET":
@@ -81,6 +82,7 @@ class MilestoneRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     permission_classes = [CanManageProgress]
     lookup_field = "pk"
     serializer_class = LearningMilestoneSerializer
+    throttle_scope = "academic_admin"
 
     def get_object(self):
         return get_milestone_or_404(self.kwargs["pk"])
@@ -105,6 +107,7 @@ class MilestoneRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 )
 class MilestoneArchiveView(generics.GenericAPIView):
     permission_classes = [CanManageProgress]
+    throttle_scope = "academic_admin"
 
     def post(self, request, pk):
         milestone = get_milestone_or_404(pk)
@@ -123,6 +126,7 @@ class MilestoneArchiveView(generics.GenericAPIView):
 class MilestoneCustomizeView(generics.GenericAPIView):
     permission_classes = [CanManageProgress]
     serializer_class = CustomizeMilestoneSerializer
+    throttle_scope = "academic_admin"
 
     def post(self, request, pk):
         source_milestone = get_milestone_or_404(pk)
@@ -149,6 +153,7 @@ class MilestoneCustomizeView(generics.GenericAPIView):
 class RecordProgressView(generics.GenericAPIView):
     permission_classes = [CanManageProgress]
     serializer_class = RecordProgressSerializer
+    throttle_scope = "academic_staff"
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -177,6 +182,7 @@ class UpdateProgressView(generics.RetrieveUpdateAPIView):
     permission_classes = [CanManageProgress]
     lookup_field = "pk"
     serializer_class = StudentProgressSerializer
+    throttle_scope = "academic_staff"
 
     def get_serializer_class(self):
         if self.request.method == "PATCH":
@@ -217,6 +223,7 @@ class UpdateProgressView(generics.RetrieveUpdateAPIView):
 class ProgressHistoryView(generics.GenericAPIView):
     permission_classes = [CanManageProgress]
     serializer_class = StudentProgressSerializer
+    throttle_scope = "academic_staff"
 
     def get(self, request, enrollment_pk):
         enrollment = get_object_or_404(Enrollment, pk=enrollment_pk)
@@ -231,6 +238,7 @@ class ProgressHistoryView(generics.GenericAPIView):
 class ProgressSummaryView(generics.GenericAPIView):
     permission_classes = [CanManageProgress]
     serializer_class = ProgressSummarySerializer
+    throttle_scope = "academic_staff"
 
     def get(self, request, enrollment_pk):
         enrollment = get_object_or_404(Enrollment, pk=enrollment_pk)

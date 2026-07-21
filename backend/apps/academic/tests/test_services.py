@@ -3,8 +3,10 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from apps.academic.constants import (
     ClassType, ClassPeriod, AttendanceStatus, SessionStatus,
@@ -46,6 +48,8 @@ from apps.academic.services.enrollment_service import (
     complete_enrollment,
     get_enrollment_or_404,
     list_enrollments,
+    online_enrollment,
+    verify_online_enrollment_email,
 )
 from apps.academic.services.payment_service import (
     record_payment,
@@ -970,6 +974,52 @@ class EnrollmentServiceTest(TestCase):
                 self.instructor, source_class=self.individual_class,
                 target_class=target_class, count=1,
             )
+
+    def test_verify_online_enrollment_email_success(self):
+        enrollment = enroll_student(actor=self.instructor, student=self.student, enrolled_class=self.individual_class)
+        otp = "123456"
+        enrollment.email_verification_otp = make_password(otp)
+        enrollment.email_verification_otp_expiry = timezone.now() + timedelta(minutes=10)
+        enrollment.save()
+        result = verify_online_enrollment_email(enrollment, otp)
+        result.refresh_from_db()
+        self.assertTrue(result.email_verified)
+        self.assertIsNone(result.email_verification_otp)
+        self.assertIsNone(result.email_verification_otp_expiry)
+
+    def test_verify_online_enrollment_email_already_verified_raises(self):
+        enrollment = enroll_student(actor=self.instructor, student=self.student, enrolled_class=self.individual_class)
+        enrollment.email_verified = True
+        enrollment.email_verification_otp = make_password("123456")
+        enrollment.email_verification_otp_expiry = timezone.now() + timedelta(minutes=10)
+        enrollment.save()
+        with self.assertRaises(DjangoValidationError) as ctx:
+            verify_online_enrollment_email(enrollment, "123456")
+        self.assertIn("already verified", str(ctx.exception).lower())
+
+    def test_verify_online_enrollment_email_no_otp_raises(self):
+        enrollment = enroll_student(actor=self.instructor, student=self.student, enrolled_class=self.individual_class)
+        with self.assertRaises(DjangoValidationError) as ctx:
+            verify_online_enrollment_email(enrollment, "123456")
+        self.assertIn("no verification code", str(ctx.exception).lower())
+
+    def test_verify_online_enrollment_email_expired_raises(self):
+        enrollment = enroll_student(actor=self.instructor, student=self.student, enrolled_class=self.individual_class)
+        enrollment.email_verification_otp = make_password("123456")
+        enrollment.email_verification_otp_expiry = timezone.now() - timedelta(minutes=1)
+        enrollment.save()
+        with self.assertRaises(DjangoValidationError) as ctx:
+            verify_online_enrollment_email(enrollment, "123456")
+        self.assertIn("expired", str(ctx.exception).lower())
+
+    def test_verify_online_enrollment_email_wrong_otp_raises(self):
+        enrollment = enroll_student(actor=self.instructor, student=self.student, enrolled_class=self.individual_class)
+        enrollment.email_verification_otp = make_password("123456")
+        enrollment.email_verification_otp_expiry = timezone.now() + timedelta(minutes=10)
+        enrollment.save()
+        with self.assertRaises(DjangoValidationError) as ctx:
+            verify_online_enrollment_email(enrollment, "000000")
+        self.assertIn("invalid", str(ctx.exception).lower())
 
 
 class PaymentServiceTest(TestCase):

@@ -62,6 +62,7 @@ class BranchAccessMixin:
 )
 class SessionListCreateView(BranchAccessMixin, generics.ListCreateAPIView):
     permission_classes = [IsAttendanceManager]
+    throttle_scope = "academic_attendance"
 
     def get_serializer_class(self):
         if self.request.method == "GET":
@@ -94,6 +95,7 @@ class SessionListCreateView(BranchAccessMixin, generics.ListCreateAPIView):
 class SessionDetailView(BranchAccessMixin, generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAttendanceManager]
     lookup_field = "pk"
+    throttle_scope = "academic_attendance"
 
     def get_serializer_class(self):
         if self.request.method == "GET":
@@ -124,6 +126,7 @@ class SessionDetailView(BranchAccessMixin, generics.RetrieveUpdateDestroyAPIView
 class AvailableStaffView(BranchAccessMixin, generics.GenericAPIView):
     permission_classes = [IsAttendanceManager]
     serializer_class = AvailableStaffSerializer
+    throttle_scope = "academic_attendance"
 
     def get(self, request):
         branch_id = request.query_params.get("branch")
@@ -145,6 +148,7 @@ class AvailableStaffView(BranchAccessMixin, generics.GenericAPIView):
 class SessionPublishView(BranchAccessMixin, generics.GenericAPIView):
     permission_classes = [IsAttendanceManager]
     serializer_class = PublishSessionSerializer
+    throttle_scope = "academic_attendance"
 
     def post(self, request, pk):
         session = get_session_or_404(pk)
@@ -168,6 +172,7 @@ class SessionPublishView(BranchAccessMixin, generics.GenericAPIView):
 class RecordUpsertView(BranchAccessMixin, generics.GenericAPIView):
     permission_classes = [IsAttendanceManager]
     serializer_class = StaffAttendanceRecordUpsertSerializer
+    throttle_scope = "academic_attendance"
 
     def post(self, request, pk):
         session = get_session_or_404(pk)
@@ -197,6 +202,7 @@ class RecordUpsertView(BranchAccessMixin, generics.GenericAPIView):
 )
 class RecordDetailView(BranchAccessMixin, generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAttendanceManager]
+    throttle_scope = "academic_attendance"
 
     def get_serializer_class(self):
         return StaffAttendanceRecordSerializer

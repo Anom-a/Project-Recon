@@ -34,6 +34,9 @@ class Enrollment(models.Model):
         "self", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="transferred_to_enrollments",
     )
+    email_verified = models.BooleanField(default=False)
+    email_verification_otp = models.CharField(max_length=128, null=True, blank=True)
+    email_verification_otp_expiry = models.DateTimeField(null=True, blank=True)
     remarks = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

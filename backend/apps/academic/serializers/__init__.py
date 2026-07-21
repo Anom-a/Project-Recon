@@ -24,6 +24,8 @@ from apps.academic.serializers.staff_attendance import (
     PublishSessionSerializer,
 )
 from apps.academic.serializers.enrollment import (
+    VerifyEmailSerializer,
+
     EnrollmentSerializer,
     EnrollmentListSerializer,
     EnrollStudentSerializer,
