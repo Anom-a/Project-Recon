@@ -17,6 +17,29 @@ from apps.shared.audit.services import log_action
 from apps.shared.email.services import send_email
 
 
+ALLOWED_PAYMENT_TRANSITIONS = {
+    PaymentStatus.PENDING: {PaymentStatus.PAID, PaymentStatus.FAILED, PaymentStatus.CANCELLED},
+    PaymentStatus.PAID: {PaymentStatus.REFUNDED, PaymentStatus.FAILED},
+    PaymentStatus.FAILED: set(),
+    PaymentStatus.REFUNDED: set(),
+    PaymentStatus.CANCELLED: set(),
+}
+
+
+def _validate_payment_transition(payment, new_status):
+    """Enforce valid PaymentStatus state transitions.
+
+    Raises ValidationError if the transition is not allowed.
+    """
+    allowed = ALLOWED_PAYMENT_TRANSITIONS.get(payment.status, set())
+    if new_status not in allowed:
+        raise ValidationError(
+            f"Cannot transition payment from '{payment.status}' to '{new_status}'. "
+            f"Allowed transitions from '{payment.status}': "
+            f"{', '.join(sorted(allowed)) if allowed else 'none (terminal state)'}."
+        )
+
+
 def get_payment_or_404(pk):
     return get_object_or_404(
         EnrollmentPayment.objects.select_related("enrollment__student__user"),
@@ -158,6 +181,7 @@ def reject_payment(actor, *, enrollment, rejection_reason):
 
         try:
             payment = enrollment.payment
+            _validate_payment_transition(payment, PaymentStatus.CANCELLED)
             payment.status = PaymentStatus.CANCELLED
             payment.save(update_fields=["status", "updated_at"])
         except EnrollmentPayment.DoesNotExist:

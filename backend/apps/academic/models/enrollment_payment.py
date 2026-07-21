@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import Q
 
 from apps.academic.constants import PaymentMethod, PaymentStatus
+from apps.shared.validators import UploadedFileValidator
 
 
 class EnrollmentPayment(models.Model):
@@ -23,7 +24,8 @@ class EnrollmentPayment(models.Model):
     bank_name = models.CharField(max_length=255, blank=True, default="")
     transfer_reference = models.CharField(max_length=255, blank=True, default="")
     attachment = models.FileField(
-        upload_to="payment_attachments/", null=True, blank=True
+        upload_to="payment_attachments/", null=True, blank=True,
+        validators=[UploadedFileValidator()],
     )
     payment_date = models.DateTimeField(null=True, blank=True, db_index=True)
     status = models.CharField(

@@ -49,9 +49,25 @@ class MilestoneListCreateView(generics.ListCreateAPIView):
         return LearningMilestoneSerializer
 
     def get_queryset(self):
+        from uuid import UUID
+
+        sub_program = self.request.query_params.get("sub_program")
+        scope_class = self.request.query_params.get("scope_class")
+
+        if sub_program:
+            try:
+                UUID(sub_program)
+            except ValueError:
+                raise ValidationError("Invalid sub_program UUID.")
+        if scope_class:
+            try:
+                UUID(scope_class)
+            except ValueError:
+                raise ValidationError("Invalid scope_class UUID.")
+
         return list_milestones(
-            sub_program=self.request.query_params.get("sub_program"),
-            scope_class=self.request.query_params.get("scope_class"),
+            sub_program=sub_program,
+            scope_class=scope_class,
         )
 
     def perform_create(self, serializer):

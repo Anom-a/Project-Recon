@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -60,10 +62,32 @@ class SessionListCreateView(generics.ListCreateAPIView):
             instructor = user
         else:
             branch_ids = get_active_branch_ids(user)
+
+        enrolled_class = self.request.query_params.get("enrolled_class")
+        date_from = self.request.query_params.get("date_from")
+        date_to = self.request.query_params.get("date_to")
+
+        if enrolled_class:
+            try:
+                from uuid import UUID
+                UUID(enrolled_class)
+            except ValueError:
+                raise ValidationError("Invalid enrolled_class UUID.")
+        if date_from:
+            try:
+                datetime.strptime(date_from, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValidationError("Invalid date_from format. Use YYYY-MM-DD.")
+        if date_to:
+            try:
+                datetime.strptime(date_to, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValidationError("Invalid date_to format. Use YYYY-MM-DD.")
+
         return list_sessions(
-            enrolled_class=self.request.query_params.get("enrolled_class"),
-            date_from=self.request.query_params.get("date_from"),
-            date_to=self.request.query_params.get("date_to"),
+            enrolled_class=enrolled_class,
+            date_from=date_from,
+            date_to=date_to,
             branch_ids=branch_ids,
             instructor=instructor,
         )

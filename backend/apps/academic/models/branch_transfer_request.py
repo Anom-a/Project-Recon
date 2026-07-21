@@ -13,7 +13,7 @@ class BranchTransferRequest(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     enrollment = models.ForeignKey(
-        "academic.Enrollment", on_delete=models.CASCADE,
+        "academic.Enrollment", on_delete=models.PROTECT,
         related_name="branch_transfer_requests"
     )
     from_branch = models.ForeignKey(

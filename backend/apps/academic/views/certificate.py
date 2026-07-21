@@ -50,8 +50,17 @@ class CertificateTemplateListCreateView(generics.ListCreateAPIView):
         return CertificateSerializer
 
     def get_queryset(self):
+        from uuid import UUID
+
+        sub_program = self.request.query_params.get("sub_program")
+        if sub_program:
+            try:
+                UUID(sub_program)
+            except ValueError:
+                raise ValidationError("Invalid sub_program UUID.")
+
         return list_certificate_templates(
-            sub_program=self.request.query_params.get("sub_program"),
+            sub_program=sub_program,
             active_only=False,
         )
 

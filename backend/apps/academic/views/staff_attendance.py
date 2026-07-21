@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from apps.academic.models import StaffAttendanceSession
@@ -76,6 +78,26 @@ class SessionListCreateView(BranchAccessMixin, generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         branch_param = self.request.query_params.get("branch")
+        date_from = self.request.query_params.get("date_from")
+        date_to = self.request.query_params.get("date_to")
+
+        if branch_param:
+            try:
+                from uuid import UUID
+                UUID(branch_param)
+            except ValueError:
+                raise ValidationError("Invalid branch UUID.")
+        if date_from:
+            try:
+                datetime.strptime(date_from, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValidationError("Invalid date_from format. Use YYYY-MM-DD.")
+        if date_to:
+            try:
+                datetime.strptime(date_to, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValidationError("Invalid date_to format. Use YYYY-MM-DD.")
+
         if user_is_super_admin(user):
             branch = branch_param
         else:
@@ -88,8 +110,8 @@ class SessionListCreateView(BranchAccessMixin, generics.ListCreateAPIView):
                 branch = accessible
         return list_sessions(
             branch=branch,
-            date_from=self.request.query_params.get("date_from"),
-            date_to=self.request.query_params.get("date_to"),
+            date_from=date_from,
+            date_to=date_to,
             status=self.request.query_params.get("status"),
         )
 

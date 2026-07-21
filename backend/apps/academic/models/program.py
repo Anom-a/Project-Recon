@@ -30,5 +30,5 @@ class Program(models.Model):
             raise ValidationError("At least one learning type must be enabled.")
 
     def save(self, *args, **kwargs):
-        self.clean()
+        self.full_clean()
         super().save(*args, **kwargs)
