@@ -303,18 +303,20 @@ def cancel_enrollment(actor, enrollment):
             f"Cannot cancel enrollment with status '{enrollment.status}'."
         )
 
-    enrollment.status = EnrollmentStatus.CANCELLED
-    enrollment.save()
+    with transaction.atomic():
+        locked = Enrollment.objects.select_for_update().get(pk=enrollment.pk)
+        locked.status = EnrollmentStatus.CANCELLED
+        locked.save(update_fields=["status", "updated_at"])
 
     log_action(
         actor=actor,
         action="enrollment.cancelled",
         resource_type="Enrollment",
-        resource_id=enrollment.id,
+        resource_id=locked.id,
         branch=enrollment.enrolled_class.branch,
     )
 
-    return enrollment
+    return locked
 
 
 def complete_enrollment(actor, enrollment):
@@ -323,18 +325,20 @@ def complete_enrollment(actor, enrollment):
             f"Only active enrollments can be completed. Current status: '{enrollment.status}'."
         )
 
-    enrollment.status = EnrollmentStatus.COMPLETED
-    enrollment.save()
+    with transaction.atomic():
+        locked = Enrollment.objects.select_for_update().get(pk=enrollment.pk)
+        locked.status = EnrollmentStatus.COMPLETED
+        locked.save(update_fields=["status", "updated_at"])
 
     log_action(
         actor=actor,
         action="enrollment.completed",
         resource_type="Enrollment",
-        resource_id=enrollment.id,
+        resource_id=locked.id,
         branch=enrollment.enrolled_class.branch,
     )
 
-    return enrollment
+    return locked
 
 
 def move_enrollment(actor, *, enrollment, target_class):
@@ -513,8 +517,9 @@ def switch_subprogram(actor, *, current_enrollment, target_class):
 
     with transaction.atomic():
         old_enrollment_pk = current_enrollment.pk
-        current_enrollment.status = EnrollmentStatus.CANCELLED
-        current_enrollment.save(update_fields=["status", "updated_at"])
+        locked_enrollment = Enrollment.objects.select_for_update().get(pk=current_enrollment.pk)
+        locked_enrollment.status = EnrollmentStatus.CANCELLED
+        locked_enrollment.save(update_fields=["status", "updated_at"])
 
         year = date.today().year
         enrollment_number = _generate_enrollment_number(
@@ -522,11 +527,11 @@ def switch_subprogram(actor, *, current_enrollment, target_class):
         )
 
         new_enrollment = Enrollment(
-            student=current_enrollment.student,
+            student=locked_enrollment.student,
             enrolled_class=target_class,
             status=EnrollmentStatus.ACTIVE,
             enrollment_number=enrollment_number,
-            transferred_from=current_enrollment,
+            transferred_from=locked_enrollment,
         )
         new_enrollment.full_clean()
         new_enrollment.save()
@@ -545,10 +550,10 @@ def switch_subprogram(actor, *, current_enrollment, target_class):
             verification_notes=notes,
         )
 
-        AttendanceRecord.objects.filter(enrollment=current_enrollment).update(
+        AttendanceRecord.objects.filter(enrollment=locked_enrollment).update(
             enrollment=new_enrollment
         )
-        StudentProgress.objects.filter(enrollment=current_enrollment).update(
+        StudentProgress.objects.filter(enrollment=locked_enrollment).update(
             enrollment=new_enrollment
         )
 

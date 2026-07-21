@@ -6,6 +6,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 
 from apps.academic.models import Certificate, StudentCertificate
+from apps.academic.services.learning_material_service import _reencode_image
 from apps.shared.audit.services import log_action
 
 
@@ -199,10 +200,13 @@ def create_certificate(
 ):
     from apps.shared.validators import validate_uploaded_file
     validate_uploaded_file(background)
+    background = _reencode_image(background)
     if institute_logo:
         validate_uploaded_file(institute_logo)
+        institute_logo = _reencode_image(institute_logo)
     if signature:
         validate_uploaded_file(signature)
+        signature = _reencode_image(signature)
 
     cert = Certificate(
         sub_program=sub_program,
@@ -232,18 +236,21 @@ def update_certificate(
     from apps.shared.validators import validate_uploaded_file
     if background is not None:
         validate_uploaded_file(background)
+        background = _reencode_image(background)
         if certificate.background:
             certificate.background.delete(save=False)
         certificate.background = background
     if institute_logo is not None:
         if institute_logo:
             validate_uploaded_file(institute_logo)
+            institute_logo = _reencode_image(institute_logo)
         if certificate.institute_logo:
             certificate.institute_logo.delete(save=False)
         certificate.institute_logo = institute_logo
     if signature is not None:
         if signature:
             validate_uploaded_file(signature)
+            signature = _reencode_image(signature)
         if certificate.signature:
             certificate.signature.delete(save=False)
         certificate.signature = signature

@@ -64,7 +64,7 @@ def record_payment(
 ):
     enrollment = Enrollment.objects.select_related(
         "enrolled_class__sub_program", "enrolled_class__branch"
-    ).get(pk=enrollment.pk)
+    ).select_for_update().get(pk=enrollment.pk)
 
     if enrollment.status != EnrollmentStatus.PENDING_VERIFICATION:
         raise ValidationError(

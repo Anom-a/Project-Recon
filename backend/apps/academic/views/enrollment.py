@@ -105,7 +105,7 @@ class EnrollmentCancelView(generics.GenericAPIView):
         enrollment = get_enrollment_or_404(pk)
         check_enrollment_branch_access(request.user, enrollment)
         try:
-            cancel_enrollment(request.user, enrollment)
+            enrollment = cancel_enrollment(request.user, enrollment)
         except DjangoValidationError as exc:
             raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
         return Response(EnrollmentSerializer(enrollment).data, status=status.HTTP_200_OK)
@@ -123,7 +123,7 @@ class EnrollmentCompleteView(generics.GenericAPIView):
         enrollment = get_enrollment_or_404(pk)
         check_enrollment_branch_access(request.user, enrollment)
         try:
-            complete_enrollment(request.user, enrollment)
+            enrollment = complete_enrollment(request.user, enrollment)
         except DjangoValidationError as exc:
             raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
         return Response(EnrollmentSerializer(enrollment).data, status=status.HTTP_200_OK)
