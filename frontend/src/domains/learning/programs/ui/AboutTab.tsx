@@ -250,36 +250,36 @@ export default function AboutTab() {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 15 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute z-40 bg-white/95 backdrop-blur-xl border border-blue-200 rounded-2xl shadow-2xl p-3 w-64 text-left pointer-events-none"
+                  className="absolute z-40 bg-white/95 backdrop-blur-xl border border-blue-200 rounded-3xl shadow-2xl p-5 w-96 text-left pointer-events-none"
                   style={{
-                    right: hoveredNode.x > 50 ? 'auto' : '12px',
-                    left: hoveredNode.x > 50 ? '12px' : 'auto',
-                    top: '12px',
+                    right: hoveredNode.x > 50 ? 'auto' : '16px',
+                    left: hoveredNode.x > 50 ? '16px' : 'auto',
+                    top: '16px',
                   }}
                 >
-                  <div className="relative aspect-video rounded-lg bg-slate-100 overflow-hidden mb-2 shadow-sm">
+                  <div className="relative aspect-video rounded-xl bg-slate-100 overflow-hidden mb-3 shadow-sm">
                     <img
                       src={hoveredNode.image}
                       alt={hoveredNode.title}
                       className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute top-1.5 left-1.5 bg-slate-900/85 backdrop-blur px-1.5 py-0.5 rounded-full text-[7px] font-mono text-white tracking-widest font-bold uppercase border border-white/20">
+                    <div className="absolute top-2.5 left-2.5 bg-slate-900/85 backdrop-blur px-2.5 py-1 rounded-full text-[10px] font-mono text-white tracking-widest font-bold uppercase border border-white/20">
                       {hoveredNode.category}
                     </div>
                   </div>
-                  <span className="font-mono text-[7px] text-brand-blue font-bold tracking-widest uppercase block">
+                  <span className="font-mono text-[10px] text-brand-blue font-bold tracking-widest uppercase block">
                     {hoveredNode.city}, {hoveredNode.country}
                   </span>
-                  <h3 className="font-display font-bold text-slate-900 text-xs mt-0.5 leading-tight">
+                  <h3 className="font-display font-bold text-slate-900 text-lg mt-1 leading-tight">
                     {hoveredNode.title}
                   </h3>
-                  <p className="font-sans text-[10px] text-slate-600 mt-1 leading-snug pb-2 border-b border-slate-200/40">
+                  <p className="font-sans text-[15px] text-slate-600 mt-1.5 leading-snug pb-3 border-b border-slate-200/40">
                     {hoveredNode.achievement}
                   </p>
-                  <div className="flex items-center justify-between text-[7px] font-mono text-slate-400 pt-1.5">
-                    <span className="flex items-center gap-0.5">
-                      <MapPin className="w-2.5 h-2.5 text-rose-500" />
+                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-2.5">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-rose-500" />
                       <span>{hoveredNode.lat}, {hoveredNode.lng}</span>
                     </span>
                     <span className="text-[#25338d] font-bold">VERIFIED</span>

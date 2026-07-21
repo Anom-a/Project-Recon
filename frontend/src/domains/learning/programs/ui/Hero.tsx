@@ -230,24 +230,6 @@ export default function Hero({
             </motion.p>
           </AnimatePresence>
 
-          {/* Trust chips */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={mounted ? { opacity: 1 } : {}}
-            transition={{ duration: 0.6, delay: 0.28 }}
-            className="flex flex-wrap items-center gap-2"
-          >
-            {trustItems.map((item) => (
-              <span
-                key={item}
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-black/50 backdrop-blur-sm border border-white/20 text-white rounded-full text-[11px] font-medium"
-              >
-                <CheckCircle2 className="w-2.5 h-2.5 text-blue-300" />
-                {item}
-              </span>
-            ))}
-          </motion.div>
-
           {/* CTAs */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
