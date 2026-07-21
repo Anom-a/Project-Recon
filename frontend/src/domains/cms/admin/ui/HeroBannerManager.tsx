@@ -8,7 +8,7 @@ interface Props { addToast: (msg: string, type: 'success' | 'error') => void }
 
 const emptyForm = (): Partial<HeroBanner> => ({
   title: '', subtitle: '', description: '', imageUrl: '',
-  linkUrl: '', isActive: true, priority: 0,
+  button_text: '', linkUrl: '', isActive: true, priority: 0,
 });
 
 export default function HeroBannerManager({ addToast }: Props) {
@@ -58,6 +58,9 @@ export default function HeroBannerManager({ addToast }: Props) {
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!editing?.title?.trim()) errors.title = 'Title is required';
+    if (editing?.linkUrl?.trim() && !editing?.button_text?.trim()) {
+      errors.button_text = 'Button text is required when a link URL is provided';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -127,7 +130,10 @@ export default function HeroBannerManager({ addToast }: Props) {
                 <img src={editing.imageUrl} alt="" className="w-full h-36 object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
             )}
-            <Field label="Link URL" value={editing.linkUrl ?? ''} onChange={v => { setEditing({ ...editing, linkUrl: v }); clearError('linkUrl'); }} error={formErrors.linkUrl} placeholder="e.g. https://example.com/register" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Button Text" value={editing.button_text ?? ''} onChange={v => { setEditing({ ...editing, button_text: v }); clearError('button_text'); }} error={formErrors.button_text} placeholder="e.g. Apply Now" />
+              <Field label="Link URL" value={editing.linkUrl ?? ''} onChange={v => { setEditing({ ...editing, linkUrl: v }); clearError('linkUrl'); }} error={formErrors.linkUrl} placeholder="e.g. https://example.com/register" />
+            </div>
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">
                 Priority <span className="text-red-400 ml-0.5">*</span>
