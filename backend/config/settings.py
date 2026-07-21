@@ -545,6 +545,8 @@ REST_FRAMEWORK = {
     },
 }
 
+SHARED_MAX_FILE_SIZE_MB = int(os.getenv("SHARED_MAX_FILE_SIZE_MB", "10"))
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_TOKEN_MINUTES", "15"))),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_TOKEN_DAYS", "1"))),
