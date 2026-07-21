@@ -43,6 +43,7 @@ function withUiAliases<T>(endpoint: string, item: T): T {
   const record = { ...item as Record<string, unknown> } as Record<string, unknown>;
   if (endpoint === 'hero-banners') {
     record.imageUrl = record.image;
+    record.videoUrl = record.video_url;
     record.linkUrl = record.button_url;
     record.isActive = record.is_active;
     record.priority = record.order ?? 0;
@@ -123,7 +124,7 @@ function toBackendPayload(endpoint: string, data: unknown): Record<string, unkno
       image: ['imageUrl', 'image'],
       button_url: ['linkUrl', 'button_url'],
       button_text: 'button_text',
-      video_url: 'video_url',
+      video_url: ['videoUrl', 'video_url'],
       order: 'priority',
       is_active: ['isActive', 'is_active'],
     },
