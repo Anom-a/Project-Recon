@@ -10,7 +10,7 @@ import {
   fetchEnrollmentsPaginatedApi, fetchStudentsApi, fetchClassesApi, fetchSubProgramsApi, enrollStudentApi,
   cancelEnrollmentApi, completeEnrollmentApi, searchStudentsApi, recordPaymentApi,
   moveEnrollmentApi, switchSubProgramApi,
-  setUnderReviewApi, rejectPaymentApi, fetchPaymentsListApi, fetchStudentApi,
+  setUnderReviewApi, rejectPaymentApi, approvePaymentApi, fetchPaymentsListApi, fetchStudentApi,
 } from '@/domains/learning/academics/api/academicApi';
 import { fetchAllPages } from '@/shared/api/pagination';
 import { formatApiError } from '@/shared/utils/formatApiError';
@@ -316,6 +316,11 @@ export default function EnrollmentsPanel({ currentUser }: { currentUser?: UserPr
   };
 
   const handleUnderReview = async (id: string) => {
+    const row = allEnrollments.find(e => e.id === id);
+    if (row?.verification_status === 'UNDER_REVIEW') {
+      flashSuccess('Already under review');
+      return;
+    }
     setSubmitting(true);
     try {
       await setUnderReviewApi(id);
@@ -332,29 +337,17 @@ export default function EnrollmentsPanel({ currentUser }: { currentUser?: UserPr
     setSubmitting(true);
     setError(null);
     try {
-      await setUnderReviewApi(enrollment.id);
-      const payAmount = detailPayment?.amount || 0;
-      try {
-        const paymentRecord = await recordPaymentApi({
-          enrollment: enrollment.id,
-          amount: String(payAmount),
-          payment_method: String(enrollment.payment_method || 'BANK_TRANSFER'),
-          payment_date: new Date().toISOString().slice(0, 10),
-        });
-        patchEnrollment(enrollment.id, {
-          status: 'ACTIVE',
-          payment_status: 'PAID',
-          verification_status: 'VERIFIED',
-        });
-        if (detailPayment?.enrollment === enrollment.id) {
-          setDetailPayment({ ...detailPayment, status: 'PAID', verified_at: new Date().toISOString() });
-        }
-        flashSuccess('Enrollment verified and activated');
-        loadData();
-      } catch {
-        patchEnrollment(enrollment.id, { verification_status: 'UNDER_REVIEW' });
-        flashSuccess('Marked as under review — payment record API not available for online payments');
+      await approvePaymentApi(enrollment.id);
+      patchEnrollment(enrollment.id, {
+        status: 'ACTIVE',
+        payment_status: 'PAID',
+        verification_status: 'VERIFIED',
+      });
+      if (detailPayment?.enrollment === enrollment.id) {
+        setDetailPayment({ ...detailPayment, status: 'PAID', verified_at: new Date().toISOString() });
       }
+      flashSuccess('Enrollment verified and activated');
+      loadData();
     } catch (e) {
       setError(formatApiError(e));
     } finally {

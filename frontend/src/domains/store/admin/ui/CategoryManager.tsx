@@ -1,3 +1,4 @@
+import { formatApiError } from '@/shared/utils/formatApiError';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -34,8 +35,8 @@ export default function CategoryManager({ addToast }: Props) {
     try {
       const data = await storeAdminApi.categories.list();
       setItems(data);
-    } catch (e: any) {
-      addToast(e.message || 'Failed to load categories', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     } finally {
       setLoading(false);
     }
@@ -56,6 +57,10 @@ export default function CategoryManager({ addToast }: Props) {
   };
 
   const handleSave = async () => {
+    if (!form.name.trim()) {
+      addToast('Category name is required.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       if (editing) {
@@ -67,8 +72,8 @@ export default function CategoryManager({ addToast }: Props) {
       }
       setShowModal(false);
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to save category', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     } finally {
       setSaving(false);
     }
@@ -84,8 +89,8 @@ export default function CategoryManager({ addToast }: Props) {
         addToast('Category activated', 'success');
       }
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to toggle category', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     }
   };
 
@@ -95,14 +100,14 @@ export default function CategoryManager({ addToast }: Props) {
       addToast('Category deleted', 'success');
       setDeleteConfirm(null);
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to delete category', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     }
   };
 
   const filtered = items.filter(i =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
-    i.description.toLowerCase().includes(search.toLowerCase())
+    (i.description || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const activeCount = items.filter(i => i.is_active).length;
@@ -113,8 +118,8 @@ export default function CategoryManager({ addToast }: Props) {
       {/* Header */}
       <div className="px-5 py-4 border-b border-brand-border/50 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center">
-            <LayoutGrid className="w-4 h-4 text-violet-600" />
+          <div className="w-8 h-8 rounded-lg bg-brand-blue/10 border border-brand-blue/20 flex items-center justify-center">
+            <LayoutGrid className="w-4 h-4 text-brand-blue" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-brand-ink">Categories</h3>
@@ -192,24 +197,24 @@ export default function CategoryManager({ addToast }: Props) {
                       <div className={cn(
                         "w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 mt-0.5",
                         item.is_active
-                          ? "bg-violet-50 border-violet-200"
+                          ? "bg-brand-blue/10 border-brand-blue/20"
                           : "bg-slate-100 border-slate-200"
                       )}>
                         <LayoutGrid className={cn(
                           "w-4 h-4",
-                          item.is_active ? "text-violet-600" : "text-slate-400"
+                          item.is_active ? "text-brand-blue" : "text-brand-muted"
                         )} />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className={cn(
                             "text-sm font-semibold truncate",
-                            item.is_active ? "text-brand-ink" : "text-slate-400"
+                            item.is_active ? "text-brand-ink" : "text-brand-muted"
                           )}>
                             {item.name}
                           </h4>
                           {!item.is_active && (
-                            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Inactive</span>
+                            <span className="text-[10px] font-semibold text-brand-muted bg-slate-100 px-1.5 py-0.5 rounded">Inactive</span>
                           )}
                         </div>
                         {item.description && (
@@ -241,7 +246,7 @@ export default function CategoryManager({ addToast }: Props) {
                           "p-1.5 rounded-lg transition-all",
                           item.is_active
                             ? "text-brand-muted hover:text-orange-600 hover:bg-orange-50"
-                            : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                            : "text-brand-muted hover:text-emerald-600 hover:bg-emerald-50"
                         )}
                         title={item.is_active ? 'Deactivate' : 'Activate'}
                       >
@@ -311,8 +316,8 @@ export default function CategoryManager({ addToast }: Props) {
             >
               <div className="px-6 py-4 border-b border-brand-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center">
-                    <LayoutGrid className="w-4 h-4 text-violet-600" />
+                  <div className="w-8 h-8 rounded-lg bg-brand-blue/10 border border-brand-blue/20 flex items-center justify-center">
+                    <LayoutGrid className="w-4 h-4 text-brand-blue" />
                   </div>
                   <h4 className="text-sm font-bold text-brand-ink">{editing ? 'Edit Category' : 'New Category'}</h4>
                 </div>

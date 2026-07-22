@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, ImageOff, Package, ShoppingCart, AlertCircle, Check,
+  ArrowLeft, ImageOff, Package, ShoppingCart, Check,
   Ruler, Hash, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { getProduct } from '@/domains/store/products/api/productApi';
@@ -10,10 +10,11 @@ import { relatedProducts } from '@/domains/store/utils/catalog';
 import { PriceDisplay } from '@/domains/store/ui/PriceDisplay';
 import { StockBadge } from '@/domains/store/ui/StockBadge';
 import { ProductGrid } from '@/domains/store/ui/ProductGrid';
+import { ErrorBanner } from '@/domains/store/ui/ErrorBanner';
 import { Button } from '@/shared/ui/Button';
 import EmptyState from '@/shared/ui/EmptyState';
 import { cn } from '@/shared/utils/cn';
-import { formatMoney } from '@/domains/store/utils/formatMoney';
+import { formatApiError } from '@/shared/utils/formatApiError';
 
 interface ProductDetailViewProps {
   productId: string;
@@ -45,6 +46,7 @@ export function ProductDetailView({
   const [quantity, setQuantity] = useState(1);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [added, setAdded] = useState(false);
+  const [relatedAddingId, setRelatedAddingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,8 +57,11 @@ export function ProductDetailView({
         const data = await getProduct(productId);
         if (cancelled) return;
         setProduct(data ?? null);
+        setQuantity(1);
+        setActiveImageIdx(0);
+        setAdded(false);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load product');
+        if (!cancelled) setError(formatApiError(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -109,10 +114,11 @@ export function ProductDetailView({
   );
 
   const selectedStock = availability.find((a) => a.branch === selectedBranch);
+  const lineTotal = product ? Number(product.price) * quantity : 0;
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 animate-pulse space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 animate-pulse space-y-6" aria-busy="true" aria-label="Loading product">
         <div className="h-4 w-32 bg-brand-surface rounded" />
         <div className="grid lg:grid-cols-2 gap-8">
           <div className="aspect-square rounded-[var(--radius-card)] bg-brand-surface" />
@@ -133,7 +139,7 @@ export function ProductDetailView({
         <EmptyState
           icon={Package}
           title="Product not found"
-          description={error || 'This product may be unavailable.'}
+          description={error || 'This product may be unavailable or no longer listed.'}
           action={<Button variant="secondary" onClick={onBack}>Back to store</Button>}
         />
       </div>
@@ -146,7 +152,7 @@ export function ProductDetailView({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-sm text-brand-muted hover:text-brand-ink mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-brand-muted hover:text-brand-ink mb-6 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30 rounded-lg"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to store
@@ -154,20 +160,15 @@ export function ProductDetailView({
 
         {cartError && (
           <div className="mb-6">
-            <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-red-700">{cartError}</p>
-              </div>
-              {onClearError && (
-                <button type="button" onClick={onClearError} className="text-xs text-red-600 font-medium hover:underline">Dismiss</button>
-              )}
-            </div>
+            <ErrorBanner
+              message={cartError}
+              title="Could not add to cart"
+              onDismiss={onClearError}
+            />
           </div>
         )}
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Image Gallery */}
           <div>
             <div className="relative aspect-square bg-white rounded-[var(--radius-card)] border border-brand-border overflow-hidden group">
               {images.length > 0 ? (
@@ -207,16 +208,17 @@ export function ProductDetailView({
               )}
             </div>
 
-            {/* Thumbnail Strip */}
             {images.length > 1 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide">
+              <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Product images">
                 {images.map((img, idx) => (
                   <button
                     key={img.id}
                     type="button"
+                    role="tab"
+                    aria-selected={idx === activeImageIdx}
                     onClick={() => setActiveImageIdx(idx)}
                     className={cn(
-                      'w-16 h-16 rounded-lg border overflow-hidden shrink-0 bg-white transition-all',
+                      'w-16 h-16 rounded-lg border overflow-hidden shrink-0 bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30',
                       idx === activeImageIdx
                         ? 'border-brand-blue ring-2 ring-brand-blue/20'
                         : 'border-brand-border hover:border-brand-blue/50',
@@ -233,7 +235,6 @@ export function ProductDetailView({
             )}
           </div>
 
-          {/* Product Info */}
           <div className="flex flex-col">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-blue mb-2">
               {product.category_name}
@@ -255,7 +256,6 @@ export function ProductDetailView({
               />
             </div>
 
-            {/* Specs Grid */}
             <dl className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="rounded-xl border border-brand-border bg-white px-3 py-2.5">
                 <dt className="text-[11px] uppercase tracking-wide text-brand-muted flex items-center gap-1">
@@ -277,29 +277,18 @@ export function ProductDetailView({
                   <dd className="font-medium text-brand-ink mt-0.5">{product.weight} kg</dd>
                 </div>
               )}
-              <div className="rounded-xl border border-brand-border bg-white px-3 py-2.5">
-                <dt className="text-[11px] uppercase tracking-wide text-brand-muted">Status</dt>
-                <dd className="font-medium text-brand-ink mt-0.5">
-                  {product.is_active ? (
-                    <span className="text-emerald-600">Active</span>
-                  ) : (
-                    <span className="text-amber-600">Inactive</span>
-                  )}
-                </dd>
-              </div>
             </dl>
 
-            {/* Branch Stock Selection */}
             <div className="mt-6 space-y-3">
-              <p className="text-sm font-semibold text-brand-ink">Pickup branch stock</p>
+              <p className="text-sm font-semibold text-brand-ink">Pickup branch</p>
               {availLoading ? (
-                <div className="h-28 rounded-xl bg-brand-surface animate-pulse" />
+                <div className="h-28 rounded-xl bg-brand-surface animate-pulse" aria-busy="true" />
               ) : availability.length === 0 ? (
                 <p className="text-sm text-brand-muted rounded-xl border border-brand-border bg-white p-4 leading-relaxed">
                   No branch inventory is listed for this product yet.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2" role="radiogroup" aria-label="Pickup branch">
                   {availability.map((row) => (
                     <label
                       key={row.id}
@@ -331,7 +320,6 @@ export function ProductDetailView({
               )}
             </div>
 
-            {/* Add to Cart Actions */}
             <div className="mt-6 flex flex-wrap items-center gap-2 sm:gap-3 sticky bottom-4 lg:static bg-brand-paper/95 lg:bg-transparent py-3 lg:py-0 backdrop-blur-md lg:backdrop-blur-none rounded-xl lg:rounded-none -mx-3 sm:mx-0 px-3 sm:px-0">
               <div className="flex items-center border border-brand-border rounded-xl bg-white overflow-hidden">
                 <button
@@ -343,7 +331,7 @@ export function ProductDetailView({
                 >
                   −
                 </button>
-                <span className="px-3 text-sm font-semibold tabular-nums min-w-[2.5rem] text-center">{quantity}</span>
+                <span className="px-3 text-sm font-semibold tabular-nums min-w-[2.5rem] text-center" aria-live="polite">{quantity}</span>
                 <button
                   type="button"
                   className="px-3 py-2.5 text-brand-muted hover:text-brand-ink hover:bg-brand-surface transition-colors disabled:opacity-30"
@@ -359,9 +347,13 @@ export function ProductDetailView({
                 disabled={adding || !selectedBranch || (selectedStock?.quantity ?? 0) <= 0}
                 onClick={async () => {
                   if (!product || !selectedBranch) return;
-                  await onAddToCart(product, selectedBranch, quantity);
-                  setAdded(true);
-                  setTimeout(() => setAdded(false), 1800);
+                  try {
+                    await onAddToCart(product, selectedBranch, quantity);
+                    setAdded(true);
+                    setTimeout(() => setAdded(false), 1800);
+                  } catch {
+                    /* error surfaced via cartError prop */
+                  }
                 }}
                 className="flex-1 sm:flex-none min-w-[180px]"
               >
@@ -372,13 +364,12 @@ export function ProductDetailView({
                 )}
               </Button>
               {selectedStock != null && selectedStock.quantity > 0 && (
-                <p className="text-xs text-brand-muted hidden sm:block">
-                  {formatMoney(product.price * quantity)} total
-                </p>
+                <div className="hidden sm:block">
+                  <PriceDisplay amount={lineTotal} size="sm" className="text-brand-muted" />
+                </div>
               )}
             </div>
 
-            {/* Full Description */}
             {product.description && (
               <div className="mt-10 pt-8 border-t border-brand-border">
                 <h2 className="text-sm font-semibold text-brand-ink mb-3">Description</h2>
@@ -390,7 +381,6 @@ export function ProductDetailView({
           </div>
         </div>
 
-        {/* Related Products */}
         {related.length > 0 && (
           <section className="mt-14">
             <div className="flex items-end justify-between gap-4 mb-5">
@@ -402,8 +392,15 @@ export function ProductDetailView({
             <ProductGrid
               products={related}
               onView={onViewProduct}
-              onAdd={(p) => onAddToCart(p)}
-              addingId={adding ? product.id : null}
+              onAdd={async (p) => {
+                setRelatedAddingId(p.id);
+                try {
+                  await onAddToCart(p);
+                } finally {
+                  setRelatedAddingId(null);
+                }
+              }}
+              addingId={relatedAddingId}
             />
           </section>
         )}

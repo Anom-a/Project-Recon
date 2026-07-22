@@ -74,15 +74,15 @@ export function DesktopCartSidebar({
                       </div>
                       <div className="flex items-center gap-1.5 mt-1.5">
                         <div className="flex items-center bg-white border border-brand-border rounded-md overflow-hidden">
-                          <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="p-1.5 text-brand-muted hover:bg-brand-surface hover:text-brand-ink" disabled={item.quantity <= 1}>
+                          <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="p-1.5 text-brand-muted hover:bg-brand-surface hover:text-brand-ink" disabled={item.quantity <= 1} aria-label={`Decrease ${item.product_name} quantity`}>
                             <Minus className="w-3 h-3" />
                           </button>
                           <span className="text-[11px] font-bold px-1.5 min-w-[18px] text-center tabular-nums text-brand-ink">{item.quantity}</span>
-                          <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="p-1.5 text-brand-muted hover:bg-brand-surface hover:text-brand-ink">
+                          <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="p-1.5 text-brand-muted hover:bg-brand-surface hover:text-brand-ink" aria-label={`Increase ${item.product_name} quantity`}>
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
-                        <button type="button" onClick={() => onRemove(item.id)} className="p-1.5 text-brand-muted hover:text-red-500 hover:bg-red-50 rounded-md">
+                        <button type="button" onClick={() => onRemove(item.id)} className="p-1.5 text-brand-muted hover:text-red-500 hover:bg-red-50 rounded-md" aria-label={`Remove ${item.product_name} from cart`}>
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
@@ -100,7 +100,7 @@ export function DesktopCartSidebar({
                 <PriceDisplay amount={cart.total} size="sm" />
               </div>
               <Button onClick={onOpenCart} className="w-full font-bold" size="sm">
-                View full cart
+                Checkout
               </Button>
             </div>
           )}

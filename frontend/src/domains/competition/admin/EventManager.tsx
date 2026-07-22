@@ -7,7 +7,7 @@ import {
   Trophy, GraduationCap, Swords, UserPlus, Image, DollarSign, Lock, Unlock,
   FileText, Settings, ChevronRight, Sparkles, ArrowRight, ExternalLink,
   Copy, MoreHorizontal, Archive, Filter, ChevronUp, ChevronDown,
-  CheckSquare, Square, Download
+  CheckSquare, Square, Download, Ban, Flag
 } from 'lucide-react';
 import * as eventsApi from '../../competition/api/eventsApi';
 import type { BackendEvent } from '../../competition/api/eventsApi';
@@ -76,6 +76,7 @@ interface EventManagerProps {
 
 export default function EventManager({ currentUser, onNavigate }: EventManagerProps) {
   const canManage = currentUser ? canManageEvents(currentUser) : false;
+  const isSa = isSuperAdmin(currentUser);
   const [events, setEvents] = useState<BackendEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,6 +98,12 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const defaultBranchId = () => {
+    if (isSa) return '';
+    if (branches.length === 1) return branches[0].id as string;
+    return '';
+  };
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -120,12 +127,12 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
     setLoading(true);
     Promise.all([
       eventsApi.adminGetEvents(),
-      isSuperAdmin(currentUser)
+      isSa
         ? import('../../user/shared/api/adminApi').then(m => m.branchesApi.list() as Promise<any[]>).catch(() => [])
         : Promise.resolve([]),
     ]).then(([evts, brs]) => {
       setEvents(Array.isArray(evts) ? evts : []);
-      if (isSuperAdmin(currentUser)) {
+      if (isSa) {
         setBranches(Array.isArray(brs) ? brs : []);
       } else if (currentUser?.assignments) {
         const map = new Map<string, any>();
@@ -145,7 +152,7 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
 
   const openCreate = () => {
     setEditingId(null);
-    setForm(defaultForm);
+    setForm({ ...defaultForm, branch: defaultBranchId() });
     setErrors({});
     setError(null);
     setShowForm(true);
@@ -186,6 +193,7 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
       errs.end_datetime = 'End date must be after start date';
     }
     if (!form.location.trim()) errs.location = 'Location is required';
+    if (!isSa && !form.branch) errs.branch = 'Branch is required';
     if (form.youtube_live_url && !form.youtube_live_url.startsWith('http')) {
       errs.youtube_live_url = 'Must be a valid URL starting with http';
     }
@@ -288,6 +296,16 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
     } catch (err: any) { setError(err.message); }
   };
 
+  const handleSetStatus = async (id: string, status: 'CANCELLED' | 'COMPLETED') => {
+    const label = status === 'CANCELLED' ? 'cancel' : 'complete';
+    if (!window.confirm(`Are you sure you want to ${label} this event?`)) return;
+    try {
+      await eventsApi.adminPatchEvent(id, { status });
+      showToast(status === 'CANCELLED' ? 'Event cancelled' : 'Event completed');
+      load();
+    } catch (err: any) { setError(err.message); }
+  };
+
   const handleDuplicate = async (e: BackendEvent) => {
     try {
       const payload = {
@@ -305,7 +323,7 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
         registration_fee: e.registration_fee,
         capacity: e.capacity,
         youtube_live_url: e.youtube_live_url,
-        branch: e.branch,
+        branch: e.branch || defaultBranchId() || null,
       };
       await eventsApi.adminCreateEvent(payload as Partial<BackendEvent>);
       showToast('Event duplicated');
@@ -503,6 +521,18 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
               className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-blue-50 rounded-xl transition-colors">
               <Copy className="w-4 h-4 text-blue-500" /> Duplicate
             </button>
+            {e.status !== 'COMPLETED' && (
+              <button onClick={() => { handleSetStatus(e.id, 'COMPLETED'); closeMenu(); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-blue-50 rounded-xl transition-colors">
+                <Flag className="w-4 h-4 text-blue-500" /> Mark Completed
+              </button>
+            )}
+            {e.status !== 'CANCELLED' && (
+              <button onClick={() => { handleSetStatus(e.id, 'CANCELLED'); closeMenu(); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-medium text-slate-700 hover:bg-amber-50 rounded-xl transition-colors">
+                <Ban className="w-4 h-4 text-amber-500" /> Cancel Event
+              </button>
+            )}
           </div>
           <div className="px-2 pb-2 mb-1.5 border-b border-slate-100">
             <div className="px-2 pb-1.5 text-[9px] font-black uppercase tracking-wider text-slate-400">Related</div>
@@ -926,12 +956,16 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Branch</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">
+                          Branch{!isSa ? ' *' : ''}
+                        </label>
                         <select value={form.branch} onChange={e => setForm(p => ({ ...p, branch: e.target.value }))}
                           className="w-full px-4 py-2.5 bg-white border border-brand-border rounded-xl text-sm focus:outline-none focus:border-brand-red">
-                          <option value="">All Branches (Global)</option>
+                          {isSa && <option value="">All Branches (Global)</option>}
+                          {!isSa && <option value="">Select branch...</option>}
                           {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
+                        {errors.branch && <p className="text-[10px] text-red-500 mt-1">{errors.branch}</p>}
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Location *</label>

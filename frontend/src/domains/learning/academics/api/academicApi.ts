@@ -386,6 +386,10 @@ export async function rejectPaymentApi(pk: string, payload: RejectPaymentPayload
   return http.post<{ status: string }>(`${BASE}/payments/${pk}/reject/`, payload);
 }
 
+export async function approvePaymentApi(pk: string): Promise<{ status: string }> {
+  return http.post<{ status: string }>(`${BASE}/payments/${pk}/approve/`, {});
+}
+
 // ─── Attendance ───
 export async function fetchAttendanceSessionsApi(classId?: string): Promise<AttendanceSession[]> {
   return unwrapList(await http.get<ListResponse<AttendanceSession>>(`${BASE}/attendance/sessions/${queryString({ enrolled_class: classId })}`));

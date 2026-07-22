@@ -1,3 +1,4 @@
+import { formatApiError } from '@/shared/utils/formatApiError';
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -103,8 +104,8 @@ export default function InventoryManager({ addToast, currentUser }: Props) {
         setBranches(assignmentsToBranches(currentUser));
         setProducts([]);
       }
-    } catch (e: any) {
-      addToast(e.message || 'Failed to load inventory', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     } finally {
       setLoading(false);
     }
@@ -124,8 +125,8 @@ export default function InventoryManager({ addToast, currentUser }: Props) {
       addToast('Inventory record created', 'success');
       setShowCreateModal(false);
       fetchAll();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to create inventory record', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     } finally {
       setCreating(false);
     }
@@ -194,8 +195,8 @@ export default function InventoryManager({ addToast, currentUser }: Props) {
       addToast('Inventory action completed successfully', 'success');
       setShowActionModal(false);
       fetchAll();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to perform action', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     } finally {
       setActioning(false);
     }

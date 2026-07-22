@@ -1,11 +1,20 @@
 import { http } from '@/shared/api/http';
-import { getStoreRequestHeaders } from '@/domains/store/utils/session';
+import { getStoreRequestHeaders, setCartToken } from '@/domains/store/utils/session';
 import type { ShoppingCart, CartAddPayload } from '../../model/types';
 
 const BASE = '/store/cart';
 
+function captureCartToken(headers: Headers): void {
+  const token = headers.get('X-Cart-Token');
+  if (token) setCartToken(token);
+}
+
 export async function getCart(): Promise<ShoppingCart> {
-  return await http.get<ShoppingCart>(`${BASE}/`, { headers: getStoreRequestHeaders() });
+  const { data, headers } = await http.getWithHeaders<ShoppingCart>(`${BASE}/`, {
+    headers: getStoreRequestHeaders(),
+  });
+  captureCartToken(headers);
+  return data;
 }
 
 export async function addCartItem(payload: CartAddPayload): Promise<void> {

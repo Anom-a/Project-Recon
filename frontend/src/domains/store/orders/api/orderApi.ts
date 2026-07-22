@@ -1,11 +1,13 @@
 import { http } from '@/shared/api/http';
-import { unwrapList } from '@/shared/api/pagination';
+import { fetchAllPages } from '@/shared/api/pagination';
 import type { Order } from '../../model/types';
 
 const BASE = '/store/orders';
 
 export async function getUserOrders(): Promise<Order[]> {
-  return unwrapList(await http.get<Order[]>(`${BASE}/`));
+  return fetchAllPages((page) =>
+    http.get(`${BASE}/`, { params: { page: String(page) } }),
+  );
 }
 
 export async function getOrder(id: string): Promise<Order> {

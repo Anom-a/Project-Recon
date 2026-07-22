@@ -1,3 +1,4 @@
+import { formatApiError } from '@/shared/utils/formatApiError';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -38,7 +39,7 @@ export default function OrderManager({ addToast }: Props) {
       const data = await storeAdminApi.orders.list();
       setItems(data);
     } catch (e: unknown) {
-      addToast(e instanceof Error ? e.message : 'Failed to load orders', 'error');
+      addToast(formatApiError(e), 'error');
     } finally {
       setLoading(false);
     }
@@ -66,7 +67,7 @@ export default function OrderManager({ addToast }: Props) {
       }
       fetchItems();
     } catch (e: unknown) {
-      addToast(e instanceof Error ? e.message : 'Failed to update status', 'error');
+      addToast(formatApiError(e), 'error');
     } finally {
       setStatusSaving(false);
     }

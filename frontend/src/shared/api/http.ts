@@ -189,6 +189,59 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
   return res.json();
 }
 
+async function requestWithHeaders<T>(
+  endpoint: string,
+  config: RequestConfig = {},
+): Promise<{ data: T; headers: Headers }> {
+  const { params, _isRetry, ...init } = config;
+  const urlStr = `${BASE_URL}${endpoint}`;
+  const url = urlStr.startsWith('http') ? new URL(urlStr) : new URL(urlStr, window.location.origin);
+  if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+
+  const token = getToken();
+  const headers: Record<string, string> = { ...init.headers as Record<string, string> };
+
+  if (!(init.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (!init.signal) init.signal = AbortSignal.timeout(REQUEST_TIMEOUT);
+
+  const res = await fetch(url.toString(), {
+    ...init,
+    headers,
+  });
+
+  if (res.status === 401 && !_isRetry && token) {
+    if (getRefreshToken()) {
+      return handleTokenRefresh(() => {
+        config._isRetry = true;
+        return requestWithHeaders<T>(endpoint, config);
+      });
+    }
+    forceLogout();
+    throw new ApiError(401, 'Session expired');
+  }
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      forceLogout();
+    }
+    const { message, body } = await parseErrorBody(res);
+    throw new ApiError(res.status, message, body);
+  }
+
+  if (res.status === 204) {
+    return { data: undefined as T, headers: res.headers };
+  }
+
+  return { data: await res.json(), headers: res.headers };
+}
+
 async function requestBlob(endpoint: string, config: RequestConfig = {}): Promise<Blob> {
   const { params, _isRetry, ...init } = config;
   const urlStr = `${BASE_URL}${endpoint}`;
@@ -234,6 +287,9 @@ async function requestBlob(endpoint: string, config: RequestConfig = {}): Promis
 export const http = {
   get: <T>(endpoint: string, config?: RequestConfig) =>
     request<T>(endpoint, { ...config, method: 'GET' }),
+  /** Like get, but also returns response headers (e.g. X-Cart-Token). */
+  getWithHeaders: <T>(endpoint: string, config?: RequestConfig) =>
+    requestWithHeaders<T>(endpoint, { ...config, method: 'GET' }),
   post: <T>(endpoint: string, body: unknown, config?: RequestConfig) =>
     request<T>(endpoint, { ...config, method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body) }),
   put: <T>(endpoint: string, body: unknown, config?: RequestConfig) =>

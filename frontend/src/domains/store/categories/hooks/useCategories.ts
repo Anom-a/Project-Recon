@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { listActiveCategories } from '../api/categoriesApi';
 import type { ProductCategory } from '@/domains/store/model/types';
+import { formatApiError } from '@/shared/utils/formatApiError';
 
 export function useCategories() {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -15,7 +16,7 @@ export function useCategories() {
         const data = await listActiveCategories();
         setCategories(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load categories');
+        setError(formatApiError(err));
       } finally {
         setLoading(false);
       }

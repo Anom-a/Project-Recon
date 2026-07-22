@@ -27,7 +27,7 @@ export function ErrorBanner({ message, onDismiss, onRetry, title }: ErrorBannerP
           </button>
         )}
         {onDismiss && (
-          <button type="button" onClick={onDismiss} className="p-1 text-red-400 hover:text-red-600">
+          <button type="button" onClick={onDismiss} className="p-1 text-red-400 hover:text-red-600" aria-label="Dismiss error">
             <X className="w-4 h-4" />
           </button>
         )}

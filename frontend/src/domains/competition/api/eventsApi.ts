@@ -301,6 +301,10 @@ export function adminUpdateEvent(id: string, data: Partial<BackendEvent> | FormD
   return http.put<BackendEvent>(`${BASE}/admin/events/${id}/`, data);
 }
 
+export function adminPatchEvent(id: string, data: Partial<BackendEvent>) {
+  return http.patch<BackendEvent>(`${BASE}/admin/events/${id}/`, data);
+}
+
 export function adminDeleteEvent(id: string) {
   return http.delete(`${BASE}/admin/events/${id}/`);
 }

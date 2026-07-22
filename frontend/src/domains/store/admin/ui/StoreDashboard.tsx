@@ -134,8 +134,7 @@ export default function StoreDashboard({ currentUser }: Props) {
         });
       }
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Failed to load overview';
-      setOverviewError(message);
+      setOverviewError(formatApiError(e));
       setOverview(null);
     } finally {
       setOverviewLoading(false);
@@ -154,9 +153,9 @@ export default function StoreDashboard({ currentUser }: Props) {
         <div className="flex items-start gap-3">
           <Lock className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
           <div>
-            <p className="font-bold text-amber-800">Access Restricted</p>
+            <p className="font-bold text-amber-800">Access restricted</p>
             <p className="mt-1 text-sm text-amber-700">
-              Store administration requires Super Admin or Branch Manager role.
+              Store administration requires a Super Admin or Branch Manager role.
             </p>
           </div>
         </div>
@@ -173,7 +172,7 @@ export default function StoreDashboard({ currentUser }: Props) {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide bg-white border border-brand-border rounded-xl p-1.5">
+      <nav className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide bg-white border border-brand-border rounded-xl p-1.5" aria-label="Store management sections">
         {visibleNav.map(item => {
           const Icon = item.icon;
           const isActive = section === item.id;
@@ -182,8 +181,9 @@ export default function StoreDashboard({ currentUser }: Props) {
               key={item.id}
               type="button"
               onClick={() => setSection(item.id)}
+              aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all duration-200',
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30',
                 isActive
                   ? 'bg-brand-blue text-white shadow-sm shadow-brand-blue/20'
                   : 'text-brand-muted hover:text-brand-ink hover:bg-brand-blue/5',
@@ -194,7 +194,7 @@ export default function StoreDashboard({ currentUser }: Props) {
             </button>
           );
         })}
-      </div>
+      </nav>
 
       {/* Section Content */}
       <div className="relative min-h-[400px]">
@@ -302,7 +302,7 @@ function OverviewPanel({
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
           <div className="flex-1">
-            <p className="font-bold text-red-800">Failed to load overview</p>
+            <p className="font-bold text-red-800">Could not load overview</p>
             <p className="mt-1 text-sm text-red-700">{error}</p>
             <button
               type="button"
@@ -310,7 +310,7 @@ function OverviewPanel({
               className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-red-200 text-red-700 hover:bg-red-50 transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              Retry
+              Try again
             </button>
           </div>
         </div>
@@ -323,14 +323,14 @@ function OverviewPanel({
   const kpis = isBranchManager
     ? [
         {
-          label: 'Inventory Items',
+          label: 'Inventory items',
           value: data.totalProducts.toLocaleString(),
           hint: 'Across your branches',
           icon: Package,
           onClick: () => onOpenSection('inventory'),
         },
         {
-          label: 'Low Stock',
+          label: 'Low stock',
           value: data.lowStockCount.toLocaleString(),
           hint: 'Below minimum quantity',
           icon: AlertTriangle,
@@ -534,24 +534,24 @@ function ReportsPanel({ addToast }: { addToast: (msg: string, type: 'success' | 
     { id: 'branches' as const, label: 'Branches', icon: LayoutGrid },
     { id: 'products' as const, label: 'Products', icon: Package },
     { id: 'inventory' as const, label: 'Inventory', icon: Archive },
-    { id: 'lowstock' as const, label: 'Low Stock', icon: AlertTriangle },
+    { id: 'lowstock' as const, label: 'Low stock', icon: AlertTriangle },
   ];
 
   return (
     <div className="bg-white rounded-xl border border-brand-border overflow-hidden">
       <div className="px-5 py-4 border-b border-brand-border/50 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center">
-            <BarChart3 className="w-4 h-4 text-violet-600" />
+          <div className="w-8 h-8 rounded-lg bg-brand-blue/10 border border-brand-blue/20 flex items-center justify-center">
+            <BarChart3 className="w-4 h-4 text-brand-blue" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-brand-ink">Reports</h3>
-            <p className="text-xs text-brand-muted">Store analytics and statistics</p>
+            <p className="text-xs text-brand-muted">Sales, inventory, and catalog statistics</p>
           </div>
         </div>
       </div>
 
-      <div className="px-5 py-3 border-b border-brand-border/30 bg-slate-50/50 flex items-center gap-1.5 overflow-x-auto">
+      <div className="px-5 py-3 border-b border-brand-border/30 bg-brand-surface/50 flex items-center gap-1.5 overflow-x-auto">
         {tabs.map(t => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
             className={cn(

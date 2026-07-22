@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ShoppingBag, Building2, Clock, Package, Hash, ArrowRight } from 'lucide-react';
 import { getOrder } from '../api/orderApi';
 import type { Order } from '@/domains/store/model/types';
@@ -8,36 +8,40 @@ import { formatMoney } from '@/domains/store/utils/formatMoney';
 import { getOrderStatusLabel, getOrderStatusTone, normalizeOrderStatus } from '@/domains/store/utils/orderStatus';
 import { navigateStore } from '@/domains/store/utils/catalog';
 import { cn } from '@/shared/utils/cn';
+import { formatApiError } from '@/shared/utils/formatApiError';
 
 export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadOrder = async () => {
-      const parts = window.location.pathname.split('/').filter(Boolean);
-      const orderId = parts[parts.length - 1];
-      if (!orderId || orderId === 'orders') {
-        setError('Invalid order');
-        setLoading(false);
-        return;
-      }
-      try {
-        setLoading(true);
-        setOrder(await getOrder(orderId));
-      } catch {
-        setError('Failed to load order');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadOrder();
+  const loadOrder = useCallback(async () => {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    const orderId = parts[parts.length - 1];
+    if (!orderId || orderId === 'orders') {
+      setError('Invalid order link.');
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      setOrder(await getOrder(orderId));
+    } catch (err) {
+      setError(formatApiError(err));
+      setOrder(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadOrder();
+  }, [loadOrder]);
 
   if (loading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto animate-pulse space-y-4">
+      <div className="p-6 max-w-4xl mx-auto animate-pulse space-y-4" aria-busy="true" aria-label="Loading order">
         <div className="h-4 w-24 bg-brand-surface rounded" />
         <div className="h-8 w-48 bg-brand-surface rounded" />
         <div className="h-32 bg-brand-surface rounded-xl" />
@@ -52,19 +56,24 @@ export default function OrderDetailPage() {
         <EmptyState
           icon={ShoppingBag}
           title="Order not found"
-          description="The order you're looking for doesn't exist or you don't have permission to view it."
-          action={<Button variant="secondary" onClick={() => navigateStore('/store/orders')}>Back to orders</Button>}
+          description={error || 'This order does not exist or you do not have permission to view it.'}
+          action={
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button variant="secondary" onClick={() => navigateStore('/store/orders')}>Back to orders</Button>
+              <Button variant="ghost" onClick={loadOrder}>Try again</Button>
+            </div>
+          }
         />
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <button
         type="button"
         onClick={() => navigateStore('/store/orders')}
-        className="inline-flex items-center gap-2 text-sm text-brand-muted hover:text-brand-ink mb-6 transition-colors"
+        className="inline-flex items-center gap-2 text-sm text-brand-muted hover:text-brand-ink mb-6 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30 rounded-lg"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to orders
@@ -85,7 +94,6 @@ export default function OrderDetailPage() {
       </div>
 
       <div className="grid gap-4">
-        {/* Branch & Payment Info */}
         <div className="p-5 bg-white rounded-[var(--radius-card)] border border-brand-border">
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -109,19 +117,18 @@ export default function OrderDetailPage() {
             <div className="mt-4 pt-4 border-t border-brand-border grid sm:grid-cols-2 gap-2 text-xs text-brand-muted">
               {order.paid_at && (
                 <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Paid: {new Date(order.paid_at).toLocaleString()}
+                  <Clock className="w-3 h-3" /> Paid {new Date(order.paid_at).toLocaleString()}
                 </span>
               )}
               {order.completed_at && (
                 <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Completed: {new Date(order.completed_at).toLocaleString()}
+                  <Clock className="w-3 h-3" /> Completed {new Date(order.completed_at).toLocaleString()}
                 </span>
               )}
             </div>
           )}
         </div>
 
-        {/* Items */}
         <div className="p-5 bg-white rounded-[var(--radius-card)] border border-brand-border">
           <h3 className="font-bold text-brand-ink mb-4 text-sm flex items-center gap-2">
             <Package className="w-4 h-4 text-brand-muted" />
@@ -158,7 +165,6 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Status Timeline */}
         {order.status_history && order.status_history.length > 0 && (
           <div className="p-5 bg-white rounded-[var(--radius-card)] border border-brand-border">
             <h3 className="font-bold text-brand-ink mb-4 text-sm">Status timeline</h3>

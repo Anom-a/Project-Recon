@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowLeft, ArrowRightLeft, Ban, BookOpen, Building2, CalendarDays, CheckCircle2,
   Clock, CreditCard, Download, DollarSign, Loader2, Printer, RefreshCw, ThumbsDown,
-  User, X, Award, TrendingUp,
+  User, X, Award, TrendingUp, FileText, ShieldCheck, ExternalLink, HelpCircle,
 } from 'lucide-react';
 import type { AcademicClass, Enrollment, EnrollmentPayment, StudentCertificate, StudentProfile } from '@/shared/types';
 import {
@@ -58,6 +58,22 @@ function Panel({ title, icon, children, className = '', actions }: {
   );
 }
 
+function Dot({ color }: { color: string }) {
+  return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
+}
+
+const STATUS_FLOW: { status: string; verif?: string; label: string; desc: string }[] = [
+  { status: 'PENDING_VERIFICATION', verif: 'SUBMITTED', label: 'Submitted', desc: 'Student submitted online enrollment with payment proof. Awaiting staff review.' },
+  { status: 'PENDING_VERIFICATION', verif: 'UNDER_REVIEW', label: 'Under Review', desc: 'Staff flagged for closer inspection. Can approve or reject.' },
+  { status: 'ACTIVE', label: 'Active', desc: 'Payment verified, enrollment active. Student can attend classes.' },
+  { status: 'COMPLETED', label: 'Completed', desc: 'Student finished the program.' },
+];
+
+const TERMINAL_STATUSES = [
+  { status: 'CANCELLED', label: 'Cancelled', desc: 'Enrollment was cancelled before completion.', color: 'text-red-700 bg-red-50 border-red-200' },
+  { status: 'REJECTED', label: 'Rejected', desc: 'Enrollment was declined. Reason recorded.', color: 'text-rose-700 bg-rose-50 border-rose-200' },
+];
+
 function BigBadge({ label, tone }: { label: string; tone: string }) {
   return (
     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold tracking-wide ${tone}`}>
@@ -106,8 +122,16 @@ function canRecordApproval(e: Enrollment) {
 function canReject(e: Enrollment) {
   return e.status === 'PENDING_VERIFICATION' && Boolean(e.pending_code);
 }
-function isStuckUnderReview(e: Enrollment): boolean {
+function isUnderReview(e: Enrollment): boolean {
   return e.status === 'PENDING_VERIFICATION' && e.verification_status === 'UNDER_REVIEW';
+}
+
+function endpoint(endpoint: string) {
+  return (
+    <code className="inline-block bg-slate-800 text-green-400 text-[10px] font-mono px-2 py-1 rounded-md leading-relaxed">
+      {endpoint}
+    </code>
+  );
 }
 
 export default function EnrollmentDetailWorkspace({
@@ -123,6 +147,7 @@ export default function EnrollmentDetailWorkspace({
   const [certs, setCerts] = useState<StudentCertificate[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(true);
   const [focusPayment, setFocusPayment] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +176,12 @@ export default function EnrollmentDetailWorkspace({
   const enrollRef = e.enrollment_number || e.pending_code;
   const statusMeta = ENROLLMENT_STATUS_META[e.status];
   const verMeta = e.verification_status ? VERIFICATION_META[e.verification_status] : null;
+
+  const heroGradient = e.status === 'ACTIVE' ? 'from-emerald-50 via-white to-slate-50'
+    : e.status === 'COMPLETED' ? 'from-blue-50 via-white to-slate-50'
+    : e.status === 'CANCELLED' || e.status === 'REJECTED' ? 'from-red-50 via-white to-slate-50'
+    : e.verification_status === 'UNDER_REVIEW' ? 'from-amber-50 via-white to-slate-50'
+    : 'from-blue-50 via-white to-slate-50';
 
   const timeline = useMemo(() => {
     const steps: { key: string; label: string; detail?: string; state: 'done' | 'current' | 'upcoming' }[] = [
@@ -213,6 +244,10 @@ export default function EnrollmentDetailWorkspace({
     if (e.student) downloadEnrollmentReportPdf(e.student);
   };
 
+  const currentFlowStep = STATUS_FLOW.find(s =>
+    s.status === e.status && (!s.verif || s.verif === e.verification_status)
+  );
+
   return (
     <div className="min-h-[70vh] space-y-5 print:space-y-4">
       {/* Breadcrumb / back */}
@@ -225,16 +260,85 @@ export default function EnrollmentDetailWorkspace({
           <ArrowLeft className="h-4 w-4" /> Enrollments
         </button>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setShowGuide(v => !v)}
+            className={`${actionBtn} ${showGuide ? 'bg-brand-blue text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+            <HelpCircle className="h-3.5 w-3.5" /> Guide
+          </button>
           <button type="button" onClick={handlePrint} className={`${actionBtn} bg-white border border-slate-200 text-slate-700 hover:bg-slate-50`}>
             <Printer className="h-3.5 w-3.5" /> Print
           </button>
           {e.student && (
             <button type="button" onClick={handleDownload} className={`${actionBtn} bg-white border border-slate-200 text-slate-700 hover:bg-slate-50`}>
-              <Download className="h-3.5 w-3.5" /> Download report
+              <Download className="h-3.5 w-3.5" /> Report
             </button>
           )}
         </div>
       </div>
+
+      {/* Guide panel */}
+      {showGuide && (
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden print:hidden">
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80">
+            <FileText className="w-4 h-4 text-slate-500" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">Enrollment Workflow Guide</h3>
+          </div>
+          <div className="p-5 space-y-5 text-sm">
+            <div>
+              <p className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-blue-600" />Status Flow</p>
+              <div className="space-y-2">
+                {STATUS_FLOW.map((s, i) => {
+                  const active = s.status === e.status && (!s.verif || s.verif === e.verification_status);
+                  return (
+                    <div key={s.label} className={`flex items-start gap-3 p-3 rounded-xl ${active ? 'bg-blue-50 border border-blue-200' : 'bg-slate-50 border border-slate-100'}`}>
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${active ? 'bg-blue-600 text-white' : 'bg-slate-300 text-white'}`}>{i + 1}</span>
+                      <div>
+                        <p className={`text-xs font-bold ${active ? 'text-blue-700' : 'text-slate-700'}`}>{s.label}</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">{s.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {e.status === 'CANCELLED' || e.status === 'REJECTED' ? (
+                <div className="mt-2 p-3 rounded-xl border border-red-200 bg-red-50">
+                  <p className="text-xs font-bold text-red-700">{e.status === 'CANCELLED' ? 'Cancelled' : 'Rejected'} — terminal state</p>
+                  <p className="text-[11px] text-red-600 mt-0.5">No further actions available.</p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="border-t border-slate-100 pt-4">
+              <p className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5"><ExternalLink className="w-3.5 h-3.5 text-blue-600" />API Endpoints</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-slate-500">Mark Under Review</span>
+                  {endpoint('POST /enrollments/{id}/under-review/')}
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-slate-500">Verify & Activate</span>
+                  {endpoint('POST /payments/{id}/approve/')}
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-slate-500">Record Payment</span>
+                  {endpoint('POST /payments/')}
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-slate-500">Reject</span>
+                  {endpoint('POST /payments/{id}/reject/')}
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-slate-500">Cancel</span>
+                  {endpoint('POST /enrollments/{id}/cancel/')}
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-slate-500">Complete</span>
+                  {endpoint('POST /enrollments/{id}/complete/')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-24 text-slate-400">
@@ -244,7 +348,7 @@ export default function EnrollmentDetailWorkspace({
         <>
           {/* Hero */}
           <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-slate-50" />
+            <div className={`absolute inset-0 bg-gradient-to-br ${heroGradient}`} />
             <div className="relative px-5 py-6 sm:px-8 sm:py-7">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex items-start gap-4 min-w-0">
@@ -290,18 +394,19 @@ export default function EnrollmentDetailWorkspace({
                 )}
               </div>
 
-              {/* ── Quick Actions ── */}
-              <div className="mt-6 space-y-3 print:hidden border-t border-slate-200/70 pt-5">
+              {/* Quick Actions */}
+              <div className="mt-6 space-y-4 print:hidden border-t border-slate-200/70 pt-5">
                 {/* Online enrollment — PENDING_VERIFICATION + SUBMITTED + has payment */}
                 {e.status === 'PENDING_VERIFICATION' && e.verification_status === 'SUBMITTED' && e.payment_status && (
-                  <>
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approval Actions</p>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" disabled={actions.busy} onClick={actions.onVerifyActivate}
                         className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors">
                         <CheckCircle2 className="h-4 w-4" /> {actions.busy ? 'Processing…' : 'Verify & Activate'}
                       </button>
                       <button type="button" disabled={actions.busy} onClick={actions.onUnderReview}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-100 px-4 py-2.5 text-xs font-bold text-blue-700 hover:bg-blue-200 disabled:opacity-50 transition-colors">
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
                         <Clock className="h-3.5 w-3.5" /> Under Review
                       </button>
                       <button type="button" disabled={actions.busy} onClick={actions.onReject}
@@ -309,19 +414,20 @@ export default function EnrollmentDetailWorkspace({
                         <ThumbsDown className="h-3.5 w-3.5" /> Reject
                       </button>
                     </div>
-                    <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                    <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                      <Dot color="bg-blue-500 mt-1" />
                       <p className="text-xs text-blue-800 leading-relaxed">
-                        <span className="font-bold">Online enrollment:</span> This student submitted a bank transfer payment.
-                        Click <strong>Verify & Activate</strong> to approve the payment and activate the enrollment,
-                        or use <strong>Under Review</strong> to flag for further review.
+                        <span className="font-bold">Online enrollment:</span> Student submitted a{payment?.payment_method === 'CASH' ? ' cash' : 'n online'} payment.
+                        Click <strong>Verify & Activate</strong> to approve, or <strong>Under Review</strong> to flag for further review.
                       </p>
                     </div>
-                  </>
+                  </div>
                 )}
 
-                {/* Walk-in / no existing payment — ready to record payment */}
+                {/* Walk-in / no existing payment */}
                 {canRecordApproval(e) && (
-                  <>
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approval Actions</p>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" disabled={actions.busy} onClick={actions.onApprove}
                         className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors">
@@ -334,54 +440,20 @@ export default function EnrollmentDetailWorkspace({
                         </button>
                       )}
                     </div>
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                      <Dot color="bg-emerald-500 mt-1" />
                       <p className="text-xs text-emerald-800 leading-relaxed">
                         <span className="font-bold">Walk-in</span> — no payment recorded yet.
-                        Click <strong>Approve & Record Payment</strong> to register the payment and activate this enrollment.
+                        Click <strong>Approve & Record Payment</strong> to register payment and activate.
                       </p>
                     </div>
-                  </>
-                )}
-
-                {/* PENDING_VERIFICATION + SUBMITTED but NO payment status (edge case) */}
-                {e.status === 'PENDING_VERIFICATION' && e.verification_status === 'SUBMITTED' && !e.payment_status && !canRecordApproval(e) && (
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={actions.busy} onClick={actions.onUnderReview}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                      <Clock className="h-3.5 w-3.5" /> Under Review
-                    </button>
-                    {canReject(e) && (
-                      <button type="button" disabled={actions.busy} onClick={actions.onReject}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors">
-                        <ThumbsDown className="h-3.5 w-3.5" /> Reject
-                      </button>
-                    )}
                   </div>
                 )}
 
-                {/* PENDING_VERIFICATION — no verification status yet */}
-                {e.status === 'PENDING_VERIFICATION' && !e.verification_status && (
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={actions.busy} onClick={actions.onUnderReview}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                      <Clock className="h-3.5 w-3.5" /> Start Review
-                    </button>
-                    {canReject(e) && (
-                      <button type="button" disabled={actions.busy} onClick={actions.onReject}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors">
-                        <ThumbsDown className="h-3.5 w-3.5" /> Reject
-                      </button>
-                    )}
-                    <button type="button" disabled={actions.busy} onClick={actions.onCancel}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-                      <X className="h-3.5 w-3.5" /> Cancel
-                    </button>
-                  </div>
-                )}
-
-                {/* UNDER_REVIEW stuck-state banner */}
-                {isStuckUnderReview(e) && (
-                  <>
+                {/* UNDER_REVIEW state */}
+                {isUnderReview(e) && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approval Actions</p>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" disabled={actions.busy} onClick={actions.onVerifyActivate}
                         className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors">
@@ -392,49 +464,91 @@ export default function EnrollmentDetailWorkspace({
                         <ThumbsDown className="h-3.5 w-3.5" /> Reject
                       </button>
                     </div>
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
-                      <div className="flex items-start gap-3">
-                        <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                        <div className="text-xs text-amber-800 space-y-1">
-                          <p className="font-bold">Under Review</p>
-                          <p>This enrollment was moved to Under Review. Click <strong>Verify & Activate</strong> to approve and activate, or <strong>Reject</strong> to decline.</p>
-                        </div>
+                    <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+                      <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-xs text-amber-800 space-y-1">
+                        <p className="font-bold">Under Review</p>
+                        <p>This enrollment was moved to Under Review. Click <strong>Verify & Activate</strong> to approve and activate, or <strong>Reject</strong> to decline.</p>
                       </div>
                     </div>
-                  </>
+                  </div>
+                )}
+
+                {/* PENDING_VERIFICATION edge cases */}
+                {e.status === 'PENDING_VERIFICATION' && !e.verification_status && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approval Actions</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={actions.busy} onClick={actions.onUnderReview}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <Clock className="h-3.5 w-3.5" /> Start Review
+                      </button>
+                      {canReject(e) && (
+                        <button type="button" disabled={actions.busy} onClick={actions.onReject}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors">
+                          <ThumbsDown className="h-3.5 w-3.5" /> Reject
+                        </button>
+                      )}
+                      <button type="button" disabled={actions.busy} onClick={actions.onCancel}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                        <X className="h-3.5 w-3.5" /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {e.status === 'PENDING_VERIFICATION' && e.verification_status === 'SUBMITTED' && !e.payment_status && !canRecordApproval(e) && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approval Actions</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={actions.busy} onClick={actions.onUnderReview}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <Clock className="h-3.5 w-3.5" /> Under Review
+                      </button>
+                      {canReject(e) && (
+                        <button type="button" disabled={actions.busy} onClick={actions.onReject}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors">
+                          <ThumbsDown className="h-3.5 w-3.5" /> Reject
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 )}
 
                 {/* ACTIVE — management actions */}
                 {e.status === 'ACTIVE' && (
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={actions.busy} onClick={actions.onComplete}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-100 px-4 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-200 disabled:opacity-50 transition-colors">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Mark Completed
-                    </button>
-                    <button type="button" disabled={actions.busy} onClick={actions.onMove}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-100 px-4 py-2.5 text-xs font-bold text-blue-700 hover:bg-blue-200 disabled:opacity-50 transition-colors">
-                      <ArrowRightLeft className="h-3.5 w-3.5" /> Move Class
-                    </button>
-                    <button type="button" disabled={actions.busy} onClick={actions.onSwitch}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-violet-100 px-4 py-2.5 text-xs font-bold text-violet-700 hover:bg-violet-200 disabled:opacity-50 transition-colors">
-                      <RefreshCw className="h-3.5 w-3.5" /> Switch Sub-Program
-                    </button>
-                    <button type="button" disabled={actions.busy} onClick={actions.onCancel}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors">
-                      <X className="h-3.5 w-3.5" /> Cancel Enrollment
-                    </button>
-                    {payment && (
-                      <button type="button" onClick={() => {
-                        setFocusPayment(true);
-                        document.getElementById('enrollment-payment-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }} className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition-colors">
-                        <CreditCard className="h-3.5 w-3.5" /> View Payment
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Management Actions</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={actions.busy} onClick={actions.onComplete}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Mark Completed
                       </button>
-                    )}
+                      <button type="button" disabled={actions.busy} onClick={actions.onMove}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <ArrowRightLeft className="h-3.5 w-3.5" /> Move Class
+                      </button>
+                      <button type="button" disabled={actions.busy} onClick={actions.onSwitch}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50 transition-colors">
+                        <RefreshCw className="h-3.5 w-3.5" /> Switch Sub-Program
+                      </button>
+                      <button type="button" disabled={actions.busy} onClick={actions.onCancel}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50 transition-colors">
+                        <X className="h-3.5 w-3.5" /> Cancel
+                      </button>
+                      {payment && (
+                        <button type="button" onClick={() => {
+                          setFocusPayment(true);
+                          document.getElementById('enrollment-payment-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }} className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition-colors">
+                          <CreditCard className="h-3.5 w-3.5" /> View Payment
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                {/* Cancel — for PENDING_VERIFICATION without other matching blocks */}
+                {/* Other PENDING_VERIFICATION */}
                 {e.status === 'PENDING_VERIFICATION' && e.verification_status && e.verification_status !== 'SUBMITTED' && e.verification_status !== 'UNDER_REVIEW' && (
                   <div className="flex flex-wrap gap-2">
                     <button type="button" disabled={actions.busy} onClick={actions.onCancel}
@@ -452,7 +566,7 @@ export default function EnrollmentDetailWorkspace({
                   </div>
                 )}
 
-                {/* Generic View Payment for any state that has payment but no other buttons matched */}
+                {/* Generic View Payment */}
                 {payment && e.status !== 'ACTIVE' && e.status !== 'PENDING_VERIFICATION' && (
                   <button type="button" onClick={() => {
                     setFocusPayment(true);
@@ -591,6 +705,18 @@ export default function EnrollmentDetailWorkspace({
                         ))}
                       </ol>
                     </div>
+
+                    {payment.attachment && (
+                      <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-slate-400" />
+                          <span className="text-xs text-slate-600">Payment attachment</span>
+                        </div>
+                        <button type="button" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                          <Download className="w-3 h-3" /> Download
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </Panel>
@@ -612,6 +738,15 @@ export default function EnrollmentDetailWorkspace({
                     <MetaRow label="Name" value={student?.guardian_name} />
                     <MetaRow label="Phone" value={student?.guardian_phone} />
                     <MetaRow label="Email" value={student?.guardian_email} />
+                  </div>
+                )}
+                {currentFlowStep && (
+                  <div className="mt-4 border-t border-slate-100 pt-4">
+                    <p className="text-[11px] font-semibold text-slate-500 mb-2">Current stage</p>
+                    <div className={`rounded-xl border px-3 py-2.5 text-xs ${statusMeta?.color || 'text-slate-700 bg-slate-50 border-slate-200'}`}>
+                      <p className="font-semibold">{currentFlowStep.label}</p>
+                      <p className="text-[11px] opacity-75 mt-0.5">{currentFlowStep.desc}</p>
+                    </div>
                   </div>
                 )}
               </Panel>

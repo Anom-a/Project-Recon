@@ -5,15 +5,18 @@ import { Button } from '@/shared/ui/Button';
 import { formatMoney } from '@/domains/store/utils/formatMoney';
 import { getOrderStatusLabel, getOrderStatusTone } from '@/domains/store/utils/orderStatus';
 import { navigateStore } from '@/domains/store/utils/catalog';
-import { LoadingGrid } from '@/domains/store/ui/LoadingGrid';
 import { cn } from '@/shared/utils/cn';
 
 export default function OrderHistoryPage() {
-  const { orders, loading, error } = useOrders();
+  const { orders, loading, error, reload } = useOrders();
 
   if (loading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-6 max-w-4xl mx-auto" aria-busy="true" aria-label="Loading orders">
+        <div className="mb-6 space-y-2">
+          <div className="h-3 w-16 bg-brand-surface rounded animate-pulse" />
+          <div className="h-7 w-40 bg-brand-surface rounded animate-pulse" />
+        </div>
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-24 bg-white rounded-[var(--radius-card)] border border-brand-border/60 animate-pulse" />
@@ -28,9 +31,9 @@ export default function OrderHistoryPage() {
       <div className="p-6 max-w-4xl mx-auto">
         <EmptyState
           icon={ShoppingBag}
-          title="Failed to load orders"
-          description="There was an error loading your order history. Please try again later."
-          action={<Button variant="secondary" onClick={() => window.location.reload()}>Retry</Button>}
+          title="Could not load orders"
+          description={error}
+          action={<Button variant="secondary" onClick={reload}>Try again</Button>}
         />
       </div>
     );
@@ -42,7 +45,7 @@ export default function OrderHistoryPage() {
         <EmptyState
           icon={ShoppingBag}
           title="No orders yet"
-          description="Start shopping to see confirmed orders here after payment."
+          description="Confirmed orders appear here after payment is verified."
           action={<Button onClick={() => navigateStore('/store')}>Browse store</Button>}
         />
       </div>
@@ -50,11 +53,11 @@ export default function OrderHistoryPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between gap-3 mb-6">
         <div>
           <p className="eyebrow mb-1">Account</p>
-          <h1 className="font-display text-2xl font-bold text-brand-ink">My Orders</h1>
+          <h1 className="font-display text-2xl font-bold text-brand-ink">My orders</h1>
           <p className="text-sm text-brand-muted mt-1">{orders.length} order{orders.length !== 1 ? 's' : ''}</p>
         </div>
         <Button variant="secondary" size="sm" onClick={() => navigateStore('/store')}>
@@ -68,14 +71,14 @@ export default function OrderHistoryPage() {
             type="button"
             key={order.id}
             onClick={() => navigateStore(`/store/orders/${order.id}`)}
-            className="block w-full p-5 bg-white rounded-[var(--radius-card)] border border-brand-border hover:border-brand-blue/30 hover:shadow-sm transition-all text-left"
+            className="block w-full p-4 sm:p-5 bg-white rounded-[var(--radius-card)] border border-brand-border hover:border-brand-blue/30 hover:shadow-sm transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30"
           >
             <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <p className="font-bold text-brand-ink font-mono">#{order.order_number}</p>
-                <p className="text-xs text-brand-muted mt-0.5 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {new Date(order.created_at).toLocaleString()} &middot; {order.branch_name}
+              <div className="min-w-0">
+                <p className="font-bold text-brand-ink font-mono truncate">#{order.order_number}</p>
+                <p className="text-xs text-brand-muted mt-0.5 flex items-center gap-1 flex-wrap">
+                  <Clock className="w-3 h-3 shrink-0" />
+                  {new Date(order.created_at).toLocaleString()} · {order.branch_name}
                 </p>
               </div>
               <span className={cn(

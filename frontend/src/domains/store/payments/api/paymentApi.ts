@@ -52,6 +52,6 @@ export async function submitPaymentEvidence(
   return await http.post<StorePayment>(
     `${STORE_BASE}/pending-orders/${pendingOrderPk}/evidence/`,
     form,
-    { headers: getStoreRequestHeaders() },
+    { headers: getStoreRequestHeaders({ orderId: pendingOrderPk }) },
   );
 }

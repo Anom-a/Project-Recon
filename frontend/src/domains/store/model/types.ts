@@ -137,6 +137,9 @@ export interface PendingOrder {
   guest_name?: string;
   guest_email?: string;
   guest_phone?: string;
+  /** Guest order access token — required as X-Order-Token for guest pending-order APIs. */
+  access_token?: string;
+  email_verified?: boolean;
   expires_at: string;
   created_at: string;
 }

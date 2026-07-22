@@ -11,7 +11,7 @@ import {
 import type { StorePayment } from '../../model/types';
 import { cn } from '@/shared/utils/cn';
 import { formatApiError } from '@/shared/utils/formatApiError';
-import { formatMoney } from '@/shared/utils/formatCurrency';
+import { formatMoney } from '@/domains/store/utils/formatMoney';
 
 interface Props {
   addToast: (message: string, type: 'success' | 'error') => void;
@@ -26,8 +26,8 @@ const STATUS_CHIPS = [
 
 const PAYMENT_METHOD_MAP: Record<string, { label: string; color: string }> = {
   CASH: { label: 'Cash', color: 'text-emerald-600 bg-emerald-50' },
-  BANK_TRANSFER: { label: 'Bank Transfer', color: 'text-blue-600 bg-blue-50' },
-  MOBILE_MONEY: { label: 'Mobile Money', color: 'text-purple-600 bg-purple-50' },
+  BANK_TRANSFER: { label: 'Bank transfer', color: 'text-blue-600 bg-blue-50' },
+  MOBILE_MONEY: { label: 'Mobile money', color: 'text-purple-600 bg-purple-50' },
   CHEQUE: { label: 'Cheque', color: 'text-amber-600 bg-amber-50' },
 };
 
@@ -67,7 +67,7 @@ export default function PendingPaymentManager({ addToast }: Props) {
     setActionLoading(p.id);
     try {
       const updated = await verifyPayment(p.pending_order);
-      addToast(`Payment verified — order created`, 'success');
+      addToast('Payment verified — order created', 'success');
       setPayments(prev => prev.map(x => x.id === p.id ? updated : x));
       if (detail?.id === p.id) setDetail(updated);
     } catch (e: unknown) {

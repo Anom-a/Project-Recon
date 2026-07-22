@@ -1,3 +1,4 @@
+import { formatApiError } from '@/shared/utils/formatApiError';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -60,8 +61,8 @@ export default function ProductManager({ addToast }: Props) {
       setItems(data);
       setCategories(cats);
       setBranches(branchData.map((b: any) => ({ id: b.id || b.uuid, name: b.name })));
-    } catch (e: any) {
-      addToast(e.message || 'Failed to load products', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     } finally {
       setLoading(false);
     }
@@ -141,8 +142,8 @@ export default function ProductManager({ addToast }: Props) {
         setShowModal(false);
         fetchItems();
       }
-    } catch (e: any) {
-      const msg = e.message || 'Failed to save product';
+    } catch (e: unknown) {
+      const msg = formatApiError(e);
       if (!editing && !retrySlug && msg.toLowerCase().includes('slug')) {
         return handleSave(uniqueSlug(baseSlug));
       }
@@ -159,8 +160,8 @@ export default function ProductManager({ addToast }: Props) {
       addToast('Product archived', 'success');
       setDeleteConfirm(null);
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to archive product', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     }
   };
 
@@ -174,8 +175,8 @@ export default function ProductManager({ addToast }: Props) {
         addToast('Product activated', 'success');
       }
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to update status', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     }
   };
 
@@ -189,8 +190,8 @@ export default function ProductManager({ addToast }: Props) {
         addToast('Product archived', 'success');
       }
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to archive/restore product', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     }
   };
 
@@ -204,8 +205,8 @@ export default function ProductManager({ addToast }: Props) {
       await storeAdminApi.products.uploadImage(productId, fd);
       addToast('Image uploaded', 'success');
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to upload image', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     } finally {
       setUploadingImage(false);
     }
@@ -216,8 +217,8 @@ export default function ProductManager({ addToast }: Props) {
       await storeAdminApi.products.deleteImage(imageId);
       addToast('Image deleted', 'success');
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to delete image', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     }
   };
 
@@ -226,8 +227,8 @@ export default function ProductManager({ addToast }: Props) {
       await storeAdminApi.products.setPrimaryImage(imageId);
       addToast('Primary image updated', 'success');
       fetchItems();
-    } catch (e: any) {
-      addToast(e.message || 'Failed to set primary image', 'error');
+    } catch (e: unknown) {
+      addToast(formatApiError(e), 'error');
     }
   };
 
@@ -505,8 +506,8 @@ export default function ProductManager({ addToast }: Props) {
                 {/* 3. Description */}
                 <div className={sectionClass}>
                   <div className={sectionTitleClass}>
-                    <div className={cn(iconBoxClass, "bg-violet-50 border border-violet-200")}>
-                      <Hash className="w-3 h-3 text-violet-500" />
+                    <div className={cn(iconBoxClass, "bg-brand-blue/10 border border-brand-blue/20")}>
+                      <Hash className="w-3 h-3 text-brand-blue" />
                     </div>
                     <h5 className="text-xs font-bold uppercase tracking-wider text-brand-muted">Description</h5>
                   </div>

@@ -28,7 +28,7 @@ import {
 import SponsorManagement from './SponsorManagement';
 import CommunicationsCenter from './CommunicationsCenter';
 import PaymentTracker from './PaymentTracker';
-import EventsManagement from './EventsManagement';
+import EventsManagement, { sectionToEventsTab } from './EventsManagement';
 import AnnouncementsManager from './AnnouncementsManager';
 import WalkInRegistration from './WalkInRegistration';
 import EnrollmentPeriodsPanel from '../../../secretary/dashboard/ui/EnrollmentPeriodsPanel';
@@ -41,11 +41,6 @@ import AdminAccount from '@/domains/user/shared/ui/AdminAccount';
 import TransferRequestsPanel from '@/domains/user/shared/ui/TransferRequestsPanel';
 import EnrollmentsPanel from '@/domains/user/secretary/dashboard/ui/EnrollmentsPanel';
 import StudentDetailPanel from '@/domains/user/secretary/dashboard/ui/StudentDetailPanel';
-import TournamentManager from '@/domains/competition/admin/TournamentManager';
-import WorkshopManager from '@/domains/competition/admin/WorkshopManager';
-import RegistrationManager from '@/domains/competition/admin/RegistrationManager';
-import MatchManager from '@/domains/competition/admin/MatchManager';
-import TeamManager from '@/domains/competition/admin/TeamManager';
 import CertificateManager from '@/domains/user/shared/ui/CertificateManager';
 import StoreDashboard from '@/domains/store/admin/ui/StoreDashboard';
 import LearningMaterialsPanel from '@/domains/user/secretary/dashboard/ui/LearningMaterialsPanel';
@@ -184,15 +179,22 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
       case 'periods': return <EnrollmentPeriodsPanel currentUser={currentUser} />;
       case 'students': return <StudentDetailPanel />;
       case 'transfers': return <TransferRequestsPanel currentUser={currentUser} />;
-      case 'event-registrations': return <RegistrationManager />;
+      case 'events':
+      case 'tournaments':
+      case 'tournament-teams':
+      case 'matches':
+      case 'workshops':
+      case 'event-registrations':
+        return (
+          <EventsManagement
+            currentUser={currentUser}
+            initialTab={sectionToEventsTab(activeSection)}
+            onNavigate={(id: string) => handleSectionChange(id as SectionId)}
+          />
+        );
       case 'store': return <StoreDashboard currentUser={currentUser} />;
       case 'materials': return <LearningMaterialsPanel currentUser={currentUser} />;
       case 'milestones': return <LearningMilestonesManager currentUser={currentUser} />;
-      case 'events': return <EventsManagement currentUser={currentUser} onNavigate={(id: string) => handleSectionChange(id as SectionId)} />;
-      case 'tournaments': return <TournamentManager />;
-      case 'tournament-teams': return <TeamManager />;
-      case 'matches': return <MatchManager />;
-      case 'workshops': return <WorkshopManager />;
       case 'announcements': return <AnnouncementsManager />;
       case 'communications': return <CommunicationsCenter currentUser={currentUser} />;
       case 'payments': return <PaymentTracker />;

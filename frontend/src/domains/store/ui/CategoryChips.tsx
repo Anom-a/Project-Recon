@@ -50,7 +50,7 @@ export function CategoryChips({
         )}
       >
         <LayoutGrid className="w-4 h-4" />
-        All Products
+        All products
       </button>
 
       {loading

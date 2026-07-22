@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { listProducts } from '../api/productApi';
 import type { Product, ProductFilters } from '@/domains/store/model/types';
+import { formatApiError } from '@/shared/utils/formatApiError';
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -15,7 +16,7 @@ export function useProducts() {
       const data = await listProducts(currentFilters);
       setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load products');
+      setError(formatApiError(err));
     } finally {
       setLoading(false);
     }

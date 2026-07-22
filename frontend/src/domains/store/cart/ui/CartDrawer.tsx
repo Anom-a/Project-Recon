@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ShoppingBag, X, Plus, Minus, Trash2, CheckCircle2, Loader, Building2, Package, AlertCircle,
+  ShoppingBag, X, Plus, Minus, Trash2, Loader, Building2, Package, AlertCircle,
   CreditCard, Upload, Landmark,
 } from 'lucide-react';
 import type { PendingOrder, ShoppingCart, StorePaymentMethod, BankAccount } from '@/domains/store/model/types';
@@ -12,6 +12,7 @@ import { Button } from '@/shared/ui/Button';
 import { PriceDisplay } from '@/domains/store/ui/PriceDisplay';
 import { formatMoney } from '@/domains/store/utils/formatMoney';
 import { navigateStore, storePendingOrderPath } from '@/domains/store/utils/catalog';
+import { formatApiError } from '@/shared/utils/formatApiError';
 
 const PAYMENT_METHODS: { value: StorePaymentMethod; label: string }[] = [
   { value: 'BANK_TRANSFER', label: 'Bank transfer' },
@@ -69,6 +70,8 @@ export default function CartDrawer({
   const items = cart?.items || [];
   const itemCount = cart?.item_count || items.reduce((s, i) => s + i.quantity, 0);
 
+  const uniqueBranches = useMemo(() => [...new Set(items.map(i => i.branch))], [items]);
+
   const branchOptions = useMemo(() => {
     const map = new Map<string, string>();
     items.forEach((item) => {
@@ -76,6 +79,18 @@ export default function CartDrawer({
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [items]);
+
+  const bankAccountsByBank = useMemo(() => {
+    const seen = new Set<string>();
+    const uniq = bankAccounts.filter(a => { const k = a.account_number; if (seen.has(k)) return false; seen.add(k); return a.is_active; });
+    const groups: { bank: string; accounts: typeof uniq }[] = [];
+    uniq.forEach(a => {
+      let g = groups.find(g => g.bank === a.bank_name);
+      if (!g) { g = { bank: a.bank_name, accounts: [] }; groups.push(g); }
+      g.accounts.push(a);
+    });
+    return groups;
+  }, [bankAccounts]);
 
   useEffect(() => {
     if (branchOptions.length === 1) setBranchId(branchOptions[0].id);
@@ -105,12 +120,7 @@ export default function CartDrawer({
     e.preventDefault();
     setFormError(null);
 
-    if (!branchId) {
-      setFormError('Select a pickup branch. Cart items must belong to one branch.');
-      return;
-    }
-    const uniqueBranches = new Set(items.map((i) => i.branch));
-    if (uniqueBranches.size > 1) {
+    if (uniqueBranches.length > 1) {
       setFormError('Your cart has items from multiple branches. Checkout supports one branch per order.');
       return;
     }
@@ -152,7 +162,7 @@ export default function CartDrawer({
       setCheckoutStep('success');
       onCheckoutSuccess(order);
     } catch (error: unknown) {
-      setFormError(error instanceof Error ? error.message : 'Checkout failed. Please try again.');
+      setFormError(formatApiError(error));
     } finally {
       setCheckoutLoading(false);
     }
@@ -191,6 +201,9 @@ export default function CartDrawer({
             exit={{ x: '100%' }}
             transition={{ type: 'tween', duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
             className="relative bg-white w-full max-w-md h-full shadow-xl flex flex-col z-10"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Shopping cart"
           >
             <div className="px-5 py-4 border-b border-brand-border/50 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
@@ -207,7 +220,8 @@ export default function CartDrawer({
               <button
                 type="button"
                 onClick={() => { onClose(); resetCheckout(); }}
-                className="p-2.5 rounded-xl text-brand-muted hover:bg-brand-surface hover:text-brand-ink transition-all"
+                className="p-2.5 rounded-xl text-brand-muted hover:bg-brand-surface hover:text-brand-ink transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30"
+                aria-label="Close cart"
               >
                 <X className="w-4.5 h-4.5" />
               </button>
@@ -215,14 +229,25 @@ export default function CartDrawer({
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {checkoutStep === 'success' && pendingOrder ? (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="py-8">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-5">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-                  </div>
-                  <h3 className="font-bold text-xl text-brand-ink mb-1 text-center">Checkout created</h3>
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="py-8">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
+                    className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-5"
+                  >
+                    <motion.svg className="w-8 h-8 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 0.4, delay: 0.3 }}
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </motion.svg>
+                  </motion.div>
+                  <h3 className="font-bold text-xl text-brand-ink mb-1 text-center">Order submitted</h3>
                   <p className="text-sm text-brand-muted mb-6 text-center leading-relaxed max-w-xs mx-auto">
                     {includePayment
-                      ? 'Payment evidence submitted. Staff will verify and confirm your order.'
+                      ? 'Payment evidence was submitted. Staff will verify and confirm your order.'
                       : 'You chose to pay later. Submit payment at the branch with your order reference. This pending checkout expires after 30 minutes.'}
                   </p>
                   <div className="space-y-3 rounded-[var(--radius-card)] border border-brand-border bg-brand-surface/60 p-4 text-sm">
@@ -307,22 +332,16 @@ export default function CartDrawer({
                     </div>
                     {branchOptions.length === 0 ? (
                       <p className="text-sm text-brand-muted">No branch on cart items.</p>
-                    ) : branchOptions.length === 1 ? (
+                    ) : uniqueBranches.length > 1 ? (
+                      <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>Items are from different branches. Checkout supports one branch per order.</span>
+                      </div>
+                    ) : (
                       <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-brand-border">
                         <Building2 className="w-4 h-4 text-brand-blue" />
                         <span className="text-sm font-bold text-brand-ink">{branchOptions[0].name}</span>
                       </div>
-                    ) : (
-                      <select
-                        value={branchId}
-                        onChange={(e) => setBranchId(e.target.value)}
-                        className="form-input w-full font-semibold"
-                        required
-                      >
-                        {branchOptions.map((b) => (
-                          <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                      </select>
                     )}
                     <p className="text-[11px] font-medium text-brand-ink/70 leading-relaxed">
                       One order belongs to one branch. Items should share the same pickup location.
@@ -336,30 +355,43 @@ export default function CartDrawer({
                           Guest checkout available. Sign in afterward to track confirmed orders.
                         </p>
                       </div>
-                      <input
-                        placeholder="Full name *"
-                        value={guestName}
-                        onChange={(e) => setGuestName(e.target.value)}
-                        className="form-input"
-                        required
-                        aria-required
-                      />
-                      <input
-                        placeholder="Email *"
-                        type="email"
-                        value={guestEmail}
-                        onChange={(e) => setGuestEmail(e.target.value)}
-                        className="form-input"
-                        required
-                        aria-required
-                      />
-                      <input
-                        placeholder="Phone (optional)"
-                        type="tel"
-                        value={guestPhone}
-                        onChange={(e) => setGuestPhone(e.target.value)}
-                        className="form-input"
-                      />
+                      <div>
+                        <label htmlFor="guest-name" className="text-[11px] font-bold text-brand-ink uppercase tracking-wide mb-1.5 block">Full name</label>
+                        <input
+                          id="guest-name"
+                          placeholder="Your full name"
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          className="form-input"
+                          required
+                          autoComplete="name"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="guest-email" className="text-[11px] font-bold text-brand-ink uppercase tracking-wide mb-1.5 block">Email</label>
+                        <input
+                          id="guest-email"
+                          placeholder="you@example.com"
+                          type="email"
+                          value={guestEmail}
+                          onChange={(e) => setGuestEmail(e.target.value)}
+                          className="form-input"
+                          required
+                          autoComplete="email"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="guest-phone" className="text-[11px] font-bold text-brand-ink uppercase tracking-wide mb-1.5 block">Phone <span className="font-medium normal-case tracking-normal text-brand-muted">(optional)</span></label>
+                        <input
+                          id="guest-phone"
+                          placeholder="Phone number"
+                          type="tel"
+                          value={guestPhone}
+                          onChange={(e) => setGuestPhone(e.target.value)}
+                          className="form-input"
+                          autoComplete="tel"
+                        />
+                      </div>
                     </>
                   )}
 
@@ -478,44 +510,35 @@ export default function CartDrawer({
                               ) : bankAccounts.length === 0 ? (
                                 <p className="text-xs font-medium text-brand-muted">No bank accounts available.</p>
                               ) : (
-                                (() => {
-                                  const seen = new Set<string>();
-                                  const uniq = bankAccounts.filter(a => { const k = a.account_number; if (seen.has(k)) return false; seen.add(k); return a.is_active; });
-                                  const byBank: [string, typeof uniq][] = [];
-                                  uniq.forEach(a => {
-                                    let g = byBank.find(([b]) => b === a.bank_name);
-                                    if (!g) { g = [a.bank_name, []]; byBank.push(g); }
-                                    g[1].push(a);
-                                  });
-                                  return <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {byBank.map(([bank, accs]) => (
-                                      <div key={bank}>
-                                        <p className="font-bold text-brand-ink text-xs mb-1.5">{bank}</p>
-                                        <div className="space-y-1.5">
-                                          {accs.map(acc => (
-                                            <div key={acc.account_number} className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-brand-border/60 text-xs">
-                                              <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                                                <span className="font-mono font-bold text-brand-ink">{acc.account_number}</span>
-                                                <span className="text-brand-muted text-[10px] font-medium truncate">{acc.account_holder}{acc.branch ? ` • ${acc.branch}` : ''}</span>
-                                              </div>
-                                              <button
-                                                type="button"
-                                                onClick={() => navigator.clipboard.writeText(acc.account_number)}
-                                                className="shrink-0 p-1.5 rounded-lg text-brand-muted hover:text-brand-blue hover:bg-brand-blue/5 transition-colors"
-                                                title="Copy account number"
-                                              >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                                                </svg>
-                                              </button>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                  {bankAccountsByBank.map(({ bank, accounts }) => (
+                                    <div key={bank}>
+                                      <p className="font-bold text-brand-ink text-xs mb-1.5">{bank}</p>
+                                      <div className="space-y-1.5">
+                                        {accounts.map(acc => (
+                                          <div key={acc.account_number} className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-brand-border/60 text-xs">
+                                            <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                                              <span className="font-mono font-bold text-brand-ink">{acc.account_number}</span>
+                                              <span className="text-brand-muted text-[10px] font-medium truncate">{acc.account_holder}{acc.branch ? ` • ${acc.branch}` : ''}</span>
                                             </div>
-                                          ))}
-                                        </div>
+                                            <button
+                                              type="button"
+                                              onClick={() => navigator.clipboard.writeText(acc.account_number)}
+                                              className="shrink-0 p-1.5 rounded-lg text-brand-muted hover:text-brand-blue hover:bg-brand-blue/5 transition-colors"
+                                              title="Copy account number"
+                                              aria-label={`Copy account number ${acc.account_number}`}
+                                            >
+                                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
-                                  </div>;
-                                })()
+                                    </div>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           </>
@@ -534,7 +557,7 @@ export default function CartDrawer({
                     </div>
                   )}
 
-                  <Button type="submit" disabled={checkoutLoading || !branchId} className="w-full font-bold" size="lg">
+                  <Button type="submit" disabled={checkoutLoading || uniqueBranches.length > 1 || !branchId} className="w-full font-bold" size="lg">
                     {checkoutLoading ? (
                       <><Loader className="w-4 h-4 animate-spin mr-2 inline" /> Processing…</>
                     ) : (
@@ -576,7 +599,7 @@ export default function CartDrawer({
                   </div>
                   <p className="text-sm font-bold text-brand-ink mb-1">Your cart is empty</p>
                   <p className="text-xs font-medium text-brand-muted max-w-[200px] mx-auto leading-relaxed">
-                    Browse the store and add items to get started
+                    Browse the store and add items to get started.
                   </p>
                   <div className="mt-6">
                     <Button onClick={() => { onClose(); navigateStore('/store'); }} variant="secondary" size="sm" className="font-bold">Browse products</Button>
@@ -596,15 +619,15 @@ export default function CartDrawer({
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <div className="flex items-center bg-white border border-brand-border rounded-lg overflow-hidden">
-                          <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="p-2 text-brand-muted hover:bg-brand-surface hover:text-brand-ink transition-colors" disabled={item.quantity <= 1}>
+                          <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className="p-2 text-brand-muted hover:bg-brand-surface hover:text-brand-ink transition-colors" disabled={item.quantity <= 1} aria-label={`Decrease ${item.product_name} quantity`}>
                             <Minus className="w-3.5 h-3.5" />
                           </button>
                           <span className="text-xs font-bold px-2.5 min-w-[24px] text-center tabular-nums text-brand-ink">{item.quantity}</span>
-                          <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="p-2 text-brand-muted hover:bg-brand-surface hover:text-brand-ink transition-colors">
+                          <button type="button" onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="p-2 text-brand-muted hover:bg-brand-surface hover:text-brand-ink transition-colors" aria-label={`Increase ${item.product_name} quantity`}>
                             <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <button type="button" onClick={() => onRemoveFromCart(item.id)} className="p-2 text-brand-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                        <button type="button" onClick={() => onRemoveFromCart(item.id)} className="p-2 text-brand-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" aria-label={`Remove ${item.product_name} from cart`}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
