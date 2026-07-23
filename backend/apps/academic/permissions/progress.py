@@ -1,11 +1,13 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from apps.accounts.permissions.roles import (
     user_is_branch_manager,
     user_is_instructor,
+    user_is_student,
     user_is_super_admin,
     user_manages_branch,
 )
+from apps.academic.permissions.mixins import user_owns_enrollment
 
 
 class CanManageProgress(BasePermission):
@@ -23,6 +25,8 @@ class CanManageProgress(BasePermission):
         if user_is_super_admin(user):
             return True
         if user_is_branch_manager(user) or user_is_instructor(user):
+            return True
+        if request.method in SAFE_METHODS and user_is_student(user):
             return True
         return False
 
@@ -58,5 +62,18 @@ class CanManageProgress(BasePermission):
                 return obj.milestone.scope_class.instructor == user
             if hasattr(obj, "enrollment"):
                 return obj.enrollment.enrolled_class.instructor == user
+
+        if request.method in SAFE_METHODS and user_is_student(user):
+            if hasattr(obj, "enrollment"):
+                return user_owns_enrollment(user, obj.enrollment)
+            if hasattr(obj, "scope_class") and obj.scope_class:
+                return obj.scope_class.enrollments.filter(student__user=user).exists()
+            if hasattr(obj, "sub_program"):
+                from apps.academic.models import Enrollment
+                return Enrollment.objects.filter(
+                    student__user=user,
+                    enrolled_class__sub_program=obj.sub_program,
+                    status__in=["ACTIVE", "COMPLETED"],
+                ).exists()
 
         return False

@@ -10,8 +10,9 @@ from apps.academic.constants import ProgressStatus as ProgressStatusChoice
 from apps.academic.models import LearningMilestone, StudentProgress, Enrollment
 from apps.academic.models.sub_program import SubProgram
 from apps.academic.models.class_model import Class as ClassModel
-from apps.academic.permissions.mixins import check_enrollment_branch_access
+from apps.academic.permissions.mixins import check_enrollment_read_access
 from apps.academic.permissions.progress import CanManageProgress
+from apps.accounts.permissions.roles import user_is_student
 from apps.academic.serializers import (
     LearningMilestoneSerializer,
     LearningMilestoneListSerializer,
@@ -66,6 +67,24 @@ class MilestoneListCreateView(generics.ListCreateAPIView):
                 raise ValidationError("Invalid scope_class UUID.")
 
         branch_ids = None
+        if user_is_student(self.request.user):
+            from django.db.models import Q
+
+            enrolled = Enrollment.objects.filter(
+                student__user=self.request.user,
+                status__in=["ACTIVE", "COMPLETED"],
+            ).values("enrolled_class_id", "enrolled_class__sub_program_id")
+            class_ids = {row["enrolled_class_id"] for row in enrolled}
+            sub_program_ids = {row["enrolled_class__sub_program_id"] for row in enrolled}
+
+            return list_milestones(
+                sub_program=sub_program,
+                scope_class=scope_class,
+            ).filter(
+                Q(scope_class__isnull=True, sub_program_id__in=sub_program_ids)
+                | Q(scope_class_id__in=class_ids)
+            )
+
         if not self.request.user.is_superuser:
             from apps.accounts.permissions.roles import get_active_branch_ids, user_is_super_admin
             if not user_is_super_admin(self.request.user):
@@ -257,7 +276,7 @@ class ProgressHistoryView(generics.GenericAPIView):
 
     def get(self, request, enrollment_pk):
         enrollment = get_object_or_404(Enrollment, pk=enrollment_pk)
-        check_enrollment_branch_access(request.user, enrollment)
+        check_enrollment_read_access(request.user, enrollment)
         records = get_progress_history(enrollment)
         serializer = self.get_serializer(records, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -273,7 +292,7 @@ class ProgressSummaryView(generics.GenericAPIView):
 
     def get(self, request, enrollment_pk):
         enrollment = get_object_or_404(Enrollment, pk=enrollment_pk)
-        check_enrollment_branch_access(request.user, enrollment)
+        check_enrollment_read_access(request.user, enrollment)
         summary = get_progress_summary(enrollment)
         serializer = self.get_serializer(summary)
         return Response(serializer.data, status=status.HTTP_200_OK)

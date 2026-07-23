@@ -4,6 +4,7 @@ from apps.accounts.permissions.roles import (
     user_is_branch_manager,
     user_is_instructor,
     user_is_secretary,
+    user_is_student,
     user_is_super_admin,
     user_manages_branch,
 )
@@ -24,6 +25,8 @@ class CanManageAttendance(BasePermission):
             return True
         if user_is_instructor(user):
             return True
+        if request.method in SAFE_METHODS and user_is_student(user):
+            return True
         if request.method in SAFE_METHODS and (user_is_branch_manager(user) or user_is_secretary(user)):
             return True
         return False
@@ -43,5 +46,7 @@ class CanManageAttendance(BasePermission):
                 return user_manages_branch(user, branch.pk)
             if user_is_instructor(user) and enrolled_class.instructor == user:
                 return True
+            if request.method in SAFE_METHODS and user_is_student(user):
+                return enrolled_class.enrollments.filter(student__user=user).exists()
 
         return False

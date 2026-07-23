@@ -12,11 +12,13 @@ from django.shortcuts import get_object_or_404
 from apps.academic.models import AttendanceSession, AttendanceRecord, Enrollment
 from apps.academic.models.class_model import Class as ClassModel
 from apps.academic.permissions.attendance import CanManageAttendance
+from apps.academic.permissions.mixins import check_enrollment_read_access
 from apps.accounts.permissions.roles import (
     get_active_branch_ids,
     user_is_branch_manager,
     user_is_instructor,
     user_is_secretary,
+    user_is_student,
     user_is_super_admin,
 )
 from apps.academic.serializers import (
@@ -60,6 +62,8 @@ class SessionListCreateView(generics.ListCreateAPIView):
             pass
         elif user_is_instructor(user):
             instructor = user
+        elif user_is_student(user):
+            branch_ids = None
         else:
             branch_ids = get_active_branch_ids(user)
 
@@ -84,13 +88,16 @@ class SessionListCreateView(generics.ListCreateAPIView):
             except ValueError:
                 raise ValidationError("Invalid date_to format. Use YYYY-MM-DD.")
 
-        return list_sessions(
+        qs = list_sessions(
             enrolled_class=enrolled_class,
             date_from=date_from,
             date_to=date_to,
             branch_ids=branch_ids,
             instructor=instructor,
         )
+        if user_is_student(user):
+            qs = qs.filter(enrolled_class__enrollments__student__user=user).distinct()
+        return qs
 
     def perform_create(self, serializer):
         enrolled_class = get_object_or_404(ClassModel, pk=serializer.validated_data["enrolled_class"])
@@ -206,6 +213,7 @@ class EnrollmentAttendanceHistoryView(generics.GenericAPIView):
 
     def get(self, request, enrollment_pk):
         enrollment = get_object_or_404(Enrollment, pk=enrollment_pk)
+        check_enrollment_read_access(request.user, enrollment)
         records = get_enrollment_attendance_history(enrollment)
         serializer = self.get_serializer(records, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -221,6 +229,7 @@ class EnrollmentAttendanceSummaryView(generics.GenericAPIView):
 
     def get(self, request, enrollment_pk):
         enrollment = get_object_or_404(Enrollment, pk=enrollment_pk)
+        check_enrollment_read_access(request.user, enrollment)
         summary = get_attendance_summary(enrollment)
         serializer = self.get_serializer(summary)
         return Response(serializer.data, status=status.HTTP_200_OK)

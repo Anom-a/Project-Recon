@@ -5,7 +5,9 @@ from rest_framework.exceptions import PermissionDenied
 from apps.accounts.permissions.roles import (
     get_active_branch_ids,
     user_is_branch_manager,
+    user_is_instructor,
     user_is_secretary,
+    user_is_student,
     user_is_super_admin,
 )
 
@@ -47,3 +49,17 @@ def check_enrollment_branch_access(user, enrollment):
         PermissionDenied: If user lacks access to the enrollment's branch.
     """
     check_branch_access(user, enrollment.enrolled_class.branch_id)
+
+
+def user_owns_enrollment(user, enrollment) -> bool:
+    if not user_is_student(user):
+        return False
+    return getattr(enrollment.student, "user_id", None) == user.id
+
+
+def check_enrollment_read_access(user, enrollment):
+    if user_owns_enrollment(user, enrollment):
+        return
+    if user_is_instructor(user) and enrollment.enrolled_class.instructor_id == user.id:
+        return
+    check_enrollment_branch_access(user, enrollment)

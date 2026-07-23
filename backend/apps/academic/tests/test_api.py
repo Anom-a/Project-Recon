@@ -1736,6 +1736,32 @@ class AttendanceAPITest(AcademicAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["present"], 1)
 
+    def test_student_can_read_own_attendance_sessions(self):
+        attendance_service.create_session(
+            actor=self.instructor, enrolled_class=self.klass, session_date=date.today(),
+        )
+        self._authenticate(self.student_user)
+        response = self.client.get(
+            f"{self.base_url}/attendance/sessions/?enrolled_class={self.klass.pk}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+
+    def test_student_can_read_own_attendance_summary(self):
+        session = attendance_service.create_session(
+            actor=self.instructor, enrolled_class=self.klass, session_date=date.today(),
+        )
+        attendance_service.record_attendance(
+            actor=self.instructor, session=session,
+            enrollment=self.enrollment, status=AttendanceStatus.PRESENT,
+        )
+        self._authenticate(self.student_user)
+        response = self.client.get(
+            f"{self.base_url}/attendance/enrollments/{self.enrollment.pk}/summary/",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["present"], 1)
+
 
 class ProgressAPITest(AcademicAPITestCase):
     def setUp(self):
@@ -1982,10 +2008,55 @@ class ProgressAPITest(AcademicAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["completed"], 1)
 
-    def test_instructor_cannot_access_as_student_returns_403(self):
-        self.authenticate_as_student()
+    def test_student_can_read_own_milestones(self):
+        progress_service.create_milestone(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="Shared Student Milestone", scope_class=None,
+        )
+        progress_service.create_milestone(
+            actor=self.instructor, sub_program=self.sub_program,
+            title="Class Student Milestone", scope_class=self.klass,
+        )
+        self._authenticate(self.student_user)
         response = self.client.get(
-            f"{self.base_url}/learning-milestones/"
+            f"{self.base_url}/learning-milestones/?scope_class={self.klass.pk}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            {row["title"] for row in response.json()},
+            {"Shared Student Milestone", "Class Student Milestone"},
+        )
+
+    def test_student_can_read_own_progress_history(self):
+        milestone = progress_service.create_milestone(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="Student History", scope_class=None,
+        )
+        progress_service.record_progress(
+            actor=self.instructor, enrollment=self.enrollment,
+            milestone=milestone, status=ProgressStatus.COMPLETED,
+        )
+        self._authenticate(self.student_user)
+        response = self.client.get(
+            f"{self.base_url}/student-progress/enrollments/{self.enrollment.pk}/history/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+
+    def test_student_cannot_record_progress(self):
+        milestone = progress_service.create_milestone(
+            actor=self.super_admin, sub_program=self.sub_program,
+            title="No Student Writes", scope_class=None,
+        )
+        self._authenticate(self.student_user)
+        response = self.client.post(
+            f"{self.base_url}/student-progress/",
+            {
+                "enrollment": str(self.enrollment.pk),
+                "milestone": str(milestone.pk),
+                "status": ProgressStatus.COMPLETED,
+            },
+            format="json",
         )
         self.assertEqual(response.status_code, 403)
 
