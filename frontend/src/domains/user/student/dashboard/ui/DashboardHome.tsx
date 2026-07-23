@@ -8,6 +8,7 @@ import type { UserProfile, StudentCertificate, Enrollment, StudentProgress } fro
 import {
   fetchMyEnrollmentsApi, fetchStudentCertificatesApi, fetchStudentProgressApi,
 } from '@/domains/learning/academics/api/academicApi';
+import { cacheStudentId } from '@/domains/user/student/api/studentContext';
 import { getUpcomingEvents } from '@/domains/competition/api/eventsApi';
 import { cmsPublicApi } from '@/domains/cms/public/api/cmsPublicApi';
 import EmptyState from '@/shared/ui/EmptyState';
@@ -22,6 +23,7 @@ export type HomeNavigateTarget = 'account' | 'store' | 'events' | 'announcements
 interface Props {
   currentUser: UserProfile;
   studentId: string | null;
+  initialEnrollments?: Enrollment[];
   onNavigate: (section: HomeNavigateTarget) => void;
 }
 
@@ -42,12 +44,16 @@ function statusLabel(value?: string | null) {
   return value ? value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : 'Not available';
 }
 
-export default function DashboardHome({ currentUser, studentId, onNavigate }: Props) {
+function normalizeStatus(value?: string | null) {
+  return String(value || '').trim().toUpperCase();
+}
+
+export default function DashboardHome({ currentUser, studentId, initialEnrollments = [], onNavigate }: Props) {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<{ id?: string; title: string; date: string }[]>([]);
   const [announcements, setAnnouncements] = useState<{ id?: string; title: string; date: string }[]>([]);
   const [certificates, setCertificates] = useState<StudentCertificate[]>([]);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>(initialEnrollments);
   const [progress, setProgress] = useState<StudentProgress[]>([]);
 
   const firstName = currentUser.name?.split(' ')[0] || 'Student';
@@ -56,12 +62,15 @@ export default function DashboardHome({ currentUser, studentId, onNavigate }: Pr
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const [newsRes, eventsRes, certs, enrollmentData] = await Promise.all([
+      const [newsRes, eventsRes, enrollmentData] = await Promise.all([
         cmsPublicApi.getNews({ limit: '3' }).catch(() => ({ results: [] })),
         getUpcomingEvents().catch(() => []),
-        studentId ? fetchStudentCertificatesApi(studentId).catch(() => []) : Promise.resolve([]),
-        studentId ? fetchMyEnrollmentsApi().catch(() => []) : Promise.resolve([]),
+        initialEnrollments.length ? Promise.resolve(initialEnrollments) : fetchMyEnrollmentsApi().catch(() => []),
       ]);
+      if (cancelled) return;
+      const resolvedStudentId = studentId || enrollmentData.find(e => e.student)?.student || null;
+      if (resolvedStudentId) cacheStudentId(currentUser.email, resolvedStudentId);
+      const certs = resolvedStudentId ? await fetchStudentCertificatesApi(resolvedStudentId).catch(() => []) : [];
       if (cancelled) return;
       setAnnouncements((newsRes?.results || []).map(n => ({
         id: n.id, title: n.title, date: formatDate(n.created_at, { month: 'short', day: 'numeric' }),
@@ -71,17 +80,17 @@ export default function DashboardHome({ currentUser, studentId, onNavigate }: Pr
       })));
       setCertificates(certs);
       setEnrollments(enrollmentData);
-      const active = enrollmentData.filter(e => e.status === 'ACTIVE');
+      const active = enrollmentData.filter(e => normalizeStatus(e.status) === 'ACTIVE');
       const histories = await Promise.all(active.map(e => fetchStudentProgressApi(e.id).catch(() => [])));
       if (!cancelled) setProgress(histories.flat());
       if (!cancelled) setLoading(false);
     }
     load();
     return () => { cancelled = true; };
-  }, [studentId]);
+  }, [currentUser.email, initialEnrollments, studentId]);
 
-  const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
-  const paymentAttention = enrollments.filter(e => ['PENDING', 'UNPAID', 'PARTIALLY_PAID'].includes(String(e.payment_status))).length;
+  const activeEnrollments = enrollments.filter(e => normalizeStatus(e.status) === 'ACTIVE');
+  const paymentAttention = enrollments.filter(e => ['PENDING', 'UNPAID', 'PARTIALLY_PAID'].includes(normalizeStatus(e.payment_status))).length;
   const completion = useMemo(() => {
     if (!progress.length) return 0;
     return Math.round(progress.filter(p => p.status === 'COMPLETED').length / progress.length * 100);

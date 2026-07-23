@@ -333,7 +333,7 @@ export default function StudentDashboard({ currentUser, onLogout, onUserUpdate }
 
     switch (activeSection) {
       case 'home':
-        return <DashboardHome currentUser={currentUser} studentId={studentId} onNavigate={handleHomeNavigate} />;
+        return <DashboardHome currentUser={currentUser} studentId={studentId} initialEnrollments={myEnrollments} onNavigate={handleHomeNavigate} />;
       case 'academics':
         return <MyRegistrations studentId={studentId!} />;
       case 'progress':
