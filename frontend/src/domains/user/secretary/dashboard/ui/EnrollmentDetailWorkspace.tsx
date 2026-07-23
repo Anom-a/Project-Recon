@@ -678,7 +678,7 @@ export default function EnrollmentDetailWorkspace({
                       </div>
                       <div>
                         <MetaRow label="Payment date" value={formatDateTime(payment.payment_date)} />
-                        <MetaRow label="Recorded / verified by" value={payment.verified_by} />
+                        <MetaRow label="Recorded / verified by" value={payment.verified_by_name || payment.verified_by} />
                         <MetaRow label="Verified at" value={formatDateTime(payment.verified_at)} />
                         <MetaRow label="Notes" value={payment.verification_notes} />
                         <MetaRow label="Refund" value={String(payment.status) === 'REFUNDED' ? 'Refunded' : String(payment.status) === 'CANCELLED' ? 'Cancelled' : null} />

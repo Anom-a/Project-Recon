@@ -273,12 +273,15 @@ def approve_payment(actor, *, enrollment, verification_notes=""):
     enrollment_number = _generate_enrollment_number(branch_code, year)
 
     with transaction.atomic():
+        now = timezone.now()
         payment.status = PaymentStatus.PAID
         payment.verified_by = actor
-        payment.verified_at = timezone.now()
+        payment.verified_at = now
+        payment.payment_date = payment.payment_date or now
         payment.verification_notes = verification_notes
         payment.save(update_fields=[
-            "status", "verified_by", "verified_at", "verification_notes", "updated_at",
+            "status", "payment_date", "verified_by", "verified_at",
+            "verification_notes", "updated_at",
         ])
 
         enrollment.enrollment_number = enrollment_number

@@ -71,6 +71,7 @@ function EnrollmentGatePage({
 }) {
   const isRejected = enrollment?.status === 'REJECTED';
   const isUnavailable = !loading && !enrollment;
+  const isPending = enrollment?.status === 'PENDING_VERIFICATION';
   const Icon = loading ? Loader2 : isRejected || isUnavailable ? AlertCircle : Clock;
   const title = loading
     ? 'Checking enrollment status'
@@ -78,14 +79,18 @@ function EnrollmentGatePage({
       ? 'Enrollment Not Approved'
       : isUnavailable
         ? 'No Active Enrollment Found'
-        : 'Pending Verification';
+        : isPending
+          ? 'Pending Verification'
+          : 'Portal Access Unavailable';
   const message = loading
     ? 'Please wait while we confirm whether your portal is ready.'
     : isRejected
       ? 'Your enrollment was not approved. Please contact the administration for more information.'
       : isUnavailable
         ? 'We could not find an active enrollment for your account yet.'
-        : 'Your submission is being reviewed. You will get access to the student portal once your enrollment is approved.';
+        : isPending
+          ? 'Your submission is being reviewed. You will get access to the student portal once your enrollment is approved.'
+          : 'This enrollment status does not currently grant portal access. Please contact administration.';
 
   return (
     <div className="min-h-screen bg-brand-paper flex items-center justify-center px-4 py-10">
@@ -317,13 +322,13 @@ export default function StudentDashboard({ currentUser, onLogout, onUserUpdate }
 
   const navItems = buildNavItems();
   const activeLabel = navItems.find(n => n.id === activeSection)?.label ?? '';
-  const hasActiveEnrollment = myEnrollments.some(e => e.status === 'ACTIVE');
+  const hasPortalEnrollment = myEnrollments.some(e => e.status === 'ACTIVE' || e.status === 'COMPLETED');
   const blockingEnrollment =
     myEnrollments.find(e => e.status === 'PENDING_VERIFICATION')
     || myEnrollments.find(e => e.status === 'REJECTED')
     || myEnrollments[0];
 
-  if (enrollmentGateLoading || !hasActiveEnrollment) {
+  if (enrollmentGateLoading || !hasPortalEnrollment) {
     return (
       <EnrollmentGatePage
         enrollment={blockingEnrollment}

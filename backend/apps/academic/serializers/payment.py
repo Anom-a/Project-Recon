@@ -9,6 +9,7 @@ class EnrollmentPaymentSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source="enrollment.student.user.full_name", read_only=True)
     class_name = serializers.CharField(source="enrollment.enrolled_class.name", read_only=True)
     sub_program_name = serializers.CharField(source="enrollment.enrolled_class.sub_program.name", read_only=True)
+    verified_by_name = serializers.CharField(source="verified_by.full_name", read_only=True)
 
     class Meta:
         model = EnrollmentPayment
@@ -27,6 +28,7 @@ class EnrollmentPaymentSerializer(serializers.ModelSerializer):
             "payment_date",
             "status",
             "verified_by",
+            "verified_by_name",
             "verified_at",
             "verification_notes",
             "created_at",
@@ -35,13 +37,15 @@ class EnrollmentPaymentSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "created_at", "updated_at",
             "enrollment_id", "student_name", "class_name", "sub_program_name",
-            "verified_by", "verified_at",
+            "verified_by", "verified_by_name", "verified_at",
         ]
 
 
 class EnrollmentPaymentListSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source="enrollment.student.user.full_name", read_only=True)
     class_name = serializers.CharField(source="enrollment.enrolled_class.name", read_only=True)
+    sub_program_name = serializers.CharField(source="enrollment.enrolled_class.sub_program.name", read_only=True)
+    verified_by_name = serializers.CharField(source="verified_by.full_name", read_only=True)
 
     class Meta:
         model = EnrollmentPayment
@@ -50,6 +54,7 @@ class EnrollmentPaymentListSerializer(serializers.ModelSerializer):
             "enrollment",
             "student_name",
             "class_name",
+            "sub_program_name",
             "amount",
             "payment_method",
             "transaction_reference",
@@ -57,8 +62,12 @@ class EnrollmentPaymentListSerializer(serializers.ModelSerializer):
             "transfer_reference",
             "status",
             "payment_date",
+            "verified_by",
+            "verified_by_name",
+            "verified_at",
             "verification_notes",
             "created_at",
+            "updated_at",
         ]
 
 

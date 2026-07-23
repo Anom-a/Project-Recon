@@ -52,6 +52,7 @@ from apps.academic.services.enrollment_service import (
     verify_online_enrollment_email,
 )
 from apps.academic.services.payment_service import (
+    approve_payment,
     record_payment,
     reject_payment,
     set_under_review,
@@ -1101,6 +1102,34 @@ class PaymentServiceTest(TestCase):
                 self.instructor, enrollment=self.enrollment, amount=Decimal("500.00"),
                 payment_method=PaymentMethod.CASH,
             )
+
+    def test_approve_pending_online_payment(self):
+        self.enrollment.pending_code = _generate_pending_code(self.branch.code, date.today().year)
+        self.enrollment.verification_status = VerificationStatus.SUBMITTED
+        self.enrollment.save()
+        EnrollmentPayment.objects.create(
+            enrollment=self.enrollment, amount=Decimal("500.00"),
+            payment_method=PaymentMethod.BANK_TRANSFER,
+            transaction_reference="TXN-APPROVE",
+            status=PaymentStatus.PENDING,
+        )
+
+        payment = approve_payment(
+            self.instructor,
+            enrollment=self.enrollment,
+            verification_notes="Looks good",
+        )
+
+        self.assertEqual(payment.status, PaymentStatus.PAID)
+        self.assertEqual(payment.verification_notes, "Looks good")
+        self.assertEqual(payment.verified_by, self.instructor)
+        self.assertIsNotNone(payment.verified_at)
+        self.assertIsNotNone(payment.payment_date)
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.enrollment.status, EnrollmentStatus.ACTIVE)
+        self.assertEqual(self.enrollment.verification_status, VerificationStatus.VERIFIED)
+        self.assertIsNone(self.enrollment.pending_code)
+        self.assertIsNotNone(self.enrollment.enrollment_number)
 
     def test_set_under_review(self):
         self.enrollment.verification_status = VerificationStatus.SUBMITTED

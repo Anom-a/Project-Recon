@@ -724,7 +724,7 @@ export default function PaymentsPanel() {
                       <FieldItem label="Payment Date" value={formatDateTime(selectedPayment.payment_date)} />
                       <FieldItem label="Status" value={labelize(String(selectedPayment.status))} />
                       <FieldItem label="Refund Status" value={String(selectedPayment.status) === 'REFUNDED' ? 'Refunded' : String(selectedPayment.status) === 'CANCELLED' ? 'Cancelled' : 'Not Applicable'} />
-                      <FieldItem label="Recorded / Verified By" value={selectedPayment.verified_by} />
+                      <FieldItem label="Recorded / Verified By" value={selectedPayment.verified_by_name || selectedPayment.verified_by} />
                       <FieldItem label="Verified At" value={formatDateTime(selectedPayment.verified_at)} />
                       <FieldItem label="Verification Notes" value={selectedPayment.verification_notes} />
                       <FieldItem label="Created At" value={formatDateTime(selectedPayment.created_at)} />
