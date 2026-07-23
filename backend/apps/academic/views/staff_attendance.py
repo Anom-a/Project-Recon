@@ -116,12 +116,15 @@ class SessionListCreateView(BranchAccessMixin, generics.ListCreateAPIView):
         )
 
     def perform_create(self, serializer):
-        instance = create_session(
-            branch=serializer.validated_data["branch"],
-            date=serializer.validated_data["date"],
-            created_by=self.request.user,
-            notes=serializer.validated_data.get("notes", ""),
-        )
+        try:
+            instance = create_session(
+                branch=serializer.validated_data["branch"],
+                date=serializer.validated_data["date"],
+                created_by=self.request.user,
+                notes=serializer.validated_data.get("notes", ""),
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.message if hasattr(exc, "message") else str(exc))
         serializer.instance = instance
 
 

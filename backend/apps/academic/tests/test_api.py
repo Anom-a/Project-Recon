@@ -912,10 +912,19 @@ class StaffAttendanceAPITest(AcademicAPITestCase):
         self.authenticate_as_branch_manager()
         response = self.client.post(
             f"{self.base_url}/staff-attendance/sessions/",
-            {"branch": str(self.branch.pk), "date": str(date.today())},
+            {"branch": str(self.branch.pk), "date": str(date.today() + timedelta(days=1))},
             format="json",
         )
         self.assertEqual(response.status_code, 201)
+
+    def test_duplicate_session_date_returns_400(self):
+        self.authenticate_as_super_admin()
+        response = self.client.post(
+            f"{self.base_url}/staff-attendance/sessions/",
+            {"branch": str(self.branch.pk), "date": str(date.today())},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
 
     def test_create_session_as_student_returns_403(self):
         self.authenticate_as_student()

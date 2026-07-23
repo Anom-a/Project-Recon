@@ -629,11 +629,17 @@ class StaffAttendanceServiceTest(TestCase):
 
     def test_list_sessions_excludes_soft_deleted(self):
         session2 = create_session(
-            branch=self.branch, date=date.today(), created_by=self.manager,
+            branch=self.branch, date=date.today() + timedelta(days=1), created_by=self.manager,
         )
         soft_delete_session(self.manager, session2)
         sessions = list_sessions()
         self.assertEqual(sessions.count(), 1)
+
+    def test_duplicate_branch_date_raises(self):
+        with self.assertRaises(DjangoValidationError):
+            create_session(
+                branch=self.branch, date=date.today(), created_by=self.manager,
+            )
 
     def test_get_session_or_404_raises_for_soft_deleted(self):
         soft_delete_session(self.manager, self.session)

@@ -174,6 +174,17 @@ export default function StaffAttendanceManager({ currentUser }: Props) {
       if (editingSession) {
         await updateStaffAttendanceSessionApi(editingSession.id, payload);
       } else {
+        const existing = sessions.find(s =>
+          (s.branch || activeBranchId) === form.branch
+          && (s.date || s.session_date)?.slice(0, 10) === form.date
+        );
+        if (existing) {
+          setShowCreate(false);
+          setEditingSession(null);
+          setForm(defaultForm);
+          await openRecords(existing);
+          return;
+        }
         const created = await createStaffAttendanceSessionApi(payload);
         setShowCreate(false);
         setEditingSession(null);

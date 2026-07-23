@@ -13,6 +13,15 @@ STAFF_ATTENDANCE_ROLES = [Roles.INSTRUCTOR, Roles.SECRETARY]
 
 
 def create_session(*, branch, date, created_by, notes=""):
+    if StaffAttendanceSession.objects.filter(
+        branch=branch,
+        date=date,
+        is_active=True,
+    ).exists():
+        raise DjangoValidationError(
+            "Staff attendance session already exists for this branch and date."
+        )
+
     with transaction.atomic():
         session = StaffAttendanceSession(
             branch=branch,
