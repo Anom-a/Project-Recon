@@ -18,6 +18,7 @@ from apps.academic.serializers import (
     RejectionSerializer,
 )
 from apps.academic.services.payment_service import (
+    approve_payment,
     record_payment,
     reject_payment,
     set_under_review,
@@ -169,3 +170,30 @@ class EnrollmentRejectView(generics.GenericAPIView):
             raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
 
         return Response({"status": "REJECTED"}, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary="Approve Enrollment Payment (Online)",
+        tags=["Academic - Payments"],
+    ),
+)
+class EnrollmentApproveView(generics.GenericAPIView):
+    permission_classes = [IsAcademicStaff]
+    throttle_scope = "academic_staff"
+
+    def post(self, request, pk):
+        enrollment = get_object_or_404(Enrollment, pk=pk)
+        branch_ids = get_active_branch_ids(request.user)
+        if not user_is_super_admin(request.user) and enrollment.enrolled_class.branch_id not in branch_ids:
+            raise PermissionDenied("You do not have access to this enrollment.")
+        try:
+            payment = approve_payment(
+                request.user,
+                enrollment=enrollment,
+                verification_notes=request.data.get("verification_notes", ""),
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
+
+        return Response(EnrollmentPaymentSerializer(payment).data, status=status.HTTP_200_OK)
