@@ -37,15 +37,16 @@ function MetaRow({ label, value, mono }: { label: string; value: unknown; mono?:
   );
 }
 
-function Panel({ title, icon, children, className = '', actions }: {
+function Panel({ title, icon, children, className = '', actions, id }: {
   title: string;
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
   actions?: ReactNode;
+  id?: string;
 }) {
   return (
-    <section className={`rounded-2xl border border-slate-200/80 bg-white shadow-sm ${className}`}>
+    <section id={id} className={`rounded-2xl border border-slate-200/80 bg-white shadow-sm ${className}`}>
       <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-100">
         <div className="flex items-center gap-2.5 min-w-0">
           {icon && <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-500">{icon}</span>}
@@ -117,7 +118,7 @@ function paymentDetailLabel(s?: string | null): string {
 }
 
 function canRecordApproval(e: Enrollment) {
-  return e.status === 'PENDING_VERIFICATION' && !e.payment_status;
+  return e.status === 'PENDING_VERIFICATION' && !e.payment_status && !e.pending_code;
 }
 function canReject(e: Enrollment) {
   return e.status === 'PENDING_VERIFICATION' && Boolean(e.pending_code);
@@ -475,7 +476,7 @@ export default function EnrollmentDetailWorkspace({
                 )}
 
                 {/* PENDING_VERIFICATION edge cases */}
-                {e.status === 'PENDING_VERIFICATION' && !e.verification_status && (
+                {e.status === 'PENDING_VERIFICATION' && !e.verification_status && !canRecordApproval(e) && (
                   <div className="space-y-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approval Actions</p>
                     <div className="flex flex-wrap gap-2">
@@ -640,9 +641,7 @@ export default function EnrollmentDetailWorkspace({
                 title="Payment"
                 icon={<CreditCard className="h-4 w-4" />}
                 className={focusPayment ? 'ring-2 ring-blue-500/30' : ''}
-                actions={
-                  <button type="button" id="enrollment-payment-panel" className="sr-only" tabIndex={-1}>Payment</button>
-                }
+                id="enrollment-payment-panel"
               >
                 {!payment ? (
                   <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
