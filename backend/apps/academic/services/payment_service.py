@@ -276,17 +276,19 @@ def approve_payment(actor, *, enrollment, verification_notes=""):
         payment.status = PaymentStatus.PAID
         payment.verified_by = actor
         payment.verified_at = timezone.now()
-        payment.save(update_fields=["status", "verified_by", "verified_at", "updated_at"])
+        payment.verification_notes = verification_notes
+        payment.save(update_fields=[
+            "status", "verified_by", "verified_at", "verification_notes", "updated_at",
+        ])
 
         enrollment.enrollment_number = enrollment_number
         enrollment.status = EnrollmentStatus.ACTIVE
         enrollment.verification_status = VerificationStatus.VERIFIED
         enrollment.pending_code = None
-        enrollment.verification_notes = verification_notes
         enrollment.save(
             update_fields=[
                 "enrollment_number", "status", "verification_status",
-                "pending_code", "verification_notes", "updated_at",
+                "pending_code", "updated_at",
             ]
         )
 
