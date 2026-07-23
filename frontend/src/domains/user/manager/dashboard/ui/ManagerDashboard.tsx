@@ -86,6 +86,18 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'account', label: 'My Account', icon: User, group: 'system' },
 ];
 
+function enrollmentStatus(enrollment: Enrollment) {
+  return String(enrollment.status || '').trim().toUpperCase();
+}
+
+function isCurrentEnrollment(enrollment: Enrollment) {
+  return !['CANCELLED', 'REJECTED'].includes(enrollmentStatus(enrollment));
+}
+
+function isPendingEnrollment(enrollment: Enrollment) {
+  return enrollmentStatus(enrollment) === 'PENDING_VERIFICATION';
+}
+
 export default function ManagerDashboard({ currentUser, onLogout }: Props) {
   const [activeSection, setActiveSection] = useState<SectionId>(() =>
     resolveManagerSection(currentUser, 'overview'),
@@ -122,8 +134,8 @@ export default function ManagerDashboard({ currentUser, onLogout }: Props) {
 
   useEffect(() => { refreshData(); }, [refreshData]);
 
-  const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
-  const pendingPayments = enrollments.filter(e => e.status === 'PENDING_VERIFICATION');
+  const activeEnrollments = enrollments.filter(isCurrentEnrollment);
+  const pendingPayments = enrollments.filter(isPendingEnrollment);
   const paidPayments = payments.filter(p => p.status === 'PAID');
 
   const hubStats: ManagerHubStats = useMemo(() => ({
@@ -299,8 +311,8 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
         {[
           { label: 'Students', value: String(students.length), icon: GraduationCap, color: 'text-blue-500', bg: 'bg-blue-50' },
           { label: 'Revenue', value: formatMoneyCompact(payments.reduce((s, p) => s + (p.status === 'PAID' ? Number(p.amount) : 0), 0)), icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-          { label: 'Active Enrollments', value: String(enrollments.filter(e => e.status === 'ACTIVE').length), icon: UserCheck, color: 'text-amber-500', bg: 'bg-amber-50' },
-          { label: 'Pending Payments', value: String(enrollments.filter(e => e.status === 'PENDING_VERIFICATION').length), icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Active Enrollments', value: String(enrollments.filter(isCurrentEnrollment).length), icon: UserCheck, color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Pending Payments', value: String(enrollments.filter(isPendingEnrollment).length), icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
         ].map((m, i) => {
           const MIcon = m.icon;
           return (
@@ -355,13 +367,13 @@ function OverviewPage({ currentUser, onNavigate, students, enrollments, payments
                 Pending enrollments
               </h4>
               <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                {enrollments.filter(e => e.status === 'PENDING_VERIFICATION').length}
+                {enrollments.filter(isPendingEnrollment).length}
               </span>
             </div>
             <div className="flex flex-col gap-1.5">
-              {enrollments.filter(e => e.status === 'PENDING_VERIFICATION').length === 0 ? (
+              {enrollments.filter(isPendingEnrollment).length === 0 ? (
                 <p className="text-xs text-slate-400 py-4 text-center">No pending enrollments</p>
-              ) : enrollments.filter(e => e.status === 'PENDING_VERIFICATION').slice(0, 6).map((e, i) => (
+              ) : enrollments.filter(isPendingEnrollment).slice(0, 6).map((e, i) => (
                 <motion.div key={e.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
                   className="flex items-start gap-2 p-2 rounded-lg text-sm bg-brand-blue/[0.04] border border-brand-blue/10"
                 >
@@ -448,7 +460,7 @@ function ReportsSection() {
     }
   };
 
-  const activeEnrollments = enrollments.filter(e => e.status === 'ACTIVE');
+  const activeEnrollments = enrollments.filter(isCurrentEnrollment);
 
   const reports = [
     { key: 'student-report', title: 'Student Academic Report', desc: 'Full academic profile, enrollments, attendance, progress & certificates', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-50', requires: 'student' as const, download: () => selectedStudentId && doDownload('student-report', () => downloadStudentReportPdf(selectedStudentId)) },
