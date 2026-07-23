@@ -1,9 +1,9 @@
 from collections import Counter
 from datetime import date
+from html import escape
 from io import BytesIO
 
 from django.conf import settings
-from django.db.models import Count
 from django.shortcuts import get_object_or_404
 
 from reportlab.lib import colors
@@ -14,7 +14,6 @@ from reportlab.lib.units import cm, mm
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
-     NextPageTemplate,
     PageTemplate,
     Paragraph,
     Spacer,
@@ -37,6 +36,10 @@ from apps.academic.models import (
 )
 
 _INSTITUTE_NAME = getattr(settings, "REPORT_INSTITUTE_NAME", "Institute")
+_BLUE = colors.HexColor("#1a237e")
+_SLATE = colors.HexColor("#475569")
+_BORDER = colors.HexColor("#d9e2ef")
+_SOFT_BLUE = colors.HexColor("#eef4ff")
 
 
 # ---------------------------------------------------------------------------
@@ -84,6 +87,16 @@ def _label_style():
     )
 
 
+def _table_header_style():
+    return ParagraphStyle(
+        "TableHeader",
+        fontSize=8,
+        leading=10,
+        textColor=colors.white,
+        fontName="Helvetica-Bold",
+    )
+
+
 def _value_style():
     return ParagraphStyle(
         "Value",
@@ -93,34 +106,58 @@ def _value_style():
     )
 
 
+def _small_style():
+    return ParagraphStyle(
+        "Small",
+        fontSize=8,
+        leading=10,
+        fontName="Helvetica",
+        textColor=_SLATE,
+    )
+
+
+def _p(value, style=None):
+    return Paragraph(escape(str(value or "-")), style or _small_style())
+
+
+def _choice_label(value):
+    return str(value or "-").replace("_", " ").title()
+
+
+def _percent(part, total):
+    return f"{round((part / total) * 100)}%" if total else "0%"
+
+
 # ---------------------------------------------------------------------------
 # Table builder
 # ---------------------------------------------------------------------------
 
 def _make_table(data, headers, col_widths=None):
-    table_data = [headers] + data
+    table_data = [[_p(h, _table_header_style()) for h in headers]] + [
+        [_p(cell) for cell in row] for row in data
+    ]
     t = Table(table_data, colWidths=col_widths, repeatRows=1, hAlign="LEFT")
     t.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a237e")),
+                ("BACKGROUND", (0, 0), (-1, 0), _BLUE),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
                 ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
+                ("GRID", (0, 0), (-1, -1), 0.35, _BORDER),
                 (
                     "ROWBACKGROUNDS",
                     (0, 1),
                     (-1, -1),
-                    [colors.white, colors.HexColor("#f5f5f5")],
+                    [colors.white, colors.HexColor("#f8fafc")],
                 ),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
             ]
         )
     )
@@ -151,7 +188,7 @@ class _ReportDocTemplate(BaseDocTemplate):
         canvas.saveState()
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(colors.HexColor("#888888"))
-        w, h = A4
+        w, _ = doc.pagesize
         canvas.drawCentredString(
             w / 2,
             1 * cm,
@@ -220,6 +257,37 @@ def _build_pdf(title, sections, landscape_mode=False):
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
+
+
+def _summary_cards(cards, columns=4):
+    rows = []
+    for i in range(0, len(cards), columns):
+        chunk = cards[i:i + columns]
+        row = [
+            [
+                _p(label.upper(), _label_style()),
+                Paragraph(f"<b>{escape(str(value))}</b>", ParagraphStyle(
+                    "MetricValue", fontSize=16, leading=18, fontName="Helvetica-Bold",
+                    textColor=_BLUE,
+                )),
+                _p(detail, _small_style()),
+            ]
+            for label, value, detail in chunk
+        ]
+        rows.append(row + [""] * (columns - len(row)))
+
+    table = Table(rows, colWidths=[4.3 * cm] * columns, hAlign="LEFT")
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), _SOFT_BLUE),
+        ("BOX", (0, 0), (-1, -1), 0.4, _BORDER),
+        ("INNERGRID", (0, 0), (-1, -1), 0.4, _BORDER),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    return table
 
 
 # ---------------------------------------------------------------------------
@@ -532,6 +600,40 @@ def generate_class_report(class_id):
     )
 
     items = []
+    enrollments = list(
+        Enrollment.objects.filter(enrolled_class=klass)
+        .select_related("student__user", "payment")
+        .order_by("student__user__first_name", "student__user__last_name")
+    )
+    enrollment_ids = [e.id for e in enrollments]
+    attendance_records = AttendanceRecord.objects.filter(
+        enrollment_id__in=enrollment_ids
+    ).select_related("attendance_session", "enrollment__student__user")
+    attendance_counts = Counter(attendance_records.values_list("status", flat=True))
+    attendance_total = sum(attendance_counts.values())
+    sessions = list(
+        AttendanceSession.objects.filter(enrolled_class=klass)
+        .select_related("recorded_by")
+        .prefetch_related("records")
+        .order_by("-session_date")
+    )
+    progress_records = list(
+        StudentProgress.objects.filter(enrollment_id__in=enrollment_ids)
+        .select_related("milestone", "enrollment__student__user")
+        .order_by("enrollment__student__user__first_name", "milestone__title")
+    )
+    progress_counts = Counter(p.status for p in progress_records)
+
+    items.append(Paragraph("Executive Summary", _section_style()))
+    active_count = sum(1 for e in enrollments if e.status == EnrollmentStatus.ACTIVE)
+    items.append(_summary_cards([
+        ("Students", len(enrollments), f"{active_count} active enrollments"),
+        ("Attendance", _percent(attendance_counts.get(AttendanceStatus.PRESENT, 0), attendance_total), f"{attendance_total} total records"),
+        ("Sessions", len(sessions), "attendance sessions recorded"),
+        ("Progress", _percent(progress_counts.get(ProgressStatus.COMPLETED, 0), len(progress_records)), f"{len(progress_records)} milestone records"),
+    ]))
+    items.append(Spacer(1, 8))
+
     items.append(Paragraph("Class Information", _section_style()))
     info_data = [
         ("Name", klass.name),
@@ -539,8 +641,8 @@ def generate_class_report(class_id):
         ("Program", klass.sub_program.program.name),
         ("Branch", klass.branch.name),
         ("Instructor", f"{klass.instructor.first_name} {klass.instructor.last_name}".strip()),
-        ("Type", klass.class_type),
-        ("Period", klass.class_period or "-"),
+        ("Type", _choice_label(klass.class_type)),
+        ("Period", _choice_label(klass.class_period) if klass.class_period else "-"),
         ("Capacity", str(klass.capacity) if klass.capacity else "-"),
         ("Status", "Active" if klass.is_active else "Inactive"),
     ]
@@ -550,7 +652,7 @@ def generate_class_report(class_id):
         info_data.append(("End Date", klass.end_date.strftime("%Y-%m-%d")))
 
     table_data = [[Paragraph(k, _label_style()), Paragraph(v, _value_style())] for k, v in info_data]
-    t = Table(table_data, colWidths=[3.5 * cm, 10 * cm], hAlign="LEFT")
+    t = Table(table_data, colWidths=[4 * cm, 13 * cm], hAlign="LEFT")
     t.setStyle(
         TableStyle(
             [
@@ -565,50 +667,106 @@ def generate_class_report(class_id):
     items.append(Spacer(1, 6))
 
     # Enrolled students
-    enrollments = list(
-        Enrollment.objects.filter(enrolled_class=klass)
-        .select_related("student__user")
-        .order_by("student__user__first_name")
-    )
     if enrollments:
         items.append(Paragraph(f"Enrolled Students ({len(enrollments)})", _section_style()))
-        headers = ["#", "Student Name", "Email", "Status"]
+        headers = ["#", "Student Name", "Email", "Enrollment", "Payment", "Progress"]
         rows = []
         for i, e in enumerate(enrollments, 1):
+            payment = getattr(e, "payment", None)
+            student_progress = [p for p in progress_records if p.enrollment_id == e.id]
+            done = sum(1 for p in student_progress if p.status == ProgressStatus.COMPLETED)
             rows.append(
                 [
                     str(i),
                     f"{e.student.user.first_name} {e.student.user.last_name}".strip(),
                     e.student.user.email or "-",
-                    e.status,
+                    _choice_label(e.status),
+                    _choice_label(payment.status) if payment else "Not Recorded",
+                    f"{done}/{len(student_progress)} completed" if student_progress else "No milestones",
                 ]
             )
-        items.append(_make_table(rows, headers))
+        items.append(_make_table(rows, headers, [0.8 * cm, 4 * cm, 6 * cm, 3 * cm, 3 * cm, 3.2 * cm]))
+        items.append(Spacer(1, 6))
+    else:
+        items.append(Paragraph("No students are currently enrolled in this class.", _body_style()))
+
+    if attendance_total:
+        items.append(Paragraph("Attendance Summary", _section_style()))
+        rows = [[
+            str(attendance_counts.get(AttendanceStatus.PRESENT, 0)),
+            str(attendance_counts.get(AttendanceStatus.ABSENT, 0)),
+            str(attendance_counts.get(AttendanceStatus.LATE, 0)),
+            str(attendance_counts.get(AttendanceStatus.EXCUSED, 0)),
+            str(attendance_total),
+            _percent(attendance_counts.get(AttendanceStatus.PRESENT, 0), attendance_total),
+        ]]
+        items.append(_make_table(rows, ["Present", "Absent", "Late", "Excused", "Total", "Attendance Rate"]))
         items.append(Spacer(1, 6))
 
-    # Attendance sessions
-    sessions = AttendanceSession.objects.filter(enrolled_class=klass).annotate(
-        record_count=Count("records")
-    ).order_by("-session_date")
-    if sessions.exists():
+    if sessions:
         items.append(Paragraph("Attendance Sessions", _section_style()))
-        headers = ["Date", "Topic", "Recorded By", "Records"]
+        headers = ["Date", "Topic", "Recorded By", "Present", "Absent", "Late", "Excused", "Rate"]
         rows = []
         for s in sessions:
-            record_count = s.record_count
+            counts = Counter(record.status for record in s.records.all())
+            total = sum(counts.values())
             recorder = f"{s.recorded_by.first_name} {s.recorded_by.last_name}".strip() or str(s.recorded_by.email)
             rows.append(
                 [
                     s.session_date.strftime("%Y-%m-%d") if s.session_date else "-",
                     s.topic or "-",
                     recorder,
-                    str(record_count),
+                    str(counts.get(AttendanceStatus.PRESENT, 0)),
+                    str(counts.get(AttendanceStatus.ABSENT, 0)),
+                    str(counts.get(AttendanceStatus.LATE, 0)),
+                    str(counts.get(AttendanceStatus.EXCUSED, 0)),
+                    _percent(counts.get(AttendanceStatus.PRESENT, 0), total),
                 ]
             )
-        items.append(_make_table(rows, headers))
+        items.append(_make_table(rows, headers, [2.4 * cm, 4 * cm, 4 * cm, 2 * cm, 2 * cm, 1.8 * cm, 1.9 * cm, 2 * cm]))
+        items.append(Spacer(1, 6))
+    else:
+        items.append(Paragraph("No attendance sessions have been recorded yet.", _body_style()))
+
+    items.append(Paragraph("Learning Progress", _section_style()))
+    if progress_records:
+        items.append(_summary_cards([
+            ("Completed", progress_counts.get(ProgressStatus.COMPLETED, 0), "finished milestone records"),
+            ("In Progress", progress_counts.get(ProgressStatus.IN_PROGRESS, 0), "currently underway"),
+            ("Not Started", progress_counts.get(ProgressStatus.NOT_STARTED, 0), "waiting to begin"),
+            ("Completion", _percent(progress_counts.get(ProgressStatus.COMPLETED, 0), len(progress_records)), "overall milestone rate"),
+        ]))
+        items.append(Spacer(1, 6))
+        rows = []
+        for p in progress_records:
+            student_name = f"{p.enrollment.student.user.first_name} {p.enrollment.student.user.last_name}".strip()
+            rows.append([
+                student_name,
+                p.milestone.title,
+                _choice_label(p.status),
+                p.completed_at.strftime("%Y-%m-%d") if p.completed_at else "-",
+                p.remarks or "-",
+            ])
+        items.append(_make_table(rows, ["Student", "Milestone", "Status", "Completed", "Remarks"], [4 * cm, 5 * cm, 3 * cm, 2.5 * cm, 5.5 * cm]))
+    else:
+        items.append(Paragraph("No milestone progress records have been created yet.", _body_style()))
+
+    items.append(Spacer(1, 14))
+    items.append(Paragraph("Prepared for instructor review. Please verify attendance corrections and milestone updates before sharing externally.", _body_style()))
+    items.append(Spacer(1, 18))
+    signature = Table(
+        [[_p("Instructor Signature"), _p("Academic Office")], ["", ""]],
+        colWidths=[8 * cm, 8 * cm],
+    )
+    signature.setStyle(TableStyle([
+        ("LINEABOVE", (0, 1), (-1, 1), 0.5, _SLATE),
+        ("TOPPADDING", (0, 0), (-1, -1), 12),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    items.append(signature)
 
     sections = [items]
-    return _build_pdf(f"Class Report \u2014 {klass.name}", sections)
+    return _build_pdf(f"Class Report - {klass.name}", sections, landscape_mode=True)
 
 
 def generate_sub_program_report(sub_program_id, branch_ids=None):
