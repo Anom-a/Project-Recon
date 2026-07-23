@@ -523,6 +523,55 @@ class ClassAPITest(AcademicAPITestCase):
         response = self.client.get(f"{self.base_url}/classes/")
         self.assertEqual(response.status_code, 200)
 
+    def test_instructor_lists_only_assigned_classes(self):
+        user_service.activate_user(self.instructor)
+        self.instructor.is_email_verified = True
+        self.instructor.save()
+        assigned = class_service.create_class(
+            sub_program=self.sub_program,
+            branch=self.branch,
+            instructor=self.instructor,
+            name="Python Group A",
+            class_type=ClassType.GROUP,
+            class_period=ClassPeriod.FULL_DAY,
+            capacity=20,
+        )
+        other_instructor = user_service.create_staff_user(
+            "other-instructor@test.com", "Other", "Instructor", self.password, self.branch,
+        )
+        class_service.create_class(
+            sub_program=self.sub_program,
+            branch=self.branch,
+            instructor=other_instructor,
+            name="Python Group B",
+            class_type=ClassType.GROUP,
+            class_period=ClassPeriod.FULL_DAY,
+            capacity=20,
+        )
+        self._authenticate(self.instructor)
+
+        response = self.client.get(f"{self.base_url}/classes/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["id"] for row in response.json()], [str(assigned.pk)])
+
+    def test_instructor_cannot_create_class(self):
+        self._authenticate(self.instructor)
+        response = self.client.post(
+            f"{self.base_url}/classes/",
+            {
+                "sub_program": str(self.sub_program.pk),
+                "branch": str(self.branch.pk),
+                "instructor": str(self.instructor.pk),
+                "name": "Unauthorized",
+                "class_type": ClassType.GROUP,
+                "class_period": ClassPeriod.FULL_DAY,
+                "capacity": 20,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
     def test_activate_class(self):
         self.authenticate_as_super_admin()
         klass = class_service.create_class(
@@ -990,6 +1039,52 @@ class EnrollmentAPITest(AcademicAPITestCase):
         self.authenticate_as_super_admin()
         response = self.client.get(f"{self.base_url}/enrollments/")
         self.assertEqual(response.status_code, 200)
+
+    def test_list_enrollments_as_instructor_scoped_to_own_classes(self):
+        user_service.activate_user(self.instructor)
+        self.instructor.is_email_verified = True
+        self.instructor.save()
+        own = enroll_student(None, student=self.student_model, enrolled_class=self.group_class)
+        other_instructor = user_service.create_staff_user(
+            "enrollment-other-instructor@test.com",
+            "Other",
+            "Instructor",
+            self.password,
+            self.branch,
+        )
+        other_class = class_service.create_class(
+            sub_program=self.sub_program,
+            branch=self.branch,
+            instructor=other_instructor,
+            name="Other Instructor Class",
+            class_type=ClassType.INDIVIDUAL,
+        )
+        other_user = user_service.create_student_user(
+            "other-student@test.com", "Other", "Student", self.password, self.branch,
+        )
+        user_service.activate_user(other_user)
+        other_user.is_email_verified = True
+        other_user.save()
+        other_student = Student.objects.create(
+            user=other_user, branch=self.branch, date_joined=date.today(),
+        )
+        enroll_student(None, student=other_student, enrolled_class=other_class)
+        self._authenticate(self.instructor)
+
+        response = self.client.get(f"{self.base_url}/enrollments/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 1)
+        self.assertEqual(response.json()["results"][0]["id"], str(own.pk))
+
+    def test_create_enrollment_as_instructor_returns_403(self):
+        self._authenticate(self.instructor)
+        data = {
+            "student": str(self.student_model.pk),
+            "enrolled_class": str(self.individual_class.pk),
+        }
+        response = self.client.post(f"{self.base_url}/enrollments/", data, format="json")
+        self.assertEqual(response.status_code, 403)
 
     def test_student_lists_own_enrollments(self):
         enrollment = enroll_student(None, student=self.student_model, enrolled_class=self.individual_class)

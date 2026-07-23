@@ -6,6 +6,7 @@ from rest_framework import filters, generics, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -39,8 +40,33 @@ from apps.academic.services.enrollment_service import (
     get_enrollment_or_404,
     verify_online_enrollment_email,
 )
-from apps.accounts.permissions.roles import get_active_branch_ids, user_is_super_admin
+from apps.accounts.permissions.roles import (
+    get_active_branch_ids,
+    user_is_branch_manager,
+    user_is_instructor,
+    user_is_secretary,
+    user_is_super_admin,
+)
 from apps.accounts.services.branch_service import list_available_branches_for_enrollment
+
+
+class CanListCreateEnrollment(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if request.method in SAFE_METHODS:
+            return (
+                user_is_super_admin(user)
+                or user_is_branch_manager(user)
+                or user_is_secretary(user)
+                or user_is_instructor(user)
+            )
+        return (
+            user_is_super_admin(user)
+            or user_is_branch_manager(user)
+            or user_is_secretary(user)
+        )
 
 
 @extend_schema_view(
@@ -48,7 +74,7 @@ from apps.accounts.services.branch_service import list_available_branches_for_en
     post=extend_schema(summary="Enroll Student (Staff)", tags=["Academic - Enrollment"]),
 )
 class EnrollmentListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAcademicStaff]
+    permission_classes = [CanListCreateEnrollment]
     pagination_class = EnrollmentPagination
     throttle_scope = "academic_staff"
 
@@ -68,6 +94,9 @@ class EnrollmentListCreateView(generics.ListCreateAPIView):
     ordering = ["-enrolled_at"]
 
     def get_queryset(self):
+        if user_is_instructor(self.request.user):
+            return list_enrollments().filter(enrolled_class__instructor=self.request.user)
+
         branch_ids = None
         if not user_is_super_admin(self.request.user):
             branch_ids = get_active_branch_ids(self.request.user)
