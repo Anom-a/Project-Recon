@@ -246,3 +246,84 @@ def set_under_review(actor, *, enrollment):
     )
 
     return enrollment
+
+
+def approve_payment(actor, *, enrollment, verification_notes=""):
+    enrollment = Enrollment.objects.select_related(
+        "enrolled_class__sub_program", "enrolled_class__branch"
+    ).get(pk=enrollment.pk)
+
+    if enrollment.status != EnrollmentStatus.PENDING_VERIFICATION:
+        raise ValidationError(
+            "Only enrollments pending verification can be approved."
+        )
+
+    try:
+        payment = enrollment.payment
+    except EnrollmentPayment.DoesNotExist:
+        raise ValidationError("No payment record found for this enrollment.")
+
+    if payment.status != PaymentStatus.PENDING:
+        raise ValidationError("Only pending payments can be approved.")
+
+    branch_code = enrollment.enrolled_class.branch.code if hasattr(
+        enrollment.enrolled_class.branch, "code"
+    ) else "GEN"
+    year = timezone.now().year
+    enrollment_number = _generate_enrollment_number(branch_code, year)
+
+    with transaction.atomic():
+        payment.status = PaymentStatus.PAID
+        payment.verified_by = actor
+        payment.verified_at = timezone.now()
+        payment.save(update_fields=["status", "verified_by", "verified_at", "updated_at"])
+
+        enrollment.enrollment_number = enrollment_number
+        enrollment.status = EnrollmentStatus.ACTIVE
+        enrollment.verification_status = VerificationStatus.VERIFIED
+        enrollment.pending_code = None
+        enrollment.verification_notes = verification_notes
+        enrollment.save(
+            update_fields=[
+                "enrollment_number", "status", "verification_status",
+                "pending_code", "verification_notes", "updated_at",
+            ]
+        )
+
+    log_action(
+        actor=actor,
+        action="payment.approved",
+        resource_type="EnrollmentPayment",
+        resource_id=payment.id,
+        branch=enrollment.enrolled_class.branch,
+    )
+
+    recipient = enrollment.student.user.email
+    full_name = enrollment.student.user.full_name
+    class_name = enrollment.enrolled_class.name
+    branch_name = (
+        enrollment.enrolled_class.branch.name
+        if hasattr(enrollment.enrolled_class.branch, "name") else str(enrollment.enrolled_class.branch)
+    )
+    branch_address = (
+        enrollment.enrolled_class.branch.address
+        if hasattr(enrollment.enrolled_class.branch, "address") else ""
+    )
+    status_display = EnrollmentStatus.ACTIVE.label
+    subject = f"Enrollment Approved — {enrollment_number}"
+    body = (
+        f"Dear {full_name},\n\n"
+        f"Your enrollment has been approved!\n\n"
+        f"- Enrollment Number: {enrollment_number}\n"
+        f"- Class: {class_name}\n"
+        f"- Branch: {branch_name}\n"
+        f"- Status: {status_display}\n"
+        f"- Amount Paid: {payment.amount} ETB\n"
+        f"- Payment Method: {payment.payment_method}\n\n"
+        f"You can now attend your classes at {branch_name} ({branch_address}).\n\n"
+        f"Please keep your enrollment number for future reference.\n\n"
+        f"Welcome aboard!"
+    )
+    send_email(recipient, subject, body)
+
+    return payment

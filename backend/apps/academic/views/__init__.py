@@ -53,6 +53,7 @@ from apps.academic.views.payment import (
     EnrollmentVerificationQueueView,
     EnrollmentUnderReviewView,
     EnrollmentRejectView,
+    EnrollmentApproveView,
 )
 from apps.academic.views.attendance import (
     SessionListCreateView as AttendanceSessionListCreateView,

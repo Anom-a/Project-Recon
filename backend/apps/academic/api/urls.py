@@ -44,6 +44,7 @@ from apps.academic.views import (
     PaymentListView,
     EnrollmentVerificationQueueView,
     EnrollmentUnderReviewView,
+    EnrollmentApproveView,
     EnrollmentRejectView,
     ProgramActivateView,
     ProgramDeactivateView,
@@ -138,6 +139,7 @@ urlpatterns = [
     path("payments/verification-queue/", EnrollmentVerificationQueueView.as_view(), name="payment-verification-queue"),
     path("payments/<uuid:pk>/under-review/", EnrollmentUnderReviewView.as_view(), name="payment-under-review"),
     path("payments/<uuid:pk>/reject/", EnrollmentRejectView.as_view(), name="payment-reject"),
+    path("payments/<uuid:pk>/approve/", EnrollmentApproveView.as_view(), name="payment-approve"),
     # Learning Milestones
     path("learning-milestones/", MilestoneListCreateView.as_view(), name="milestone-list-create"),
     path("learning-milestones/<uuid:pk>/", MilestoneRetrieveUpdateView.as_view(), name="milestone-retrieve-update"),
