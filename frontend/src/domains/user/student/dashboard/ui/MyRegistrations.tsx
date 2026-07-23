@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Calendar, Download, CheckCircle, Clock, XCircle, AlertCircle, Eye, X, Loader2, Shield, ShieldOff, ArrowRight } from 'lucide-react';
-import { fetchEnrollmentsApi, cancelEnrollmentApi, fetchStudentCertificatesApi, downloadEnrollmentReportPdf, fetchBranchesApi, fetchClassesApi, requestTransferApi } from '@/domains/learning/academics/api/academicApi';
+import { fetchMyEnrollmentsApi, cancelEnrollmentApi, fetchStudentCertificatesApi, downloadEnrollmentReportPdf, fetchBranchesApi, fetchClassesApi, requestTransferApi } from '@/domains/learning/academics/api/academicApi';
 import type { Enrollment, StudentCertificate, AcademicClass } from '@/shared/types';
 import { isForbiddenError } from '@/shared/api/http';
 import { formatApiError } from '@/shared/utils/formatApiError';
@@ -45,7 +45,7 @@ export default function MyRegistrations({ studentId }: Props) {
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchEnrollmentsApi(studentId).then(setRegistrations).catch((err) => {
+    fetchMyEnrollmentsApi().then(setRegistrations).catch((err) => {
       if (isForbiddenError(err)) {
         setPermissionDenied(true);
         fetchStudentCertificatesApi(studentId).then(setCertificates).catch(() => {});
