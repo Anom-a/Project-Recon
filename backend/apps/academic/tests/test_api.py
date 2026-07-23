@@ -1107,6 +1107,41 @@ class EnrollmentAPITest(AcademicAPITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["status"], EnrollmentStatus.PENDING_VERIFICATION)
 
+    def test_secretary_can_admit_student_then_enroll_with_guardian(self):
+        self.authenticate_as_secretary()
+        admit_response = self.client.post(
+            f"{self.base_url}/admissions/",
+            {
+                "email": "secretary-admit-enroll@test.com",
+                "first_name": "Secretary",
+                "last_name": "Student",
+                "password": self.password,
+                "phone_number": "+251911000001",
+                "branch": str(self.branch.pk),
+                "guardian_name": "Parent User",
+                "guardian_phone": "+251911000002",
+                "guardian_email": "parent@test.com",
+            },
+            format="json",
+        )
+        self.assertEqual(admit_response.status_code, 201)
+        self.assertEqual(admit_response.json()["guardian_name"], "Parent User")
+
+        enroll_response = self.client.post(
+            f"{self.base_url}/enrollments/",
+            {
+                "student": admit_response.json()["id"],
+                "enrolled_class": str(self.individual_class.pk),
+                "remarks": "Created from secretary admission form.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(enroll_response.status_code, 201)
+        self.assertEqual(enroll_response.json()["status"], EnrollmentStatus.PENDING_VERIFICATION)
+        self.assertEqual(enroll_response.json()["student"], admit_response.json()["id"])
+        self.assertEqual(enroll_response.json()["enrolled_class"], str(self.individual_class.pk))
+
     def test_enroll_student_as_student_returns_403(self):
         self.authenticate_as_student()
         data = {
