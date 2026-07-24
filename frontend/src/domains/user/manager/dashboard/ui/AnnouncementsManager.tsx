@@ -345,9 +345,10 @@ export default function AnnouncementsManager() {
                   <ToggleSwitch checked={form.is_active} onChange={v => setForm(p => ({ ...p, is_active: v }))} label="Active" />
                 </div>
                 <div className="flex items-center justify-end gap-2 p-5 border-t border-slate-100">
+                  {error && <p className="mr-auto text-xs font-medium text-red-600" role="alert">{error}</p>}
                   <button onClick={() => setShowForm(false)}
                     className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Cancel</button>
-                  <button onClick={handleSave} disabled={saving || !form.title.trim() || !form.content.trim()}
+                  <button onClick={handleSave} disabled={saving}
                     className="bg-brand-blue text-white text-xs font-bold px-5 py-2 rounded-xl hover:bg-brand-blue-dark disabled:opacity-50 flex items-center gap-1.5 transition-colors shadow-sm">
                     {saving && <Loader2 className="w-3 h-3 animate-spin" />}
                     {saving ? 'Saving...' : <><Save className="w-3.5 h-3.5" /> {editing ? 'Update' : 'Create'}</>}

@@ -160,7 +160,10 @@ export default function AcademicCatalogManager({ role = 'Manager' }: { role?: 'A
 
   const saveProgram = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!programForm.name.trim()) return;
+    if (!programForm.name.trim()) {
+      setError('Program name is required.');
+      return;
+    }
     setSaving('program');
     setError('');
     const payload: AcademicProgramPayload = {

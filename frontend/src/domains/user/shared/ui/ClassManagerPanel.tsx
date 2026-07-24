@@ -85,6 +85,7 @@ export default function ClassManagerPanel({ currentUser }: Props) {
   const openCreate = () => {
     setEditing(null);
     setForm(defaultForm);
+    setError(null);
     setInstructorSearch('');
     setShowInstructorDropdown(false);
     setShowForm(true);
@@ -92,6 +93,7 @@ export default function ClassManagerPanel({ currentUser }: Props) {
 
   const openEdit = (c: AcademicClass) => {
     setEditing(c);
+    setError(null);
     const instId = (c as any).instructor || '';
     const instObj = instructors.find(i => i.id === instId);
     setInstructorSearch(instObj ? `${instObj.full_name} (${instObj.email})` : '');
@@ -111,7 +113,10 @@ export default function ClassManagerPanel({ currentUser }: Props) {
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.sub_program || !form.branch || !form.instructor) return;
+    if (!form.name.trim() || !form.sub_program || !form.branch || !form.instructor) {
+      setError('Class name, sub-program, branch, and instructor are required.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -448,8 +453,9 @@ export default function ClassManagerPanel({ currentUser }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center justify-end gap-2 p-4 border-t border-brand-border/50 bg-brand-surface/30">
+                  {error && <p className="mr-auto text-xs font-medium text-red-600" role="alert">{error}</p>}
                   <button onClick={() => setShowForm(false)} className="px-3 py-1.5 text-xs font-medium text-brand-muted hover:text-brand-ink hover:bg-white rounded-lg transition-colors">Cancel</button>
-                  <button onClick={handleSave} disabled={saving || !form.name || !form.sub_program || !form.branch || !form.instructor}
+                  <button onClick={handleSave} disabled={saving}
                     className="inline-flex items-center gap-1.5 bg-brand-blue text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-brand-blue-dark disabled:opacity-50 transition-all shadow-premium-sm">
                     {saving && <Loader2 className="w-3 h-3 animate-spin" />}
                     {saving ? 'Saving...' : editing ? 'Update Class' : 'Create Class'}

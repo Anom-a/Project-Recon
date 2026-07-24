@@ -1181,7 +1181,7 @@ export default function EventManager({ currentUser, onNavigate }: EventManagerPr
                   className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50">
                   Cancel
                 </button>
-                <button onClick={handleSave} disabled={saving || !form.title || !form.start_datetime || !form.end_datetime}
+                <button onClick={handleSave} disabled={saving}
                   className="px-6 py-2.5 text-xs font-black text-white bg-gradient-to-r from-brand-red to-brand-red-dark rounded-xl shadow-lg shadow-brand-red/25 hover:shadow-xl active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 min-w-[120px] justify-center">
                   {saving ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>

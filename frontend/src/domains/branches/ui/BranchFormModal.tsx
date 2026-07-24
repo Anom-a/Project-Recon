@@ -35,8 +35,10 @@ export function BranchFormModal({ isOpen, onClose, onSubmit, initial, managerUse
     manager_user_id: '',
   });
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
+    if (isOpen) setValidationError('');
     if (isOpen && initial) {
       setForm({
         name: initial.name, code: initial.code,
@@ -51,6 +53,10 @@ export function BranchFormModal({ isOpen, onClose, onSubmit, initial, managerUse
   }, [isOpen, initial]);
 
   const handleSubmit = async () => {
+    if (!form.name.trim() || !form.code.trim()) {
+      setValidationError('Name and code are required.');
+      return;
+    }
     setSaving(true);
     try { await onSubmit(form); onClose(); } finally { setSaving(false); }
   };
@@ -61,6 +67,7 @@ export function BranchFormModal({ isOpen, onClose, onSubmit, initial, managerUse
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={initial ? 'Edit Branch' : 'New Branch'}>
       <div className="space-y-3">
+        {validationError && <p className="rounded-lg bg-red-50 p-2 text-xs font-medium text-red-600" role="alert">{validationError}</p>}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Name" required><input value={form.name} onChange={update('name')} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. Addis Ababa Main" /></Field>
           <Field label="Code" required><input value={form.code} onChange={update('code')} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-blue/30" placeholder="e.g. AAM" /></Field>
@@ -88,7 +95,7 @@ export function BranchFormModal({ isOpen, onClose, onSubmit, initial, managerUse
         )}
         <div className="flex gap-2 pt-2">
           <button onClick={onClose} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-          <button onClick={handleSubmit} disabled={!form.name || !form.code || saving}
+          <button onClick={handleSubmit} disabled={saving}
             className="flex-1 px-3 py-2 bg-brand-red text-white rounded-lg text-sm font-semibold hover:bg-brand-red-dark disabled:opacity-50">
             {saving ? 'Saving...' : initial ? 'Save' : form.manager_user_id ? 'Create with Manager' : 'Create'}
           </button>
