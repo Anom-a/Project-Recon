@@ -18,6 +18,7 @@ import { SelectableCard, CardSkeleton } from './components/SelectableCard';
 import { formatApiError } from '@/shared/utils/formatApiError';
 import { formatMoneyCompact } from '@/shared/utils/formatCurrency';
 import { isApiError } from '@/shared/api/http';
+import { ErrorModal } from '@/shared/ui/ErrorModal';
 import { ReceiptUpload } from './components/ReceiptUpload';
 import { EnrollmentSuccess } from './components/EnrollmentSuccess';
 import { EnrollmentSummaryPanel } from './components/EnrollmentSummaryPanel';
@@ -101,6 +102,7 @@ export default function StudentRegistration() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
+  const [errorModalMessage, setErrorModalMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -263,12 +265,17 @@ export default function StudentRegistration() {
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setSubmitError('');
+    setErrorModalMessage('');
     if (!selectedSubProgramId || !classType || !selectedBranchId) {
-      setSubmitError('Please complete program, class type, and branch selection.');
+      const message = 'Please complete program, class type, and branch selection.';
+      setSubmitError(message);
+      setErrorModalMessage(message);
       return;
     }
     if (!validateClient()) {
-      setSubmitError('Please fix the highlighted fields and try again.');
+      const message = 'Please fix the highlighted fields and try again.';
+      setSubmitError(message);
+      setErrorModalMessage(message);
       return;
     }
 
@@ -315,10 +322,15 @@ export default function StudentRegistration() {
         }
         if (hasFieldError) {
           setFieldErrors((prev) => ({ ...prev, ...mapped }));
+          const message = formatApiError(err);
+          setSubmitError(message);
+          setErrorModalMessage(message);
           return;
         }
       }
-      setSubmitError(formatApiError(err));
+      const message = formatApiError(err);
+      setSubmitError(message);
+      setErrorModalMessage(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -339,6 +351,7 @@ export default function StudentRegistration() {
     setAttachment(null);
     setFieldErrors({});
     setSubmitError('');
+    setErrorModalMessage('');
     setCurrentStep(1);
   };
 
@@ -364,6 +377,12 @@ export default function StudentRegistration() {
 
   return (
     <div className="min-h-screen bg-brand-paper relative">
+      <ErrorModal
+        isOpen={Boolean(errorModalMessage)}
+        message={errorModalMessage}
+        onClose={() => setErrorModalMessage('')}
+        title="Registration Error"
+      />
       <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/[0.07] via-brand-paper to-slate-100/80 pointer-events-none" />
       <div className="absolute inset-0 opacity-[0.035] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(15 23 42) 1px, transparent 0)', backgroundSize: '28px 28px' }} />
 

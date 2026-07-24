@@ -1187,6 +1187,44 @@ class EnrollmentAPITest(AcademicAPITestCase):
         self.assertIsNotNone(pending_code)
         self.assertIn(self.individual_class.branch.code, pending_code)
 
+    def test_online_enrollment_duplicate_email_returns_field_error(self):
+        response = self.client.post(
+            f"{self.base_url}/enrollments/online/",
+            {
+                "enrolled_class": str(self.individual_class.pk),
+                "email": self.student_user.email,
+                "first_name": "Copy",
+                "last_name": "Student",
+                "password": "TestPass123!",
+                "payment_method": "CASH",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("email", response.json())
+
+    def test_online_enrollment_duplicate_phone_returns_field_error(self):
+        self.student_user.phone_number = "+251911000000"
+        self.student_user.save(update_fields=["phone_number"])
+
+        response = self.client.post(
+            f"{self.base_url}/enrollments/online/",
+            {
+                "enrolled_class": str(self.individual_class.pk),
+                "email": "new-phone@test.com",
+                "first_name": "Phone",
+                "last_name": "Copy",
+                "password": "TestPass123!",
+                "phone_number": "+251 911 000 000",
+                "payment_method": "CASH",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("phone_number", response.json())
+
     def test_online_enrollment_unauthenticated_missing_fields_raises(self):
         response = self.client.post(
             f"{self.base_url}/enrollments/online/",

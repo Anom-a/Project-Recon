@@ -15,6 +15,17 @@ from rest_framework.views import APIView
 class EnrollmentPagination(PageNumberPagination):
     page_size = 20
 
+
+def _validation_detail(exc):
+    if hasattr(exc, "message_dict"):
+        return exc.message_dict
+    if hasattr(exc, "messages"):
+        return exc.messages
+    if hasattr(exc, "message"):
+        return exc.message
+    return str(exc)
+
+
 from apps.academic.constants import ClassType
 from apps.academic.models import Student
 from apps.academic.models.class_model import Class as ClassModel
@@ -116,7 +127,7 @@ class EnrollmentListCreateView(generics.ListCreateAPIView):
                 **data,
             )
         except DjangoValidationError as exc:
-            raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
+            raise ValidationError(_validation_detail(exc))
         return Response(
             EnrollmentSerializer(enrollment).data,
             status=status.HTTP_201_CREATED,
@@ -157,7 +168,7 @@ class EnrollmentCancelView(generics.GenericAPIView):
         try:
             enrollment = cancel_enrollment(request.user, enrollment)
         except DjangoValidationError as exc:
-            raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
+            raise ValidationError(_validation_detail(exc))
         return Response(EnrollmentSerializer(enrollment).data, status=status.HTTP_200_OK)
 
 
@@ -175,7 +186,7 @@ class EnrollmentCompleteView(generics.GenericAPIView):
         try:
             enrollment = complete_enrollment(request.user, enrollment)
         except DjangoValidationError as exc:
-            raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
+            raise ValidationError(_validation_detail(exc))
         return Response(EnrollmentSerializer(enrollment).data, status=status.HTTP_200_OK)
 
 
@@ -245,7 +256,7 @@ class OnlineEnrollmentView(generics.GenericAPIView):
                 **data,
             )
         except DjangoValidationError as exc:
-            raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
+            raise ValidationError(_validation_detail(exc))
 
         return Response(
             EnrollmentSerializer(enrollment).data,
@@ -268,5 +279,5 @@ class OnlineEnrollmentVerifyEmailView(generics.GenericAPIView):
         try:
             verify_online_enrollment_email(enrollment, serializer.validated_data["otp"])
         except DjangoValidationError as exc:
-            raise ValidationError(exc.message if hasattr(exc, 'message') else str(exc))
+            raise ValidationError(_validation_detail(exc))
         return Response({"detail": "Email verified successfully."})

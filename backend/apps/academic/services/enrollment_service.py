@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -19,7 +19,9 @@ from apps.academic.models import (
     Student, StudentProgress,
 )
 from apps.academic.models.class_model import Class as ClassModel
+from apps.accounts.models import User
 from apps.accounts.services import user_service
+from apps.accounts.validators import normalize_phone_number
 from apps.shared.audit.services import log_action
 from apps.shared.email.services import send_email
 
@@ -29,6 +31,28 @@ CURRENT_ENROLLMENT_STATUSES = [
     EnrollmentStatus.ACTIVE,
     EnrollmentStatus.COMPLETED,
 ]
+
+
+def _duplicate_user_errors(*, email=None, phone_number=None):
+    errors = {}
+    normalized_email = email.strip().lower() if email else None
+    normalized_phone = normalize_phone_number(phone_number)
+
+    if normalized_email and User.objects.filter(email=normalized_email).exists():
+        errors["email"] = "An account with this email address already exists."
+    if normalized_phone and User.objects.filter(phone_number=normalized_phone).exists():
+        errors["phone_number"] = "An account with this phone number already exists."
+
+    return errors
+
+
+def _user_integrity_error_detail(exc):
+    message = str(exc).lower()
+    if "phone_number" in message:
+        return {"phone_number": "An account with this phone number already exists."}
+    if "email" in message:
+        return {"email": "An account with this email address already exists."}
+    return {"detail": "The submitted details conflict with an existing record."}
 
 
 def _generate_enrollment_number(branch_code: str, year: int) -> str:
@@ -173,6 +197,12 @@ def online_enrollment(
             raise ValidationError(
                 "Email, first name, last name, and password are required for new students."
             )
+        duplicate_errors = _duplicate_user_errors(
+            email=email,
+            phone_number=phone_number,
+        )
+        if duplicate_errors:
+            raise ValidationError(duplicate_errors)
 
     if payment_method != PaymentMethod.CASH:
         if not transaction_reference and not attachment:
@@ -195,61 +225,64 @@ def online_enrollment(
 
     amount = _resolve_fee(enrolled_class)
 
-    with transaction.atomic():
-        if not (user and user.is_authenticated):
-            created_user = user_service.create_student_user(
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                password=password,
-                branch=enrolled_class.branch,
-                assigned_by=None,
-            )
-            if phone_number:
-                created_user.phone_number = phone_number
-                created_user.save(update_fields=["phone_number"])
-            student = Student.objects.create(
-                user=created_user,
-                branch=enrolled_class.branch,
-                date_joined=date.today(),
-                guardian_name=guardian_name,
-                guardian_phone=guardian_phone,
-                guardian_email=guardian_email,
-            )
+    try:
+        with transaction.atomic():
+            if not (user and user.is_authenticated):
+                created_user = user_service.create_student_user(
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    password=password,
+                    branch=enrolled_class.branch,
+                    assigned_by=None,
+                )
+                if phone_number:
+                    created_user.phone_number = phone_number
+                    created_user.save(update_fields=["phone_number"])
+                student = Student.objects.create(
+                    user=created_user,
+                    branch=enrolled_class.branch,
+                    date_joined=date.today(),
+                    guardian_name=guardian_name,
+                    guardian_phone=guardian_phone,
+                    guardian_email=guardian_email,
+                )
 
-            existing = Enrollment.objects.filter(
+                existing = Enrollment.objects.filter(
+                    student=student,
+                    enrolled_class=enrolled_class,
+                    status__in=CURRENT_ENROLLMENT_STATUSES,
+                ).exists()
+                if existing:
+                    raise ValidationError("Already enrolled in this class.")
+
+            year = date.today().year
+            pending_code = _generate_pending_code(enrolled_class.branch.code, year)
+
+            enrollment = Enrollment(
                 student=student,
                 enrolled_class=enrolled_class,
-                status__in=CURRENT_ENROLLMENT_STATUSES,
-            ).exists()
-            if existing:
-                raise ValidationError("Already enrolled in this class.")
+                status=EnrollmentStatus.PENDING_VERIFICATION,
+                pending_code=pending_code,
+                verification_status=VerificationStatus.SUBMITTED,
+            )
+            enrollment.full_clean()
+            enrollment.save()
 
-        year = date.today().year
-        pending_code = _generate_pending_code(enrolled_class.branch.code, year)
-
-        enrollment = Enrollment(
-            student=student,
-            enrolled_class=enrolled_class,
-            status=EnrollmentStatus.PENDING_VERIFICATION,
-            pending_code=pending_code,
-            verification_status=VerificationStatus.SUBMITTED,
-        )
-        enrollment.full_clean()
-        enrollment.save()
-
-        payment = EnrollmentPayment(
-            enrollment=enrollment,
-            amount=amount,
-            payment_method=payment_method,
-            transaction_reference=transaction_reference,
-            bank_name=bank_name,
-            transfer_reference=transfer_reference,
-            attachment=attachment,
-            status=PaymentStatus.PENDING,
-        )
-        payment.full_clean()
-        payment.save()
+            payment = EnrollmentPayment(
+                enrollment=enrollment,
+                amount=amount,
+                payment_method=payment_method,
+                transaction_reference=transaction_reference,
+                bank_name=bank_name,
+                transfer_reference=transfer_reference,
+                attachment=attachment,
+                status=PaymentStatus.PENDING,
+            )
+            payment.full_clean()
+            payment.save()
+    except IntegrityError as exc:
+        raise ValidationError(_user_integrity_error_detail(exc)) from exc
 
     otp = get_random_string(length=6, allowed_chars="0123456789")
     enrollment.email_verification_otp = make_password(otp)
