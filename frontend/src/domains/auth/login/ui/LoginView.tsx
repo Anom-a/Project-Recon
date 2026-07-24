@@ -287,7 +287,7 @@ export default function LoginView({ onAuthSuccess, onNavigateHome, onNavigateReg
             </AnimatePresence>
 
             {/* Form */}
-            <form onSubmit={viewMode === 'email-verify' ? handleEmailVerifySubmit : handleFormSubmit} className="space-y-5">
+            <form noValidate onSubmit={viewMode === 'email-verify' ? handleEmailVerifySubmit : handleFormSubmit} className="space-y-5">
               <motion.div
                 variants={{
                   hidden: {},

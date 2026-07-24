@@ -231,7 +231,7 @@ export default function ForgotPasswordPage({ onNavigateHome, onNavigateLogin }: 
                   </button>
                 </motion.div>
               ) : (
-                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
                   {phase === 1 && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
