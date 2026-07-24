@@ -17,7 +17,7 @@ interface ProductGridProps {
 export function ProductGrid({
   products,
   loading,
-  skeletonCount = 8,
+  skeletonCount = 12,
   onView,
   onAdd,
   addingId,
@@ -28,7 +28,12 @@ export function ProductGrid({
 }: ProductGridProps) {
   if (loading) {
     return (
-      <div className={className || 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3 sm:gap-4'}>
+      <div
+        className={
+          className ||
+          'grid grid-cols-2 max-[420px]:grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5'
+        }
+      >
         {Array.from({ length: skeletonCount }).map((_, i) => (
           <ProductCardSkeleton key={i} />
         ))}
@@ -36,11 +41,32 @@ export function ProductGrid({
     );
   }
 
+  if (compact) {
+    return (
+      <div className={className || 'flex gap-4 overflow-x-auto pb-2 scrollbar-hide'}>
+        {products.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            onView={onView}
+            onAdd={onAdd}
+            adding={addingId === product.id}
+            added={addedId === product.id}
+            featured={featured}
+            className="min-w-[240px] shrink-0"
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className={className || (compact
-      ? 'flex gap-4 overflow-x-auto pb-2 scrollbar-hide'
-      : 'grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3 sm:gap-4'
-    )}>
+    <div
+      className={
+        className ||
+        'grid grid-cols-2 max-[420px]:grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5'
+      }
+    >
       {products.map((product) => (
         <ProductCard
           key={product.id}
@@ -50,7 +76,6 @@ export function ProductGrid({
           adding={addingId === product.id}
           added={addedId === product.id}
           featured={featured}
-          className={compact ? 'min-w-[240px] shrink-0' : undefined}
         />
       ))}
     </div>

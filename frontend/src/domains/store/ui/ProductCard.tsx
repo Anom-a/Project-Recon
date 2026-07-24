@@ -38,59 +38,56 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        'group flex flex-col bg-white rounded-[var(--radius-card)] border border-brand-border/80 overflow-hidden transition-all duration-200 h-full',
-        'hover:shadow-premium-md hover:border-brand-blue/20 hover:-translate-y-1',
-        featured && 'ring-1 ring-brand-blue/10',
+        'group flex flex-col bg-white rounded-[10px] border border-brand-border/70 overflow-hidden transition-all duration-200',
+        'hover:shadow-md hover:border-brand-blue-bright/20 hover:-translate-y-0.5',
         outOfStock && 'opacity-75',
         className,
       )}
     >
-      <button
-        type="button"
-        onClick={() => onView?.(product)}
-        className="relative aspect-[4/3] sm:aspect-[4/3] bg-brand-surface overflow-hidden text-left w-full"
-        aria-label={`View ${product.name}`}
-      >
-        {(() => {
-          const imgSrc = product.primary_image?.image || product.images?.[0]?.image;
-          const imgAlt = product.primary_image?.alt_text || product.images?.[0]?.alt_text || product.name;
-          return imgSrc ? (
-            <img
-              src={imgSrc}
-              alt={imgAlt}
-              loading="lazy"
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-            />
-          ) : null;
-        })()}
-        {!product.primary_image?.image && !product.images?.length && (
-          <div className="w-full h-full flex items-center justify-center">
-            <ImageOff className="w-8 h-8 text-brand-border" />
-          </div>
-        )}
+      <div className="relative bg-brand-surface/50">
+        <button
+          type="button"
+          onClick={() => onView?.(product)}
+          className="w-full h-[180px] p-4 flex items-center justify-center"
+          aria-label={`View ${product.name}`}
+        >
+          {(() => {
+            const imgSrc = product.primary_image?.image || product.images?.[0]?.image;
+            const imgAlt = product.primary_image?.alt_text || product.images?.[0]?.alt_text || product.name;
+            return imgSrc ? (
+              <img
+                src={imgSrc}
+                alt={imgAlt}
+                loading="lazy"
+                className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+              />
+            ) : null;
+          })()}
+          {!product.primary_image?.image && !product.images?.length && (
+            <div className="flex items-center justify-center">
+              <ImageOff className="w-8 h-8 text-brand-border" />
+            </div>
+          )}
+        </button>
 
-        {/* Top-left badges */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
-          {product.category_name && (
-            <span className="inline-flex items-center px-2 py-0.5 bg-white/95 text-[10px] font-semibold text-brand-muted rounded-md border border-brand-border/60 backdrop-blur-sm shadow-xs">
-              {product.category_name}
-            </span>
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {stockQuantity != null && !outOfStock && (
+            <StockBadge quantity={stockQuantity} />
           )}
-          {featured && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50/95 text-[10px] font-semibold text-amber-700 rounded-md border border-amber-200/60 backdrop-blur-sm">
-              <Star className="w-2.5 h-2.5" />
-              Featured
-            </span>
-          )}
-          {isNew && !featured && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50/95 text-[10px] font-semibold text-emerald-700 rounded-md border border-emerald-200/60 backdrop-blur-sm">
+          {isNew && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50/95 text-[10px] font-semibold text-emerald-700 rounded-full border border-emerald-200/60 backdrop-blur-sm">
               <Clock className="w-2.5 h-2.5" />
               New
             </span>
           )}
+          {featured && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50/95 text-[10px] font-semibold text-blue-700 rounded-full border border-blue-200/60 backdrop-blur-sm">
+              <Star className="w-2.5 h-2.5" />
+              Featured
+            </span>
+          )}
         </div>
 
-        {/* Out-of-stock overlay */}
         {outOfStock && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
             <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50/95 border border-red-200 rounded-lg text-[11px] font-bold text-red-600 shadow-sm">
@@ -99,40 +96,31 @@ export function ProductCard({
             </span>
           </div>
         )}
+      </div>
 
-        {stockQuantity != null && !outOfStock && (
-          <span className="absolute bottom-2.5 left-2.5">
-            <StockBadge quantity={stockQuantity} />
-          </span>
+      <div className="flex flex-1 flex-col p-3 pt-2.5 gap-1">
+        {product.category_name && (
+          <p className="text-[11px] font-medium text-brand-muted/70 uppercase tracking-wider truncate">
+            {product.category_name}
+          </p>
         )}
-
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.02] transition-colors rounded-[inherit]" />
-      </button>
-
-      <div className="flex flex-1 flex-col p-4 gap-2">
         <button type="button" onClick={() => onView?.(product)} className="text-left">
-          <h3 className="text-sm font-semibold text-brand-ink leading-snug line-clamp-2 group-hover:text-brand-blue transition-colors">
+          <h3 className="text-[15px] font-semibold text-brand-ink leading-snug line-clamp-2 group-hover:text-brand-blue-bright transition-colors">
             {product.name}
           </h3>
         </button>
 
-        {product.short_description && (
-          <p className="text-xs text-brand-muted line-clamp-2 leading-relaxed">
-            {product.short_description}
-          </p>
-        )}
-
-        <div className="mt-auto pt-2 flex items-center justify-between gap-2">
-          <PriceDisplay amount={product.price} size="sm" />
+        <div className="mt-auto pt-1.5 flex items-center justify-between gap-2">
+          <PriceDisplay amount={product.price} size="sm" className="text-[17px] font-bold text-brand-ink" />
           <div className="flex items-center gap-1">
             {onView && (
               <button
                 type="button"
                 onClick={() => onView(product)}
-                className="min-h-[44px] w-9 sm:min-h-[36px] sm:h-9 rounded-lg text-brand-muted hover:text-brand-blue hover:bg-brand-blue/5 border border-transparent hover:border-brand-blue/20 transition-all flex items-center justify-center"
+                className="w-8 h-8 rounded-lg text-brand-muted hover:text-brand-blue-bright hover:bg-brand-blue-bright/5 transition-colors flex items-center justify-center"
                 aria-label={`View ${product.name}`}
               >
-                <Eye className="w-4 h-4" />
+                <Eye className="w-3.5 h-3.5" />
               </button>
             )}
             {onAdd && (
@@ -141,19 +129,19 @@ export function ProductCard({
                 onClick={() => onAdd(product)}
                 disabled={adding || outOfStock}
                 className={cn(
-                  'min-h-[44px] sm:h-9 px-3 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5',
+                  'h-[34px] px-3 rounded-lg text-[11px] font-semibold transition-all inline-flex items-center gap-1.5',
                   added
                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : 'bg-brand-blue text-white hover:bg-brand-blue-dark shadow-sm shadow-brand-blue/15',
+                    : 'bg-brand-blue-bright text-white hover:bg-brand-blue-bright/90',
                   'disabled:opacity-50 disabled:cursor-not-allowed active:scale-95',
                 )}
               >
                 {adding ? (
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : added ? (
-                  <><Check className="w-3.5 h-3.5" /> Added</>
+                  <><Check className="w-3 h-3" /> Added</>
                 ) : (
-                  <><ShoppingCart className="w-3.5 h-3.5" /> Add</>
+                  <><ShoppingCart className="w-3 h-3" /> Add</>
                 )}
               </button>
             )}
@@ -166,15 +154,15 @@ export function ProductCard({
 
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-white rounded-[var(--radius-card)] border border-brand-border/60 overflow-hidden animate-pulse">
-      <div className="aspect-[4/3] bg-brand-surface" />
-      <div className="p-4 space-y-3">
-        <div className="h-3 bg-brand-surface rounded w-1/3" />
-        <div className="h-4 bg-brand-surface rounded w-full" />
-        <div className="h-4 bg-brand-surface rounded w-2/3" />
+    <div className="bg-white rounded-[10px] border border-brand-border/60 overflow-hidden animate-pulse">
+      <div className="h-[180px] bg-brand-surface/70" />
+      <div className="p-3 pt-2.5 space-y-2">
+        <div className="h-2.5 bg-brand-surface rounded w-1/4" />
+        <div className="h-3.5 bg-brand-surface rounded w-full" />
+        <div className="h-3.5 bg-brand-surface rounded w-2/3" />
         <div className="flex items-center justify-between pt-1">
-          <div className="h-5 bg-brand-surface rounded w-20" />
-          <div className="h-9 bg-brand-surface rounded w-20" />
+          <div className="h-4 bg-brand-surface rounded w-20" />
+          <div className="h-[34px] bg-brand-surface rounded w-[68px]" />
         </div>
       </div>
     </div>

@@ -1,6 +1,4 @@
-import {
-  Package, Cpu, Radio, Wrench, Shirt, BookOpen, Bot, ShoppingBag, LayoutGrid,
-} from 'lucide-react';
+import { Package, Cpu, Radio, Wrench, Shirt, BookOpen, Bot, ShoppingBag } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import type { ProductCategory } from '@/domains/store/model/types';
 
@@ -38,27 +36,25 @@ export function CategoryChips({
   className,
 }: CategoryChipsProps) {
   return (
-    <div className={cn('flex gap-2 min-w-max', className)}>
+    <div className={cn('flex gap-1.5 min-w-max', className)}>
       <button
         type="button"
         onClick={() => onSelect(undefined)}
         className={cn(
-          'flex items-center gap-2 shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium transition-all',
+          'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
           !selectedId
-            ? 'bg-brand-blue text-white shadow-sm shadow-brand-blue/20'
-            : 'bg-white text-brand-muted border border-brand-border hover:border-brand-blue/30 hover:text-brand-ink',
+            ? 'bg-brand-blue-bright text-white shadow-sm'
+            : 'bg-white text-brand-muted border border-brand-border hover:border-brand-blue-bright/40 hover:text-brand-ink',
         )}
       >
-        <LayoutGrid className="w-4 h-4" />
-        All products
+        All
       </button>
 
       {loading
         ? Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="shrink-0 h-11 w-28 bg-brand-surface rounded-xl animate-pulse" />
+            <div key={i} className="shrink-0 h-7 w-16 bg-brand-surface rounded-full animate-pulse" />
           ))
         : (Array.isArray(categories) ? categories : []).map((cat) => {
-            const Icon = getCategoryIcon(cat.name);
             const active = selectedId === cat.id;
             return (
               <button
@@ -66,19 +62,13 @@ export function CategoryChips({
                 type="button"
                 onClick={() => onSelect(cat.id)}
                 className={cn(
-                  'flex items-center gap-2 shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium transition-all',
+                  'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
                   active
-                    ? 'bg-brand-blue text-white shadow-sm shadow-brand-blue/20'
-                    : 'bg-white text-brand-muted border border-brand-border hover:border-brand-blue/30 hover:text-brand-ink',
+                    ? 'bg-brand-blue-bright text-white shadow-sm'
+                    : 'bg-white text-brand-muted border border-brand-border hover:border-brand-blue-bright/40 hover:text-brand-ink',
                 )}
               >
-                <Icon className="w-4 h-4" />
                 {cat.name}
-                {typeof cat.product_count === 'number' && (
-                  <span className={cn('text-[10px] tabular-nums', active ? 'text-white/80' : 'text-brand-muted')}>
-                    {cat.product_count}
-                  </span>
-                )}
               </button>
             );
           })}

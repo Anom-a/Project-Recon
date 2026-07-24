@@ -9,11 +9,11 @@ interface SectionHeaderProps {
 
 export function SectionHeader({ eyebrow, title, description, action }: SectionHeaderProps) {
   return (
-    <div className="flex items-end justify-between gap-4 mb-5">
+    <div className="flex items-end justify-between gap-4 mb-4">
       <div className="min-w-0">
-        {eyebrow && <p className="eyebrow mb-1">{eyebrow}</p>}
-        <h2 className="font-display text-lg sm:text-xl font-bold text-brand-ink">{title}</h2>
-        {description && <p className="text-xs sm:text-sm text-brand-muted mt-1">{description}</p>}
+        {eyebrow && <p className="text-[10px] font-bold uppercase tracking-widest text-brand-blue-bright mb-0.5">{eyebrow}</p>}
+        <h2 className="text-xl sm:text-2xl font-bold text-brand-ink">{title}</h2>
+        {description && <p className="text-xs sm:text-sm text-brand-muted mt-0.5">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

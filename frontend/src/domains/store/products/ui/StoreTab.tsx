@@ -6,9 +6,7 @@ import { listActiveCategories } from '@/domains/store/categories/api/categoriesA
 import type { Product, ProductCategory, BranchInventory } from '@/domains/store/model/types';
 import { getProductAvailability } from '@/domains/store/inventory/api/inventoryApi';
 import { Button } from '@/shared/ui/Button';
-import EmptyState from '@/shared/ui/EmptyState';
 import { CategoryChips } from '@/domains/store/ui/CategoryChips';
-import { CategoryShowcase } from '@/domains/store/ui/CategoryShowcase';
 import { ProductGrid } from '@/domains/store/ui/ProductGrid';
 import { SectionHeader } from '@/domains/store/ui/SectionHeader';
 import { SearchInput } from '@/domains/store/ui/SearchInput';
@@ -48,6 +46,7 @@ export default function StoreTab({ openCart }: StoreTabProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [sort, setSort] = useState<CatalogSort>('newest');
   const [page, setPage] = useState(1);
+  const [showAllProducts, setShowAllProducts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const [addedToCart, setAddedToCart] = useState<string | null>(null);
@@ -73,6 +72,7 @@ export default function StoreTab({ openCart }: StoreTabProps) {
 
   useEffect(() => {
     setPage(1);
+    setShowAllProducts(false);
   }, [debouncedSearch, selectedCategory, sort]);
 
   useEffect(() => {
@@ -115,7 +115,15 @@ export default function StoreTab({ openCart }: StoreTabProps) {
     [products, selectedCategory, debouncedSearch],
   );
 
-  const pageData = useMemo(() => paginate(filtered, page, PAGE_SIZE), [filtered, page]);
+  const featuredIds = useMemo(() => new Set(latestProducts.map((p) => p.id)), [latestProducts]);
+
+  const filteredExcludingFeatured = useMemo(() => {
+    if (showAllProducts || selectedCategory || debouncedSearch) return filtered;
+    const nonFeatured = filtered.filter((p) => !featuredIds.has(p.id));
+    return nonFeatured.length > 0 ? nonFeatured : filtered;
+  }, [filtered, featuredIds, selectedCategory, debouncedSearch, showAllProducts]);
+
+  const pageData = useMemo(() => paginate(filteredExcludingFeatured, page, PAGE_SIZE), [filteredExcludingFeatured, page]);
 
   const cartItemCount = useMemo(
     () => cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0,
@@ -220,33 +228,33 @@ export default function StoreTab({ openCart }: StoreTabProps) {
   return (
     <>
       {isHomeView ? (
-        <div className="min-h-screen bg-brand-paper overflow-x-hidden">
-          {/* ─── Sticky header (mobile) ─── */}
-          <div className="lg:hidden sticky top-0 z-30 bg-gradient-to-r from-brand-blue via-brand-blue-dark to-[#0a1028] shadow-lg shadow-black/10">
-            <div className="flex items-center gap-2 px-3 py-2.5">
-              <span className="flex items-center gap-1.5 text-white font-bold text-sm shrink-0">
-                <Store className="w-4 h-4 text-brand-cyan" />
+        <div className="min-h-screen bg-white">
+          {/* ─── Mobile sticky header ─── */}
+          <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-brand-border/70">
+            <div className="flex items-center gap-2 px-4 py-2.5">
+              <span className="flex items-center gap-1.5 text-brand-ink font-bold text-sm shrink-0">
+                <Store className="w-4 h-4 text-brand-blue-bright" />
                 Store
               </span>
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-muted/60 pointer-events-none" />
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products…"
-                  className="w-full pl-9 pr-3 h-9 rounded-xl bg-white/15 text-white text-sm placeholder:text-white/50 border border-white/10 focus:outline-none focus:bg-white/20 focus:border-white/30 transition-all"
+                  className="w-full pl-9 pr-3 h-9 rounded-lg bg-brand-surface text-sm text-brand-ink placeholder:text-brand-muted/60 border border-brand-border/60 focus:outline-none focus:border-brand-blue-bright transition-all"
                   aria-label="Search products"
                 />
               </div>
               <button
                 type="button"
                 onClick={openCart}
-                className="relative shrink-0 w-9 h-9 flex items-center justify-center text-white"
+                className="relative shrink-0 w-9 h-9 flex items-center justify-center text-brand-muted hover:text-brand-ink"
                 aria-label="Open cart"
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="w-[18px] h-[18px]" />
                 {cartItemCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-brand-blue-bright text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center leading-none border-2 border-brand-blue-dark">
+                  <span className="absolute -top-0.5 -right-0.5 bg-brand-blue-bright text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center leading-none border-2 border-white">
                     {cartItemCount}
                   </span>
                 )}
@@ -254,52 +262,57 @@ export default function StoreTab({ openCart }: StoreTabProps) {
             </div>
           </div>
 
-          {/* ─── Hero / promo banner ─── */}
-          <section className="relative overflow-hidden bg-gradient-to-br from-brand-blue via-brand-blue-dark to-[#0a1028] text-white">
-            <div className="absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_20%_20%,rgba(87,223,254,0.3),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(37,99,235,0.35),transparent_40%)]" />
-
-            <div className="hidden lg:block absolute inset-0 z-[1] bg-gradient-to-r from-[#0a1028]/90 via-[#0a1028]/50 to-transparent" />
-            <div className="hidden lg:block absolute inset-x-0 bottom-0 h-[35%] z-[1] bg-gradient-to-t from-[#0a1028]/85 to-transparent" />
-            <div className="block lg:hidden absolute inset-x-0 bottom-0 h-[70%] z-[1] bg-gradient-to-t from-[#0a1028]/90 to-transparent" />
-
-            <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 pb-8 sm:pb-12 pt-3 sm:pt-8 lg:py-16">
-              <div className="max-w-xl text-left flex flex-col gap-2 sm:gap-4">
-                <p className="eyebrow text-brand-cyan flex items-center gap-2 text-xs sm:text-sm">
-                  <Store className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                  Ethio Robotics Store
-                </p>
-                <h1 className="font-display text-lg sm:text-4xl lg:text-5xl font-bold tracking-tight leading-snug sm:leading-[1.15]">
-                  Parts, kits, and gear for your next build
-                </h1>
-                <p className="text-xs sm:text-base text-white/70 leading-relaxed hidden sm:block">
-                  Browse products, check branch stock, and pick up after payment verification.
-                </p>
-                <div className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
-                  <Button
-                    variant="secondary"
+          {/* ─── Hero section ─── */}
+          <section className="bg-brand-blue-bright text-white">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 sm:py-7 lg:py-8">
+              <div className="flex items-center justify-between gap-8">
+                <div className="max-w-xl">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-white/80">
+                    <Store className="w-3 h-3" />
+                    Ethio Robotics Store
+                  </span>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight mt-1 leading-tight">
+                    Parts, kits, and gear for your next build
+                  </h1>
+                  <p className="text-xs sm:text-sm text-white/70 mt-1 max-w-lg leading-relaxed">
+                    Browse products, check branch stock, and pick up after payment verification.
+                  </p>
+                  <button
+                    type="button"
                     onClick={openCart}
-                    className="border-white/20 text-white bg-white/10 hover:bg-white/15 backdrop-blur-md w-full sm:w-auto"
-                    size="lg"
+                    className="mt-3 inline-flex items-center h-10 px-5 bg-white text-brand-blue-bright rounded-[10px] text-sm font-semibold hover:bg-white/90 transition-colors active:scale-[0.97]"
                   >
-                    <ShoppingCart className="w-4 h-4 mr-2 inline" />
-                    Cart{cartItemCount > 0 ? ` (${cartItemCount})` : ''}
-                  </Button>
-                  {currentUser && (
-                    <Button
-                      variant="ghost"
-                      className="text-white/60 bg-white/[0.06] backdrop-blur-md border border-white/15 hover:bg-white/15 hover:text-white w-full sm:w-auto"
-                      onClick={() => navigateStore('/store/orders')}
-                    >
-                      My orders
-                    </Button>
-                  )}
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                    Start Shopping
+                  </button>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* ─── Mobile category chips (scrollable, snap) ─── */}
-          <div className="lg:hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-3 px-3 py-2 bg-white border-b border-brand-border/60">
+          {/* ─── Category chips + Search (desktop) ─── */}
+          <div className="hidden sm:block max-w-[1440px] mx-auto px-4 sm:px-6 mt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 overflow-x-auto scrollbar-hide -mb-1">
+                <CategoryChips
+                  categories={categories}
+                  selectedId={selectedCategory}
+                  loading={categoriesLoading}
+                  onSelect={handleCategoryChip}
+                />
+              </div>
+              <div className="hidden sm:block w-80 shrink-0">
+                <SearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search by name or SKU…"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ─── Mobile category chips ─── */}
+          <div className="sm:hidden overflow-x-auto scrollbar-hide px-4 mt-3">
             <CategoryChips
               categories={categories}
               selectedId={selectedCategory}
@@ -308,103 +321,11 @@ export default function StoreTab({ openCart }: StoreTabProps) {
             />
           </div>
 
-          {/* ─── Category Showcase (desktop only) ─── */}
-          {!selectedCategory && !debouncedSearch && categories.length > 0 && (
-            <section className="hidden lg:block max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4">
-              <SectionHeader
-                eyebrow="Departments"
-                title="Browse by category"
-                description={`${categories.length} product categor${categories.length === 1 ? 'y' : 'ies'}`}
-              />
-              <CategoryShowcase categories={categories} loading={categoriesLoading} onSelect={handleCategoryChip} />
-            </section>
-          )}
-
-          {/* ─── Catalog ─── */}
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-20 sm:pb-8">
+          {/* ─── Main content ─── */}
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 mt-6 pb-24 sm:pb-8">
             <div className="flex gap-8">
-              <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
-                {!productsLoading && latestProducts.length > 0 && (
-                  <section className="space-y-4">
-                    <SectionHeader
-                      eyebrow="Just arrived"
-                      title="Latest products"
-                      description="Recently added to the catalog"
-                    />
-                    <ProductGrid
-                      products={latestProducts}
-                      onView={openProduct}
-                      onAdd={(p) => addProductToCart(p)}
-                      addingId={addingToCart}
-                      addedId={addedToCart}
-                      compact
-                    />
-                  </section>
-                )}
-
-                <div className="hidden sm:block">
-                  <SectionHeader
-                    eyebrow="Catalog"
-                    title="All products"
-                    description={!productsLoading ? `${pageData.total} product${pageData.total !== 1 ? 's' : ''}` : undefined}
-                  />
-                </div>
-
-                <div className="hidden lg:block overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
-                  <CategoryChips
-                    categories={categories}
-                    selectedId={selectedCategory}
-                    loading={categoriesLoading}
-                    onSelect={handleCategoryChip}
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-                  <div className="hidden sm:block flex-1 w-full sm:w-auto">
-                    <SearchInput
-                      value={searchQuery}
-                      onChange={setSearchQuery}
-                      placeholder="Search by name or SKU…"
-                      className="sm:w-72 w-full"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between w-full sm:w-auto gap-2">
-                    <p className="text-xs text-brand-muted sm:hidden">
-                      <span className="font-medium text-brand-ink">{pageData.total}</span> product{pageData.total !== 1 ? 's' : ''}
-                    </p>
-                    <label className="text-xs sm:text-sm text-brand-muted flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
-                      Sort by
-                      <select
-                        value={sort}
-                        onChange={(e) => setSort(e.target.value as CatalogSort)}
-                        className="min-h-[36px] sm:min-h-[44px] sm:h-9 px-2 sm:px-3 rounded-lg border border-brand-border bg-white text-xs sm:text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue/10 focus:border-brand-blue"
-                        aria-label="Sort products"
-                      >
-                        <option value="newest">Newest</option>
-                        <option value="name-asc">Name A–Z</option>
-                        <option value="name-desc">Name Z–A</option>
-                        <option value="price-asc">Price: low to high</option>
-                        <option value="price-desc">Price: high to low</option>
-                      </select>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2">
-                  <p className="hidden sm:block text-sm text-brand-muted">
-                    Showing <span className="font-medium text-brand-ink">{pageData.total}</span> product{pageData.total !== 1 ? 's' : ''}
-                  </p>
-                  {(selectedCategory || debouncedSearch) && (
-                    <button
-                      type="button"
-                      onClick={clearFilters}
-                      className="text-sm text-brand-blue hover:text-brand-blue-dark font-medium ml-auto"
-                    >
-                      Clear filters
-                    </button>
-                  )}
-                </div>
-
+              <div className="flex-1 min-w-0 space-y-10">
+                {/* ─── Error banner ─── */}
                 {(error || cartError || cartErrorMessage) && (
                   <ErrorBanner
                     message={error ?? cartError ?? cartErrorMessage ?? ''}
@@ -414,72 +335,145 @@ export default function StoreTab({ openCart }: StoreTabProps) {
                   />
                 )}
 
-                {productsLoading ? (
-                  <ProductGrid products={[]} loading skeletonCount={12} />
-                ) : pageData.total === 0 ? (
-                  <EmptyState
-                    icon={Search}
-                    title="No products found"
-                    description={debouncedSearch ? `No results for “${debouncedSearch}”. Try a different search term.` : 'No products match this selection yet.'}
-                    action={
-                      (selectedCategory || debouncedSearch) ? (
-                        <Button variant="secondary" onClick={clearFilters}>
-                          Clear filters
-                        </Button>
-                      ) : undefined
-                    }
-                  />
-                ) : (
-                  <>
+                {/* ─── Featured Products ─── */}
+                {!productsLoading && latestProducts.length > 0 && (
+                  <section>
+                    <SectionHeader
+                      eyebrow="Featured"
+                      title="Featured Products"
+                      action={
+                        <button
+                          type="button"
+                          onClick={() => { setShowAllProducts(true); setPage(1); }}
+                          className="text-xs font-semibold text-brand-blue-bright hover:text-brand-blue-bright/80 transition-colors"
+                        >
+                          View All →
+                        </button>
+                      }
+                    />
                     <ProductGrid
-                      products={pageData.items}
+                      products={latestProducts}
                       onView={openProduct}
                       onAdd={(p) => addProductToCart(p)}
                       addingId={addingToCart}
                       addedId={addedToCart}
+                      compact
+                      featured
                     />
-                    {pageData.totalPages > 1 && (
-                      <nav className="flex items-center justify-center gap-3 pt-4" aria-label="Product pagination">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={pageData.page <= 1}
-                          onClick={() => setPage((p) => p - 1)}
-                          aria-label="Previous page"
-                        >
-                          Previous
-                        </Button>
-                        <div className="flex items-center gap-1.5">
-                          {Array.from({ length: pageData.totalPages }, (_, i) => i + 1).map((p) => (
-                            <button
-                              key={p}
-                              type="button"
-                              onClick={() => setPage(p)}
-                              aria-label={`Page ${p}`}
-                              aria-current={p === pageData.page ? 'page' : undefined}
-                              className={`w-11 h-11 sm:w-8 sm:h-8 rounded-lg text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30 ${
-                                p === pageData.page
-                                  ? 'bg-brand-blue text-white'
-                                  : 'text-brand-muted hover:text-brand-ink hover:bg-brand-surface'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          ))}
-                        </div>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={pageData.page >= pageData.totalPages}
-                          onClick={() => setPage((p) => p + 1)}
-                          aria-label="Next page"
-                        >
-                          Next
-                        </Button>
-                      </nav>
-                    )}
-                  </>
+                  </section>
                 )}
+
+                {/* ─── All Products ─── */}
+                <section>
+                  <div className="flex items-end justify-between gap-4 mb-4">
+                    <div className="min-w-0">
+                      <h2 className="text-xl sm:text-2xl font-bold text-brand-ink">All Products</h2>
+                      {!productsLoading && (
+                        <p className="text-xs sm:text-sm text-brand-muted mt-0.5">
+                          {pageData.total} product{pageData.total !== 1 ? 's' : ''}
+                          {!showAllProducts && !selectedCategory && !debouncedSearch && latestProducts.length > 0 && (
+                            <span className="text-brand-muted/60"> (excluding featured)</span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {(selectedCategory || debouncedSearch) && (
+                        <button
+                          type="button"
+                          onClick={clearFilters}
+                          className="text-xs font-semibold text-brand-blue-bright hover:text-brand-blue-bright/80 transition-colors"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      <select
+                        value={sort}
+                        onChange={(e) => setSort(e.target.value as CatalogSort)}
+                        className="h-8 px-2 rounded-lg border border-brand-border bg-white text-xs text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-blue-bright/10 focus:border-brand-blue-bright"
+                        aria-label="Sort products"
+                      >
+                        <option value="newest">Newest</option>
+                        <option value="name-asc">Name A–Z</option>
+                        <option value="name-desc">Name Z–A</option>
+                        <option value="price-asc">Price: low to high</option>
+                        <option value="price-desc">Price: high to low</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {productsLoading ? (
+                    <ProductGrid products={[]} loading skeletonCount={12} />
+                  ) : pageData.total === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-12 h-12 rounded-xl bg-brand-surface border border-brand-border flex items-center justify-center mx-auto mb-3">
+                        <Search className="w-6 h-6 text-brand-border" />
+                      </div>
+                      <p className="text-sm font-semibold text-brand-ink mb-1">No products found</p>
+                      <p className="text-xs text-brand-muted">
+                        {debouncedSearch
+                          ? `No results for "${debouncedSearch}". Try a different search term.`
+                          : 'No products match this selection yet.'}
+                      </p>
+                      {(selectedCategory || debouncedSearch) && (
+                        <button
+                          type="button"
+                          onClick={clearFilters}
+                          className="mt-3 inline-flex items-center h-9 px-4 bg-brand-blue-bright text-white rounded-[10px] text-xs font-semibold hover:bg-brand-blue-bright/90 transition-colors active:scale-[0.97]"
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <ProductGrid
+                        products={pageData.items}
+                        onView={openProduct}
+                        onAdd={(p) => addProductToCart(p)}
+                        addingId={addingToCart}
+                        addedId={addedToCart}
+                      />
+                      {pageData.totalPages > 1 && (
+                        <nav className="flex items-center justify-center gap-2 pt-6" aria-label="Product pagination">
+                          <button
+                            type="button"
+                            disabled={pageData.page <= 1}
+                            onClick={() => setPage((p) => p - 1)}
+                            className="h-8 px-3 rounded-lg text-xs font-semibold border border-brand-border text-brand-muted hover:text-brand-ink hover:bg-brand-surface disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            Previous
+                          </button>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: pageData.totalPages }, (_, i) => i + 1).map((p) => (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => setPage(p)}
+                                aria-current={p === pageData.page ? 'page' : undefined}
+                                className={`w-7 h-7 rounded-md text-[11px] font-semibold transition-all ${
+                                  p === pageData.page
+                                    ? 'bg-brand-blue-bright text-white'
+                                    : 'text-brand-muted hover:text-brand-ink hover:bg-brand-surface'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={pageData.page >= pageData.totalPages}
+                            onClick={() => setPage((p) => p + 1)}
+                            className="h-8 px-3 rounded-lg text-xs font-semibold border border-brand-border text-brand-muted hover:text-brand-ink hover:bg-brand-surface disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            Next
+                          </button>
+                        </nav>
+                      )}
+                    </>
+                  )}
+                </section>
               </div>
 
               <DesktopCartSidebar
@@ -497,17 +491,17 @@ export default function StoreTab({ openCart }: StoreTabProps) {
         renderView()
       )}
 
-      {/* ─── Mobile cart FAB (all views) ─── */}
+      {/* ─── Mobile cart FAB ─── */}
       <div className="lg:hidden fixed bottom-6 right-6 z-40 bottom-safe">
         <button
           type="button"
           onClick={openCart}
-          className="relative w-14 h-14 bg-brand-blue text-white rounded-full shadow-lg shadow-brand-blue/25 flex items-center justify-center hover:bg-brand-blue-dark transition-colors active:scale-95"
+          className="relative w-12 h-12 bg-brand-blue-bright text-white rounded-full shadow-lg shadow-brand-blue-bright/25 flex items-center justify-center hover:bg-brand-blue-bright/90 transition-colors active:scale-95"
           aria-label="Open cart"
         >
-          <ShoppingBag className="w-6 h-6" />
+          <ShoppingBag className="w-5 h-5" />
           {cartItemCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-brand-blue-bright text-white text-[10px] font-bold rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-1 leading-none border-2 border-white">
+            <span className="absolute -top-1 -right-1 bg-brand-blue-bright text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none border-2 border-white">
               {cartItemCount}
             </span>
           )}
